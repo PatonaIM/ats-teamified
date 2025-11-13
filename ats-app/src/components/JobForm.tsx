@@ -18,6 +18,7 @@ interface JobFormData {
   department: string;
   departmentOther?: string;
   employmentType: EmploymentTypeOrEmpty;
+  createdByRole: 'client' | 'recruiter';
   
   city: string;
   country: string;
@@ -76,6 +77,7 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitti
     experienceLevel: '',
     department: '',
     employmentType: '',
+    createdByRole: 'recruiter', // Default to recruiter for MVP
     city: '',
     country: '',
     remoteOk: false,
@@ -141,10 +143,10 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitti
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent, saveAsDraft = false) => {
     e.preventDefault();
     if (validateForm()) {
-      onSubmit(formData);
+      onSubmit({ ...formData, saveAsDraft });
     }
   };
 
@@ -420,7 +422,7 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitti
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 max-h-[calc(100vh-200px)] overflow-y-auto">
+        <form onSubmit={(e) => handleSubmit(e, false)} className="p-6 max-h-[calc(100vh-200px)] overflow-y-auto">
           <div className="space-y-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Employment Type*</label>
@@ -439,6 +441,23 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitti
             </div>
 
             <h3 className="text-lg font-semibold text-gray-700 mt-6 mb-2">Common Details</h3>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Created By</label>
+              <select
+                value={formData.createdByRole}
+                onChange={(e) => handleChange('createdByRole', e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              >
+                <option value="recruiter">Recruiter (No approval needed)</option>
+                <option value="client">Client (Requires approval)</option>
+              </select>
+              <p className="text-xs text-gray-500 mt-1">
+                {formData.createdByRole === 'client' 
+                  ? 'Client jobs require manager approval before going live' 
+                  : 'Recruiter jobs can be published immediately'}
+              </p>
+            </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Job Title*</label>
@@ -613,7 +632,7 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitti
             </div>
           </div>
 
-          <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-gray-200">
+          <div className="flex justify-between items-center mt-8 pt-6 border-t border-gray-200">
             <button
               type="button"
               onClick={onClose}
@@ -622,16 +641,29 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitti
             >
               Cancel
             </button>
-            <button
-              type="submit"
-              disabled={isSubmitting}
-              className="px-6 py-2 bg-gradient-to-r from-purple-600 to-blue-500 text-white rounded-lg hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
-            >
-              {isSubmitting && (
-                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-              )}
-              {isSubmitting ? 'Creating...' : 'Create Job'}
-            </button>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={(e) => handleSubmit(e, true)}
+                disabled={isSubmitting}
+                className="px-6 py-2 border-2 border-purple-600 text-purple-600 rounded-lg hover:bg-purple-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {isSubmitting && (
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-purple-600 border-t-transparent"></div>
+                )}
+                Save as Draft
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="px-6 py-2 bg-gradient-to-r from-purple-600 to-blue-500 text-white rounded-lg hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {isSubmitting && (
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                )}
+                {formData.createdByRole === 'client' ? 'Submit for Approval' : 'Publish Job'}
+              </button>
+            </div>
           </div>
         </form>
       </div>

@@ -114,6 +114,8 @@ app.post('/api/jobs', async (req, res) => {
   console.log('[Backend] Received POST /api/jobs request');
   try {
     const jobData = req.body;
+    const saveAsDraft = jobData.saveAsDraft === true;
+    const createdByRole = jobData.createdByRole || 'recruiter'; // 'client' or 'recruiter'
     
     // Validate required fields
     if (!jobData.title || !jobData.employmentType) {
@@ -121,6 +123,16 @@ app.post('/api/jobs', async (req, res) => {
         error: 'Missing required fields',
         message: 'Job title and employment type are required' 
       });
+    }
+    
+    // Determine job status based on role and action
+    let jobStatus;
+    if (saveAsDraft) {
+      jobStatus = 'draft';
+    } else if (createdByRole === 'client') {
+      jobStatus = 'pending_approval'; // Client jobs need approval
+    } else {
+      jobStatus = 'active'; // Recruiter jobs go live immediately
     }
     
     // Convert camelCase employment type to database format
@@ -131,6 +143,11 @@ app.post('/api/jobs', async (req, res) => {
       'eor': 'EOR'
     };
     
+    // Determine final department value
+    const finalDepartment = jobData.department === 'Other' && jobData.departmentOther 
+      ? jobData.departmentOther 
+      : jobData.department;
+    
     const insertQuery = `
       INSERT INTO jobs (
         title,
@@ -138,17 +155,36 @@ app.post('/api/jobs', async (req, res) => {
         description,
         requirements,
         department,
+        experience_level,
         city,
         country,
-        remote_flag,
-        salary_from,
-        salary_to,
+        remote_ok,
+        salary_min,
+        salary_max,
         salary_currency,
-        salary_text,
-        job_status,
+        status,
+        created_by_role,
+        contract_duration,
+        contract_value,
+        service_scope,
+        deliverable_milestones,
+        payment_schedule,
+        hourly_rate,
+        hours_per_week,
+        max_budget,
+        cost_center,
+        annual_salary,
+        benefits_package,
+        total_compensation,
+        headcount_impact,
+        local_salary,
+        eor_service_fee,
+        compliance_costs,
+        timezone,
+        remote_capabilities,
         created_at,
         updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
       RETURNING *
     `;
     
@@ -157,34 +193,69 @@ app.post('/api/jobs', async (req, res) => {
       employmentTypeMap[jobData.employmentType] || 'Full-time',
       jobData.description || '',
       jobData.keySkills || '',
-      'Engineering',
-      'Remote',
-      'Global',
-      true,
-      null,
-      null,
-      'USD',
-      '',
-      'active'
+      finalDepartment || 'Engineering',
+      jobData.experienceLevel || 'mid',
+      jobData.city || 'Remote',
+      jobData.country || 'Global',
+      jobData.remoteOk || false,
+      jobData.salaryMin ? parseInt(jobData.salaryMin) : null,
+      jobData.salaryMax ? parseInt(jobData.salaryMax) : null,
+      jobData.salaryCurrency || 'USD',
+      jobStatus,
+      createdByRole,
+      // Contract fields
+      jobData.contractDuration || null,
+      jobData.contractValue ? parseFloat(jobData.contractValue.replace(/[^0-9.]/g, '')) : null,
+      jobData.serviceScope || null,
+      jobData.deliverableMilestones || null,
+      jobData.paymentSchedule || null,
+      // Part-time fields
+      jobData.hourlyRate ? parseFloat(jobData.hourlyRate.replace(/[^0-9.]/g, '')) : null,
+      jobData.hoursPerWeek ? parseInt(jobData.hoursPerWeek) : null,
+      jobData.maxBudget ? parseFloat(jobData.maxBudget.replace(/[^0-9.]/g, '')) : null,
+      jobData.costCenter || null,
+      // Full-time fields
+      jobData.annualSalary ? parseFloat(jobData.annualSalary.replace(/[^0-9.]/g, '')) : null,
+      jobData.benefitsPackage || null,
+      jobData.totalCompensation ? parseFloat(jobData.totalCompensation.replace(/[^0-9.]/g, '')) : null,
+      jobData.headcountImpact || null,
+      // EOR fields
+      jobData.localSalary ? parseFloat(jobData.localSalary.replace(/[^0-9.]/g, '')) : null,
+      jobData.eorServiceFee ? parseFloat(jobData.eorServiceFee.replace(/[^0-9.]/g, '')) : null,
+      jobData.complianceCosts ? parseFloat(jobData.complianceCosts.replace(/[^0-9.]/g, '')) : null,
+      jobData.timezone || null,
+      jobData.remoteCapabilities || null
     ];
     
-    console.log('[Backend] Inserting new job:', jobData.title);
+    console.log('[Backend] Inserting new job:', jobData.title, '| Status:', jobStatus, '| Role:', createdByRole);
     const result = await query(insertQuery, params);
     
     const newJob = result.rows[0];
     console.log('[Backend] Job created successfully:', newJob.id);
     
+    // Insert default pipeline stages
+    if (jobData.pipelineStages && jobData.pipelineStages.length > 0) {
+      console.log('[Backend] Inserting', jobData.pipelineStages.length, 'pipeline stages');
+      
+      for (const stage of jobData.pipelineStages) {
+        await query(
+          'INSERT INTO job_pipeline_stages (job_id, stage_name, stage_order, is_default) VALUES ($1, $2, $3, $4)',
+          [newJob.id, stage.name, stage.order, true]
+        );
+      }
+      console.log('[Backend] Pipeline stages inserted successfully');
+    }
+    
     // Return normalized job data
     const normalizedJob = {
       ...newJob,
       employment_type: normalizeEmploymentType(newJob.employment_type),
-      status: newJob.job_status || newJob.status,
       company_name: newJob.department,
       location: `${newJob.city}, ${newJob.country}`,
-      remote_ok: newJob.remote_flag,
-      salary_min: newJob.salary_from,
-      salary_max: newJob.salary_to,
-      salary_display: `${newJob.salary_currency} ${newJob.salary_text}`,
+      remote_ok: newJob.remote_ok,
+      salary_min: newJob.salary_min,
+      salary_max: newJob.salary_max,
+      salary_display: newJob.salary_currency,
       candidate_count: 0,
       active_candidates: 0,
       recruiter_name: 'HR Team',
