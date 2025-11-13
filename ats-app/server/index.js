@@ -110,6 +110,15 @@ app.get('/api/jobs', async (req, res) => {
   }
 });
 
+// Helper function to generate URL-safe slug from title
+function generateSlug(title) {
+  return title
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .substring(0, 100) + '-' + Date.now().toString(36);
+}
+
 app.post('/api/jobs', async (req, res) => {
   console.log('[Backend] Received POST /api/jobs request');
   try {
@@ -152,6 +161,7 @@ app.post('/api/jobs', async (req, res) => {
     const insertQuery = `
       INSERT INTO jobs (
         title,
+        slug,
         employment_type,
         description,
         requirements,
@@ -186,12 +196,13 @@ app.post('/api/jobs', async (req, res) => {
         remote_capabilities,
         created_at,
         updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
       RETURNING *
     `;
     
     const params = [
       jobData.title,
+      generateSlug(jobData.title), // Auto-generate URL-safe slug
       employmentTypeMap[jobData.employmentType] || 'Full-time',
       jobData.description || '',
       jobData.keySkills || '',
