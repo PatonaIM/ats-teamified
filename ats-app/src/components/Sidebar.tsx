@@ -37,7 +37,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
   return (
     <aside
-      className={`fixed left-0 top-0 h-screen bg-gradient-to-b from-purple-600 to-purple-700 transition-all duration-300 z-40 ${
+      className={`fixed left-0 top-0 h-screen bg-white dark:bg-gray-800 border-r border-gray-100 dark:border-gray-700 transition-all duration-300 z-40 ${
         collapsed ? 'w-20' : 'w-64'
       }`}
     >
@@ -45,15 +45,14 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         {/* Logo */}
         <div className="p-6">
           <Link to="/" className="flex items-center gap-3 group">
-            <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center backdrop-blur-sm group-hover:bg-white/20 transition-all duration-300">
+            <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-gradient-to-br from-purple-600 to-purple-700 flex items-center justify-center transition-all duration-300">
               <Sparkles className="w-5 h-5 text-white" />
             </div>
             {!collapsed && (
               <div className="flex flex-col">
-                <span className="font-bold text-lg text-white">
-                  Multi-Employment
+                <span className="font-bold text-lg text-purple-700 dark:text-purple-400">
+                  teamified
                 </span>
-                <span className="text-xs text-purple-200">ATS Platform</span>
               </div>
             )}
           </Link>
@@ -72,8 +71,8 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                     to={item.path}
                     className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
                       active
-                        ? 'bg-white/20 text-white shadow-lg backdrop-blur-sm'
-                        : 'text-purple-100 hover:bg-white/10 hover:text-white'
+                        ? 'bg-purple-600 text-white'
+                        : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
                     }`}
                     title={collapsed ? item.label : ''}
                   >
@@ -87,10 +86,10 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
         </nav>
 
         {/* Bottom Section */}
-        <div className="px-3 pb-4 space-y-1 border-t border-white/10 pt-4">
+        <div className="px-3 pb-4 space-y-1 border-t border-gray-200 dark:border-gray-700 pt-4">
           <button
             onClick={() => navigate('/dashboard/profile')}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-purple-100 hover:bg-white/10 hover:text-white transition-all duration-200"
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200"
           >
             <UserCircle className="w-5 h-5 flex-shrink-0" />
             {!collapsed && <span>Profile</span>}
@@ -98,7 +97,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           
           <button
             onClick={() => navigate('/dashboard/settings')}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-purple-100 hover:bg-white/10 hover:text-white transition-all duration-200"
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200"
           >
             <Settings className="w-5 h-5 flex-shrink-0" />
             {!collapsed && <span>Settings</span>}
@@ -106,7 +105,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
           <button
             onClick={() => navigate('/')}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-red-300 hover:bg-red-500/20 hover:text-red-200 transition-all duration-200"
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all duration-200"
           >
             <LogOut className="w-5 h-5 flex-shrink-0" />
             {!collapsed && <span>Sign Out</span>}
@@ -115,7 +114,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           {/* Collapse Toggle */}
           <button
             onClick={onToggle}
-            className="w-full flex items-center justify-center gap-2 px-4 py-2 mt-2 rounded-xl text-purple-200 hover:bg-white/10 hover:text-white transition-all duration-200"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 mt-2 rounded-xl text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-all duration-200"
           >
             {collapsed ? (
               <ChevronRight className="w-4 h-4" />
