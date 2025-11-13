@@ -26,21 +26,32 @@ export function DashboardHome() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    console.log('[DashboardHome] Component mounted, fetching stats...');
     fetchDashboardStats();
   }, []);
 
   const fetchDashboardStats = async () => {
     try {
+      console.log('[DashboardHome] Starting fetch...');
       setLoading(true);
       
-      // Fetch jobs and approvals separately using direct URLs
-      const [jobsRes, approvalsRes] = await Promise.all([
-        fetch('http://localhost:3001/api/jobs'),
-        fetch('http://localhost:3001/api/approvals?status=pending')
-      ]);
+      // Fetch jobs and approvals using direct backend URL (bypasses Vite proxy issues)
+      console.log('[DashboardHome] Fetching jobs from http://localhost:3001/api/jobs');
+      const jobsRes = await fetch('http://localhost:3001/api/jobs');
+      console.log('[DashboardHome] Jobs response received');
+      const jobsData = await jobsRes.json();
+      console.log('[DashboardHome] Jobs data parsed');
       
-      const jobs = await jobsRes.json();
+      console.log('[DashboardHome] Fetching approvals from http://localhost:3001/api/approvals');
+      const approvalsRes = await fetch('http://localhost:3001/api/approvals?status=pending');
+      console.log('[DashboardHome] Approvals response received');
       const approvals = await approvalsRes.json();
+      console.log('[DashboardHome] Approvals data parsed');
+      
+      console.log('[DashboardHome] Received data:', { jobsCount: jobsData.jobs?.length, approvalsCount: approvals.length });
+      
+      // Extract jobs array from response object
+      const jobs = jobsData.jobs || [];
       
       // Calculate stats from jobs data
       const totalJobs = jobs.length;
@@ -68,6 +79,7 @@ export function DashboardHome() {
         return hoursSinceCreated > 24; // Consider overdue after 24 hours
       }).length;
       
+      console.log('[DashboardHome] Setting stats:', { totalJobs, activeJobs, draftJobs, pendingApprovals });
       setStats({
         totalJobs,
         activeJobs,
@@ -77,7 +89,7 @@ export function DashboardHome() {
         recentJobs
       });
     } catch (error) {
-      console.error('Error fetching dashboard stats:', error);
+      console.error('[DashboardHome] Error fetching dashboard stats:', error);
       // Set empty stats to avoid infinite loading
       setStats({
         totalJobs: 0,
@@ -88,6 +100,7 @@ export function DashboardHome() {
         recentJobs: []
       });
     } finally {
+      console.log('[DashboardHome] Fetch complete, setting loading=false');
       setLoading(false);
     }
   };

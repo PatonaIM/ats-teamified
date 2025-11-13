@@ -51,7 +51,7 @@ export function JobsPageDashboard() {
       if (statusFilter !== 'all') params.append('status', statusFilter);
       if (searchTerm) params.append('search', searchTerm);
 
-      const url = `/api/jobs?${params}`;
+      const url = `http://localhost:3001/api/jobs?${params}`;
       console.log('Fetching jobs from:', url);
       
       const controller = new AbortController();
@@ -103,7 +103,7 @@ export function JobsPageDashboard() {
   const handleCreateJob = async (formData: any) => {
     try {
       setIsSubmitting(true);
-      const response = await fetch('/api/jobs', {
+      const response = await fetch('http://localhost:3001/api/jobs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
