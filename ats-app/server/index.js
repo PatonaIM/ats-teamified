@@ -27,10 +27,15 @@ app.get('/api/jobs', async (req, res) => {
         remote_ok,
         salary_min,
         salary_max,
+        description,
+        requirements,
+        benefits,
         created_at,
+        updated_at,
         candidate_count,
         active_candidates,
-        recruiter_name
+        recruiter_name,
+        linkedin_synced
       FROM jobs
       WHERE 1=1
     `;

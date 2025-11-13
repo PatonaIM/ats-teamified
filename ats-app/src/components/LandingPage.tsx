@@ -1,6 +1,9 @@
 import { Briefcase, Users, Zap, TrendingUp, CheckCircle, ArrowRight, Sparkles, Clock, Target, BarChart3, Shield, Rocket, Star } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 export function LandingPage() {
+  const navigate = useNavigate();
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       {/* Hero Section */}
@@ -55,8 +58,11 @@ export function LandingPage() {
             
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center animate-slide-up delay-400">
-              <button className="group relative px-8 py-4 bg-gradient-to-r from-brand-purple via-purple-500 to-brand-blue text-white rounded-xl font-semibold text-lg shadow-[0_4px_20px_rgba(161,106,232,0.4)] hover:shadow-[0_8px_30px_rgba(161,106,232,0.6)] transition-all duration-300 flex items-center justify-center gap-2 overflow-hidden hover:scale-105 animate-gradient">
-                <span className="relative z-10">Get Started Free</span>
+              <button 
+                onClick={() => navigate('/jobs')}
+                className="group relative px-8 py-4 bg-gradient-to-r from-brand-purple via-purple-500 to-brand-blue text-white rounded-xl font-semibold text-lg shadow-[0_4px_20px_rgba(161,106,232,0.4)] hover:shadow-[0_8px_30px_rgba(161,106,232,0.6)] transition-all duration-300 flex items-center justify-center gap-2 overflow-hidden hover:scale-105 animate-gradient"
+              >
+                <span className="relative z-10">View Jobs</span>
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform relative z-10" />
                 <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-blue-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
               </button>

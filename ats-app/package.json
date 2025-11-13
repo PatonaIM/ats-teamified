@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "server": "node server/index.js",
-    "dev:all": "node server/index.js & vite",
+    "dev:all": "PORT=3001 node server/index.js & sleep 2 && vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
@@ -18,7 +18,8 @@
     "lucide-react": "^0.553.0",
     "pg": "^8.16.3",
     "react": "^19.2.0",
-    "react-dom": "^19.2.0"
+    "react-dom": "^19.2.0",
+    "react-router-dom": "^7.9.5"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
