@@ -1,5 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Search, Plus, Briefcase, MapPin, DollarSign, Users, Calendar, CheckCircle, Clock, XCircle, Pause } from 'lucide-react';
+
+window.addEventListener('unhandledrejection', (event) => {
+  console.error('Unhandled promise rejection:', event.reason);
+});
 
 interface Job {
   id: string;
@@ -49,11 +53,7 @@ export function JobsPageDashboard() {
   const [employmentTypeFilter, setEmploymentTypeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
 
-  useEffect(() => {
-    fetchJobs();
-  }, [employmentTypeFilter, statusFilter, searchTerm]);
-
-  const fetchJobs = async () => {
+  const fetchJobs = useCallback(async () => {
     try {
       setLoading(true);
       const params = new URLSearchParams();
@@ -61,19 +61,35 @@ export function JobsPageDashboard() {
       if (statusFilter !== 'all') params.append('status', statusFilter);
       if (searchTerm) params.append('search', searchTerm);
 
-      const response = await fetch(`/api/jobs?${params}`);
-      if (!response.ok) throw new Error('Failed to fetch jobs');
+      const url = `/api/jobs?${params}`;
+      console.log('Fetching jobs from:', url);
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000);
+      
+      const response = await fetch(url, { signal: controller.signal });
+      clearTimeout(timeoutId);
+      console.log('Response status:', response.status);
+      if (!response.ok) throw new Error(`Failed to fetch jobs (${response.status})`);
       
       const data = await response.json();
-      setJobs(data.jobs);
+      console.log('Jobs received:', data.jobs?.length || 0);
+      console.log('First job:', data.jobs?.[0]);
+      setJobs(data.jobs || []);
       setError(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to fetch jobs');
-      console.error('Error fetching jobs:', err);
+      const message = err instanceof Error ? err.message : 'Failed to fetch jobs';
+      console.error('Fetch error:', message, err);
+      setError(message);
     } finally {
       setLoading(false);
     }
-  };
+  }, [employmentTypeFilter, statusFilter, searchTerm]);
+
+  useEffect(() => {
+    console.log('useEffect triggered, calling fetchJobs');
+    fetchJobs().catch(err => console.error('fetchJobs failed:', err));
+  }, [fetchJobs]);
 
   const formatSalary = (min: number | null, max: number | null, display?: string) => {
     if (display && display !== ' ') return display.trim();
