@@ -4,6 +4,17 @@
 This project is a Multi-Employment Applicant Tracking System (ATS) designed to manage various employment types (contract, part-time, full-time, EOR). Its core purpose is to provide intelligent hiring capabilities through AI-powered features, ensuring comprehensive compliance and seamless integration with external platforms like LinkedIn. The system's primary competitive advantage is its AI differentiation, offering tools for job description generation, interview question generation, candidate sentiment analysis, and advanced analytics from its initial phase.
 
 ## Recent Changes
+**November 13, 2025** - Implemented Job Creation Form with Dynamic Field Rendering (Story 1.3 Criterion 9):
+- Created comprehensive JobForm component with employment type-specific field rendering
+- Implemented dynamic field sections: Contract (duration, value, service scope, milestones), Part-Time (hourly rate, hours/week, budget), Full-Time (annual salary, benefits package, headcount impact), EOR (local salary, currency, service fee, timezone)
+- Added client-side validation enforcing required fields per employment type
+- Built shared employmentTypes.ts utility module centralizing employment type metadata (labels, colors, required fields)
+- Integrated JobForm modal with JobsPageDashboard using local state management
+- Created POST /api/jobs endpoint with employment type normalization and job insertion
+- Form features: isSubmitting state, form reset on close, optimistic UI update, error handling
+- MVP compliance: Basic field validation (as specified for Criterion 9 "MVP Simplified")
+- **Known Issue**: Vite 7.2.2 proxy bug prevents job listing display (requests forwarded but responses not returned to browser); job creation works independently
+
 **November 13, 2025** - Implemented Dashboard Portal with Collapsible Sidebar Navigation:
 - Created Sidebar component with 5 menu items (Dashboard, Jobs, Candidates, Analytics, Settings)
 - Implemented collapsible sidebar with smooth width transitions (256px ↔ 80px)
@@ -54,14 +65,15 @@ The system employs an Azure-native, microservices-based architecture.
 - **Landing Page Implementation:** Fully functional prototype in `ats-app/` with animated hero section, stats section, features grid, employment types showcase, benefits section, CTA section, and footer. Includes dark mode toggle, responsive design, and interactive animations throughout. "Login to Portal" button navigates to /dashboard.
 - **Jobs Page Implementation:** Fully functional with Azure PostgreSQL backend integration, displaying 6 jobs with real-time filtering, search, employment type badges, LinkedIn sync indicators, pipeline progress bars, and smooth slide-up animations.
 - **Dashboard Portal Implementation:** Complete admin portal with collapsible sidebar navigation (Dashboard, Jobs, Candidates, Analytics, Settings). DashboardLayout manages sidebar collapse state with synchronized content margins. Top header includes global search, notification bell, user profile dropdown, and dark mode toggle. Dashboard home displays KPI cards with trend indicators, recent jobs preview, and quick action buttons.
+- **Job Creation Form (Story 1.3 Criterion 9):** Modal-based JobForm component with dynamic field rendering for 4 employment types, client-side validation, shared employmentTypes.ts module, POST /api/jobs endpoint, and complete Create Job workflow integration.
 
 **Technical Implementations & Feature Specifications:**
 - **Backend Infrastructure (MVP):**
     - Express.js REST API server (Node.js)
     - Azure PostgreSQL database connection with SSL (development mode with production safeguards)
-    - RESTful API endpoints: GET /api/jobs (with filters), GET /api/jobs/:id
+    - RESTful API endpoints: GET /api/jobs (with filters), GET /api/jobs/:id, POST /api/jobs (create job)
     - Database schema: jobs table with 18 fields including employment_type, status, linkedin_synced
-    - Vite proxy configuration routing /api to localhost:3001
+    - Vite proxy configuration routing /api to localhost:3001 (known response forwarding issue in development)
 - **AI-Assisted Tools (MVP Core):**
     - AI Job Description Generation (GPT-4/Claude prompt-based, template-driven).
     - AI Interview Question Generation (template-based, basic resume keyword matching).
@@ -100,7 +112,7 @@ The system employs an Azure-native, microservices-based architecture.
 ats-app/                     # Full-stack application (React + Express)
 ├── server/                  # Backend Express.js server
 │   ├── db.js               # PostgreSQL connection with Azure SSL config
-│   ├── index.js            # REST API endpoints (/api/jobs, /api/jobs/:id)
+│   ├── index.js            # REST API endpoints (GET/POST /api/jobs, GET /api/jobs/:id)
 │   └── setup-db.js         # Database schema and sample data setup
 ├── src/                    # React frontend
 │   ├── components/
@@ -110,8 +122,11 @@ ats-app/                     # Full-stack application (React + Express)
 │   │   ├── DashboardLayout.tsx    # Portal layout with sidebar/header
 │   │   ├── Sidebar.tsx            # Collapsible side navigation
 │   │   ├── DashboardHome.tsx      # Dashboard home with KPIs
-│   │   ├── JobsPageDashboard.tsx  # Jobs page for portal
+│   │   ├── JobsPageDashboard.tsx  # Jobs page with Create Job integration
+│   │   ├── JobForm.tsx            # Job creation modal with dynamic fields
 │   │   └── DarkModeToggle.tsx
+│   ├── utils/
+│   │   └── employmentTypes.ts     # Shared employment type metadata
 │   ├── App.tsx             # React Router (public + dashboard routes)
 │   └── index.css           # Custom animations (float, slide, gradient)
 ├── package.json            # Scripts: dev:all (runs frontend + backend)
