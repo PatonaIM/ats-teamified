@@ -404,10 +404,685 @@ npx shadcn-ui@latest add button card badge table
 
 ---
 
+---
+
+## 11. Jobs List Page (Detailed Wireframe)
+
+### Layout Structure
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│  💼 Jobs                           🔍 [Search jobs...]  [+ Create Job]   │ ← Header
+├──────────────────────────────────────────────────────────────────────────┤
+│                                                                           │
+│  Filters:                                                                 │
+│  ┌──────────────┐ ┌──────────────┐ ┌──────────────┐ ┌──────────────┐   │
+│  │ All Types ▼  │ │ All Status ▼ │ │ All Clients▼ │ │ Date Range ▼│   │
+│  └──────────────┘ └──────────────┘ └──────────────┘ └──────────────┘   │
+│                                                                           │
+│  Active Filters: [Contract ×] [Posted this week ×]    Clear All         │
+│                                                                           │
+├──────────────────────────────────────────────────────────────────────────┤
+│                                                                           │
+│  Showing 24 jobs                          [List View] [Grid View]        │
+│                                                                           │
+│  ┌────────────────────────────────────────────────────────────────────┐ │
+│  │ Senior Full-Stack Developer                      [Full-Time] 🟢    │ │
+│  │ Acme Corp · San Francisco, CA (Remote OK)                          │ │
+│  │                                                                      │ │
+│  │ Posted: 2 days ago · Candidates: 12 · Stage: Shortlist (5)         │ │
+│  │ Budget: $120k-$150k · Recruiter: John Doe                          │ │
+│  │                                                                      │ │
+│  │ Pipeline Progress:  ████████░░░░░░░░░░  (8/12 candidates active)   │ │
+│  │                                                                      │ │
+│  │ [View Details] [Edit] [View Candidates] [LinkedIn Status: ✓ Synced]│ │
+│  └────────────────────────────────────────────────────────────────────┘ │
+│                                                                           │
+│  ┌────────────────────────────────────────────────────────────────────┐ │
+│  │ DevOps Engineer (Contract - 6 months)            [Contract] 🟣     │ │
+│  │ TechStart Inc · Austin, TX (Remote)                                │ │
+│  │                                                                      │ │
+│  │ Posted: 1 week ago · Candidates: 8 · Stage: Client Interview (3)   │ │
+│  │ Budget: $95/hr · Recruiter: Jane Smith                             │ │
+│  │                                                                      │ │
+│  │ Pipeline Progress:  ██████████████░░░░  (6/8 candidates active)    │ │
+│  │                                                                      │ │
+│  │ ⚠️ Action Required: 3 candidates awaiting client endorsement        │ │
+│  │                                                                      │ │
+│  │ [View Details] [Edit] [View Candidates] [LinkedIn Status: ✓ Synced]│ │
+│  └────────────────────────────────────────────────────────────────────┘ │
+│                                                                           │
+│  ┌────────────────────────────────────────────────────────────────────┐ │
+│  │ UX Designer (Part-Time - 20hrs/week)              [Part-Time] 🔵   │ │
+│  │ Design Studio · New York, NY (Hybrid)                              │ │
+│  │                                                                      │ │
+│  │ Posted: 3 days ago · Candidates: 15 · Stage: Screening (12)        │ │
+│  │ Budget: $50-$65/hr · Recruiter: Mike Johnson                       │ │
+│  │                                                                      │ │
+│  │ Pipeline Progress:  ████░░░░░░░░░░░░░░  (3/15 candidates active)   │ │
+│  │                                                                      │ │
+│  │ [View Details] [Edit] [View Candidates] [LinkedIn Status: Pending] │ │
+│  └────────────────────────────────────────────────────────────────────┘ │
+│                                                                           │
+│  ┌────────────────────────────────────────────────────────────────────┐ │
+│  │ Sales Manager (EOR - APAC Region)                      [EOR] 🟠    │ │
+│  │ Global Solutions · Singapore (Remote - APAC TZ)                    │ │
+│  │                                                                      │ │
+│  │ Posted: 5 days ago · Candidates: 6 · Stage: Offer (1)              │ │
+│  │ Budget: Confidential · Recruiter: Sarah Lee                        │ │
+│  │                                                                      │ │
+│  │ Pipeline Progress:  ████████████████░░  (5/6 candidates active)    │ │
+│  │                                                                      │ │
+│  │ 🎉 Success: 1 offer pending acceptance                              │ │
+│  │                                                                      │ │
+│  │ [View Details] [Edit] [View Candidates] [LinkedIn Status: ✓ Synced]│ │
+│  └────────────────────────────────────────────────────────────────────┘ │
+│                                                                           │
+│  [Load More Jobs]                                   Showing 1-4 of 24   │
+│                                                                           │
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+### Job Card Components
+
+#### Status Indicators
+- **Active** 🟢 - Job is open and accepting candidates
+- **Paused** 🟡 - Job temporarily on hold
+- **Filled** ✅ - Job successfully filled
+- **Closed** 🔴 - Job closed without hire
+
+#### Employment Type Badges
+```tsx
+<Badge variant="outline" className="border-purple-500 text-purple-700">
+  Contract
+</Badge>
+<Badge variant="outline" className="border-blue-500 text-blue-700">
+  Part-Time
+</Badge>
+<Badge variant="outline" className="border-green-500 text-green-700">
+  Full-Time
+</Badge>
+<Badge variant="outline" className="border-orange-500 text-orange-700">
+  EOR
+</Badge>
+```
+
+#### Action Alerts
+- ⚠️ **Warning**: Requires attention (yellow background)
+- 🎉 **Success**: Positive milestone (green background)
+- 🔔 **Info**: General notification (blue background)
+
+### Grid View Alternative
+```
+┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
+│ Full-Stack Dev  │ │ DevOps Engineer │ │ UX Designer     │
+│ [Full-Time] 🟢  │ │ [Contract] 🟣   │ │ [Part-Time] 🔵  │
+│                 │ │                 │ │                 │
+│ 12 Candidates   │ │ 8 Candidates    │ │ 15 Candidates   │
+│ Shortlist (5)   │ │ Interview (3)   │ │ Screening (12)  │
+│                 │ │                 │ │                 │
+│ [View Details]  │ │ [View Details]  │ │ [View Details]  │
+└─────────────────┘ └─────────────────┘ └─────────────────┘
+```
+
+---
+
+## 12. Candidate Pipeline Page (Kanban View)
+
+### Layout Structure
+```
+┌──────────────────────────────────────────────────────────────────────────────────┐
+│  👥 Candidates - Senior Full-Stack Developer          🔍 [Search candidates...]   │
+│                                                                                   │
+│  [Pipeline View] [List View] [Analytics]                     Export CSV ↓        │
+├──────────────────────────────────────────────────────────────────────────────────┤
+│                                                                                   │
+│  ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌─────────────┐ ┌───────────┐ │
+│  │ Screening   │ │ Shortlist   │ │   Client    │ │   Client    │ │   Offer   │ │
+│  │             │ │             │ │ Endorsement │ │  Interview  │ │           │ │
+│  │     (7)     │ │     (5)     │ │     (3)     │ │     (2)     │ │    (1)    │ │
+│  ├─────────────┤ ├─────────────┤ ├─────────────┤ ├─────────────┤ ├───────────┤ │
+│  │             │ │             │ │             │ │             │ │           │ │
+│  │ ┌─────────┐ │ │ ┌─────────┐ │ │ ┌─────────┐ │ │ ┌─────────┐ │ │┌─────────┐│ │
+│  │ │ Sarah J.│ │ │ │ Mike K. │ │ │ │ Emily R.│ │ │ │ David L.│ │ ││ Lisa M. ││ │
+│  │ │ ⭐⭐⭐⭐⭐  │ │ │ │ ⭐⭐⭐⭐   │ │ │ │ ⭐⭐⭐⭐⭐  │ │ │ │ ⭐⭐⭐⭐⭐  │ │ ││ ⭐⭐⭐⭐⭐ ││ │
+│  │ │         │ │ │ │         │ │ │ │         │ │ │ │         │ │ ││         ││ │
+│  │ │ 5 yrs   │ │ │ │ 8 yrs   │ │ │ │ 6 yrs   │ │ │ │ 10 yrs  │ │ ││ 7 yrs   ││ │
+│  │ │ React+  │ │ │ │ Full-   │ │ │ │ React+  │ │ │ │ React+  │ │ ││ Senior  ││ │
+│  │ │ Node.js │ │ │ │ Stack   │ │ │ │ Node.js │ │ │ │ Node.js │ │ ││ Full-   ││ │
+│  │ │         │ │ │ │         │ │ │ │         │ │ │ │         │ │ ││ Stack   ││ │
+│  │ │ 📄 💬 ⚡│ │ │ │ 📄 💬 ⚡│ │ │ │ 📄 💬 ⚡│ │ │ │ 📄 💬 ⚡│ │ ││ 📄 💬 ⚡││ │
+│  │ │ [View] │ │ │ │ [View] │ │ │ │ [View] │ │ │ │ [View] │ │ ││ [View] ││ │
+│  │ └─────────┘ │ │ └─────────┘ │ │ └─────────┘ │ │ └─────────┘ │ │└─────────┘│ │
+│  │             │ │             │ │             │ │             │ │           │ │
+│  │ ┌─────────┐ │ │ ┌─────────┐ │ │ ┌─────────┐ │ │ ┌─────────┐ │ │           │ │
+│  │ │ John D. │ │ │ │ Anna P. │ │ │ │ Tom W.  │ │ │ │ Nina S. │ │ │           │ │
+│  │ │ ⭐⭐⭐     │ │ │ │ ⭐⭐⭐⭐⭐  │ │ │ │ ⭐⭐⭐⭐   │ │ │ │ ⭐⭐⭐⭐⭐  │ │ │           │ │
+│  │ │ ...     │ │ │ │ ...     │ │ │ │ ...     │ │ │ │ ...     │ │ │           │ │
+│  │ └─────────┘ │ │ └─────────┘ │ │ └─────────┘ │ │ └─────────┘ │ │           │ │
+│  │             │ │             │ │             │ │             │ │           │ │
+│  │ [+5 more]  │ │ [+3 more]  │ │ [+1 more]  │ │             │ │           │ │
+│  │             │ │             │ │             │ │             │ │           │ │
+│  └─────────────┘ └─────────────┘ └─────────────┘ └─────────────┘ └───────────┘ │
+│                                                                                   │
+│  ← Offer Accepted (1) →                                                          │
+│  ┌────────────────────────────────────────────────────────────────┐              │
+│  │ ✅ Alex Chen - Offer Accepted! Starting Dec 1, 2025           │              │
+│  │    🎉 Congratulations! Move to onboarding?                     │              │
+│  │    [Move to Onboarding] [View Details]                        │              │
+│  └────────────────────────────────────────────────────────────────┘              │
+│                                                                                   │
+└──────────────────────────────────────────────────────────────────────────────────┘
+```
+
+### Candidate Card Components
+
+#### Card Structure
+```tsx
+<Card className="cursor-move hover:shadow-lg transition-shadow" draggable>
+  <CardHeader className="p-3">
+    <div className="flex items-center justify-between">
+      <Avatar>
+        <AvatarImage src="/avatars/sarah.jpg" />
+        <AvatarFallback>SJ</AvatarFallback>
+      </Avatar>
+      <Badge variant="outline">New</Badge>
+    </div>
+    <CardTitle className="text-sm mt-2">Sarah Johnson</CardTitle>
+  </CardHeader>
+  <CardContent className="p-3 pt-0">
+    <div className="flex items-center gap-1 text-yellow-500 text-xs mb-2">
+      ⭐⭐⭐⭐⭐ <span className="text-gray-600">(5.0)</span>
+    </div>
+    <div className="text-xs text-gray-600 space-y-1">
+      <div>📍 San Francisco, CA</div>
+      <div>💼 5 years experience</div>
+      <div>💻 React, Node.js, TypeScript</div>
+      <div>📧 Responded 2h ago</div>
+    </div>
+    <div className="flex gap-2 mt-3">
+      <Button size="icon" variant="ghost" className="h-6 w-6">
+        📄 {/* Resume */}
+      </Button>
+      <Button size="icon" variant="ghost" className="h-6 w-6">
+        💬 {/* Messages */}
+      </Button>
+      <Button size="icon" variant="ghost" className="h-6 w-6">
+        ⚡ {/* Quick Actions */}
+      </Button>
+    </div>
+    <Button size="sm" className="w-full mt-2" variant="outline">
+      View Profile
+    </Button>
+  </CardContent>
+</Card>
+```
+
+#### Engagement Indicators
+- 🟢 **High Engagement**: Responded < 2 hours
+- 🟡 **Medium Engagement**: Responded 2-24 hours
+- 🔴 **Low Engagement**: No response > 24 hours
+- ⚠️ **At Risk**: No activity > 3 days
+
+#### Drag & Drop Behavior
+- **Visual Feedback**: Card lifts on drag, shadow increases
+- **Drop Zones**: Columns highlight in purple when hovering
+- **Confirmation**: Modal appears for stage change with decision logging
+- **Auto-save**: Changes save immediately with undo option
+
+---
+
+## 13. Candidate Movement Flow (Detailed)
+
+### Movement Modal/Dialog
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Move Candidate: Sarah Johnson                          ×   │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  Current Stage: Screening                                   │
+│  Move to: [Client Endorsement ▼]                           │
+│                                                              │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │ Candidate Profile Summary                              │ │
+│  │                                                         │ │
+│  │ 👤 Sarah Johnson                                       │ │
+│  │ 📧 sarah.j@email.com · 📱 (555) 123-4567              │ │
+│  │ 📍 San Francisco, CA                                   │ │
+│  │ ⭐ Rating: 5.0 (Based on screening)                    │ │
+│  │                                                         │ │
+│  │ Skills Match: ████████████░░░░ 80%                     │ │
+│  │ Engagement Score: ████████████████ 95%                 │ │
+│  └────────────────────────────────────────────────────────┘ │
+│                                                              │
+│  Decision Type:                                             │
+│  ○ Accept - Move to next stage                             │
+│  ○ Reject - Remove from pipeline                           │
+│                                                              │
+│  Reason / Notes: (Required)                                 │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │ Strong technical background with 5 years React         │ │
+│  │ experience. Excellent communication during screening.  │ │
+│  │ Recommended for client review.                         │ │
+│  │                                                         │ │
+│  └────────────────────────────────────────────────────────┘ │
+│                                                              │
+│  📎 Attach Files (Optional)                                 │
+│  [Browse Files]                                             │
+│                                                              │
+│  Notify:                                                    │
+│  ☑ Candidate (Email notification)                          │
+│  ☑ Client (For endorsement review)                         │
+│  ☑ Assigned Recruiter                                      │
+│                                                              │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │ ⚡ AI Suggestion:                                       │ │
+│  │ Based on sentiment analysis, this candidate shows high │ │
+│  │ engagement (95%) and quick response time. Recommend    │ │
+│  │ fast-tracking to client endorsement.                   │ │
+│  └────────────────────────────────────────────────────────┘ │
+│                                                              │
+│                      [Cancel]  [Move Candidate]             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Movement History Timeline
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Candidate Movement History: Sarah Johnson                  │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  ┌─────────────────────────────────────────────────────────┐│
+│  │ ○──────────────────────────────────────────────────────○││
+│  │ │                                                        │││
+│  │ ↓ Applied                     ↓ Screening                │││
+│  │   Nov 8, 2025                   Nov 9, 2025              │││
+│  │   Source: LinkedIn              By: John Doe             │││
+│  │                                 Decision: Accept ✓       │││
+│  │                                                           ││
+│  │                                 ↓ Client Endorsement     │││
+│  │                                   Nov 13, 2025           │││
+│  │                                   By: Jane Smith         │││
+│  │                                   Status: Pending        │││
+│  └─────────────────────────────────────────────────────────┘│
+│                                                              │
+│  Activity Details:                                          │
+│  ─────────────────────────────────────────────────────      │
+│  📧 Nov 13, 10:30 AM - Moved to Client Endorsement          │
+│     By: John Doe                                            │
+│     Note: "Strong technical background with 5 years..."     │
+│     Notified: Candidate, Client, Recruiter                  │
+│                                                              │
+│  💬 Nov 9, 2:15 PM - Screening Interview Completed          │
+│     By: John Doe                                            │
+│     Rating: 5/5 stars                                       │
+│     Note: "Excellent communication skills..."               │
+│                                                              │
+│  📄 Nov 8, 9:00 AM - Application Received                   │
+│     Source: LinkedIn Jobs                                   │
+│     Resume: sarah_johnson_resume.pdf                        │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Bulk Movement
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Bulk Move Candidates                                    ×   │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  Selected Candidates: 3                                     │
+│                                                              │
+│  ☑ Sarah Johnson         (Screening)                        │
+│  ☑ Mike Kumar            (Screening)                        │
+│  ☑ Anna Peterson         (Screening)                        │
+│                                                              │
+│  Move all to: [Shortlist ▼]                                │
+│                                                              │
+│  Decision: ○ Accept  ○ Reject                               │
+│                                                              │
+│  Bulk Note (Applied to all):                                │
+│  ┌────────────────────────────────────────────────────────┐ │
+│  │ All candidates passed initial screening criteria and   │ │
+│  │ meet minimum qualifications. Moving to shortlist for   │ │
+│  │ detailed review.                                        │ │
+│  └────────────────────────────────────────────────────────┘ │
+│                                                              │
+│  Notify all candidates: ☑                                   │
+│                                                              │
+│                      [Cancel]  [Move 3 Candidates]          │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Auto-Movement Rules (Phase 2)
+```
+┌─────────────────────────────────────────────────────────────┐
+│  Pipeline Automation Rules                              ×    │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  Rule: Auto-reject low engagement candidates                │
+│  Status: ○ Active  ● Inactive                               │
+│                                                              │
+│  Trigger:                                                   │
+│  When: Engagement score < 30% for 7 days                    │
+│  Stage: Any stage before Client Interview                   │
+│                                                              │
+│  Action:                                                    │
+│  ✓ Move to: Rejected                                        │
+│  ✓ Send notification to candidate                          │
+│  ✓ Log reason: "Low engagement - no response in 7 days"    │
+│  ✓ Notify recruiter                                         │
+│                                                              │
+│  [Save Rule]  [Test Rule]  [Delete]                         │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 14. Dark Mode Specifications
+
+### Color Palette
+
+#### Light Mode (Default)
+```css
+:root {
+  /* Brand Colors */
+  --primary: #A16AE8;              /* Purple */
+  --secondary: #8096FD;            /* Blue */
+  
+  /* Background */
+  --background: #FFFFFF;           /* White */
+  --background-secondary: #F9FAFB; /* Gray 50 */
+  --background-tertiary: #F3F4F6;  /* Gray 100 */
+  
+  /* Text */
+  --text-primary: #111827;         /* Gray 900 */
+  --text-secondary: #6B7280;       /* Gray 500 */
+  --text-muted: #9CA3AF;           /* Gray 400 */
+  
+  /* Borders */
+  --border: #E5E7EB;               /* Gray 200 */
+  --border-hover: #D1D5DB;         /* Gray 300 */
+  
+  /* Components */
+  --card-bg: #FFFFFF;
+  --sidebar-bg: #FFFFFF;
+  --header-bg: #FFFFFF;
+  
+  /* Employment Types */
+  --contract: #A16AE8;
+  --part-time: #8096FD;
+  --full-time: #10B981;
+  --eor: #F59E0B;
+  
+  /* Status */
+  --success: #10B981;
+  --warning: #F59E0B;
+  --error: #EF4444;
+  --info: #3B82F6;
+}
+```
+
+#### Dark Mode
+```css
+.dark {
+  /* Brand Colors (Slightly adjusted for dark bg) */
+  --primary: #B88DF0;              /* Lighter Purple */
+  --secondary: #98ACFF;            /* Lighter Blue */
+  
+  /* Background */
+  --background: #0F172A;           /* Slate 900 */
+  --background-secondary: #1E293B; /* Slate 800 */
+  --background-tertiary: #334155;  /* Slate 700 */
+  
+  /* Text */
+  --text-primary: #F1F5F9;         /* Slate 100 */
+  --text-secondary: #CBD5E1;       /* Slate 300 */
+  --text-muted: #94A3B8;           /* Slate 400 */
+  
+  /* Borders */
+  --border: #334155;               /* Slate 700 */
+  --border-hover: #475569;         /* Slate 600 */
+  
+  /* Components */
+  --card-bg: #1E293B;              /* Slate 800 */
+  --sidebar-bg: #0F172A;           /* Slate 900 */
+  --header-bg: #1E293B;            /* Slate 800 */
+  
+  /* Employment Types (Adjusted for dark) */
+  --contract: #B88DF0;
+  --part-time: #98ACFF;
+  --full-time: #34D399;
+  --eor: #FBBF24;
+  
+  /* Status (Adjusted for dark) */
+  --success: #34D399;
+  --warning: #FBBF24;
+  --error: #F87171;
+  --info: #60A5FA;
+}
+```
+
+### Tailwind CSS Configuration
+```js
+// tailwind.config.js
+module.exports = {
+  darkMode: 'class', // Enable class-based dark mode
+  theme: {
+    extend: {
+      colors: {
+        // Light mode colors
+        primary: '#A16AE8',
+        secondary: '#8096FD',
+        
+        background: {
+          DEFAULT: '#FFFFFF',
+          secondary: '#F9FAFB',
+          tertiary: '#F3F4F6',
+        },
+        
+        // Dark mode handled via CSS variables
+      },
+    },
+  },
+}
+```
+
+### Component Adaptations
+
+#### Card Component (Dark Mode)
+```tsx
+<Card className="bg-white dark:bg-slate-800 border-gray-200 dark:border-slate-700">
+  <CardHeader>
+    <CardTitle className="text-gray-900 dark:text-slate-100">
+      Senior Developer
+    </CardTitle>
+  </CardHeader>
+  <CardContent className="text-gray-600 dark:text-slate-300">
+    Job description content...
+  </CardContent>
+</Card>
+```
+
+#### Button Component (Dark Mode)
+```tsx
+{/* Primary Button */}
+<Button className="bg-purple-600 hover:bg-purple-700 dark:bg-purple-500 dark:hover:bg-purple-600 text-white">
+  Create Job
+</Button>
+
+{/* Secondary Button */}
+<Button variant="outline" className="border-gray-300 dark:border-slate-600 text-gray-900 dark:text-slate-100">
+  Cancel
+</Button>
+
+{/* Ghost Button */}
+<Button variant="ghost" className="hover:bg-gray-100 dark:hover:bg-slate-800">
+  View More
+</Button>
+```
+
+#### Badge Component (Dark Mode)
+```tsx
+{/* Contract Badge */}
+<Badge className="bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300">
+  Contract
+</Badge>
+
+{/* Full-Time Badge */}
+<Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+  Full-Time
+</Badge>
+```
+
+#### Table Component (Dark Mode)
+```tsx
+<Table className="bg-white dark:bg-slate-800">
+  <TableHeader className="bg-gray-50 dark:bg-slate-900">
+    <TableRow className="border-b border-gray-200 dark:border-slate-700">
+      <TableHead className="text-gray-900 dark:text-slate-100">Name</TableHead>
+    </TableRow>
+  </TableHeader>
+  <TableBody>
+    <TableRow className="border-b border-gray-200 dark:border-slate-700 hover:bg-gray-50 dark:hover:bg-slate-700">
+      <TableCell className="text-gray-900 dark:text-slate-100">Data</TableCell>
+    </TableRow>
+  </TableBody>
+</Table>
+```
+
+### Theme Toggle Component
+```tsx
+import { Moon, Sun } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { useTheme } from 'next-themes'
+
+export function ThemeToggle() {
+  const { theme, setTheme } = useTheme()
+  
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+      className="h-9 w-9"
+    >
+      <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+      <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+      <span className="sr-only">Toggle theme</span>
+    </Button>
+  )
+}
+```
+
+### Dark Mode Implementation
+```tsx
+// app/layout.tsx or _app.tsx
+import { ThemeProvider } from 'next-themes'
+
+export default function RootLayout({ children }) {
+  return (
+    <html lang="en" suppressHydrationWarning>
+      <body>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          {children}
+        </ThemeProvider>
+      </body>
+    </html>
+  )
+}
+```
+
+### Gradient Adjustments (Dark Mode)
+```css
+/* Hero Gradient - Light Mode */
+.hero-gradient {
+  background: linear-gradient(135deg, #A16AE8 0%, #8096FD 100%);
+}
+
+/* Hero Gradient - Dark Mode */
+.dark .hero-gradient {
+  background: linear-gradient(135deg, #7C3AED 0%, #6366F1 100%);
+  opacity: 0.9;
+}
+
+/* Card Gradient Accent - Light Mode */
+.card-accent {
+  border-top: 3px solid;
+  border-image: linear-gradient(90deg, #A16AE8, #8096FD) 1;
+}
+
+/* Card Gradient Accent - Dark Mode */
+.dark .card-accent {
+  border-image: linear-gradient(90deg, #B88DF0, #98ACFF) 1;
+}
+```
+
+### Chart Colors (Dark Mode)
+```js
+// Recharts configuration
+const chartColors = {
+  light: {
+    primary: '#A16AE8',
+    secondary: '#8096FD',
+    success: '#10B981',
+    grid: '#E5E7EB',
+    text: '#6B7280',
+  },
+  dark: {
+    primary: '#B88DF0',
+    secondary: '#98ACFF',
+    success: '#34D399',
+    grid: '#334155',
+    text: '#94A3B8',
+  }
+}
+```
+
+### Dark Mode Best Practices
+
+1. **Contrast Ratios**: Maintain WCAG AA standards
+   - Light mode: 4.5:1 minimum
+   - Dark mode: 4.5:1 minimum (test against dark backgrounds)
+
+2. **Avoid Pure Black**: Use `#0F172A` (Slate 900) instead of `#000000`
+
+3. **Reduce Saturation**: Slightly desaturate colors in dark mode to reduce eye strain
+
+4. **Shadow Adjustments**: Use lighter, more subtle shadows in dark mode
+   ```css
+   /* Light Mode */
+   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+   
+   /* Dark Mode */
+   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.5);
+   ```
+
+5. **Image Handling**: Reduce opacity of images in dark mode
+   ```tsx
+   <img className="opacity-100 dark:opacity-80" />
+   ```
+
+6. **Focus Indicators**: Ensure visible in both modes
+   ```css
+   /* Light Mode */
+   .focus-visible:focus {
+     outline: 2px solid #A16AE8;
+   }
+   
+   /* Dark Mode */
+   .dark .focus-visible:focus {
+     outline: 2px solid #B88DF0;
+   }
+   ```
+
+---
+
 ## Next Steps
 
-1. **Create Figma mockups** with actual content and data
-2. **Develop component storybook** for UI components
+1. **Create Figma mockups** with actual content and data for all wireframes
+2. **Develop component storybook** for UI components with dark mode variants
 3. **Build responsive prototypes** for user testing
-4. **Implement dark mode** using Tailwind dark: variants
+4. **Implement drag-and-drop** for candidate pipeline with react-beautiful-dnd
 5. **Add animations** with Framer Motion or Tailwind transitions
+6. **Test accessibility** in both light and dark modes
+7. **Optimize performance** for large candidate lists (virtualization)

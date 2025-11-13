@@ -55,12 +55,16 @@ The documented system uses Azure-native architecture with:
 - **Brand Colors**: Purple (#A16AE8) + Blue (#8096FD)
 
 ## Recent Changes
-- 2025-11-13: **Created UI Specifications Document**
+- 2025-11-13: **Created UI Specifications Document (v2.0 - Expanded)**
   - Comprehensive landing page layout (hero, features, employment types showcase)
   - Role-based side menu navigation (Admin, Recruiter, Client)
   - Dashboard design with KPI cards, hiring funnel, recent activity, jobs requiring attention
+  - **NEW: Detailed wireframes for Jobs List page** (list/grid views, filters, pipeline progress)
+  - **NEW: Candidate Pipeline Kanban board** (drag-and-drop, engagement indicators, stage counts)
+  - **NEW: Candidate Movement flows** (movement modal, history timeline, bulk operations, auto-rules)
+  - **NEW: Complete Dark Mode specifications** (color palette, component adaptations, theme toggle)
   - Purple (#A16AE8) + Blue (#8096FD) color system with employment type color coding
-  - shadcn/ui component library specifications
+  - shadcn/ui component library specifications with code examples
   - Responsive design guidelines (desktop, tablet, mobile)
   - Accessibility standards (WCAG 2.1 AA)
 - 2025-11-13: **Implementation Guide v2.0 - FINAL APPROVAL ✅**
