@@ -2,15 +2,16 @@ import { useState, useEffect } from 'react';
 import { Search, Plus, Briefcase, MapPin, DollarSign, Users, Calendar, CheckCircle, Clock, XCircle, Pause } from 'lucide-react';
 
 interface Job {
-  id: number;
+  id: string;
   title: string;
   employment_type: string;
   status: string;
   company_name: string;
   location: string;
   remote_ok: boolean;
-  salary_min: number;
-  salary_max: number;
+  salary_min: number | null;
+  salary_max: number | null;
+  salary_display?: string;
   created_at: string;
   candidate_count: number;
   active_candidates: number;
@@ -74,7 +75,9 @@ export function JobsPageDashboard() {
     }
   };
 
-  const formatSalary = (min: number, max: number) => {
+  const formatSalary = (min: number | null, max: number | null, display?: string) => {
+    if (display && display !== ' ') return display.trim();
+    if (!min || !max) return 'Negotiable';
     return `$${(min / 1000).toFixed(0)}k-$${(max / 1000).toFixed(0)}k`;
   };
 
@@ -255,7 +258,7 @@ export function JobsPageDashboard() {
                     <div className="flex flex-wrap items-center gap-6 text-sm">
                       <span className="flex items-center gap-1.5 text-gray-700 dark:text-gray-300">
                         <DollarSign className="w-4 h-4 text-green-500" />
-                        <span className="font-semibold">{formatSalary(job.salary_min, job.salary_max)}</span>
+                        <span className="font-semibold">{formatSalary(job.salary_min, job.salary_max, job.salary_display)}</span>
                       </span>
                       <span className="flex items-center gap-1.5 text-gray-700 dark:text-gray-300">
                         <Users className="w-4 h-4 text-brand-purple" />

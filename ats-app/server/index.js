@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
 import { query } from './db.js';
@@ -21,21 +22,22 @@ app.get('/api/jobs', async (req, res) => {
         id,
         title,
         employment_type,
-        status,
-        company_name,
-        location,
-        remote_ok,
-        salary_min,
-        salary_max,
+        COALESCE(status::text, job_status::text) as status,
+        department as company_name,
+        CONCAT(city, ', ', country) as location,
+        remote_flag as remote_ok,
+        salary_from as salary_min,
+        salary_to as salary_max,
+        CONCAT(salary_currency, ' ', salary_text) as salary_display,
         description,
         requirements,
         benefits,
         created_at,
         updated_at,
-        candidate_count,
-        active_candidates,
-        recruiter_name,
-        linkedin_synced
+        0 as candidate_count,
+        0 as active_candidates,
+        'HR Team' as recruiter_name,
+        false as linkedin_synced
       FROM jobs
       WHERE 1=1
     `;
@@ -50,13 +52,13 @@ app.get('/api/jobs', async (req, res) => {
     }
 
     if (status && status !== 'all') {
-      queryText += ` AND status = $${paramIndex}`;
+      queryText += ` AND (status::text = $${paramIndex} OR job_status::text = $${paramIndex})`;
       params.push(status);
       paramIndex++;
     }
 
     if (search) {
-      queryText += ` AND (title ILIKE $${paramIndex} OR company_name ILIKE $${paramIndex})`;
+      queryText += ` AND (title ILIKE $${paramIndex} OR department ILIKE $${paramIndex} OR location ILIKE $${paramIndex})`;
       params.push(`%${search}%`);
       paramIndex++;
     }
