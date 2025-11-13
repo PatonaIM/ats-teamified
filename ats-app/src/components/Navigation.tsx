@@ -1,9 +1,10 @@
-import { Link, useLocation } from 'react-router-dom';
-import { Sparkles, Briefcase, Home } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Sparkles, Briefcase, Home, LogIn } from 'lucide-react';
 import { DarkModeToggle } from './DarkModeToggle';
 
 export function Navigation() {
   const location = useLocation();
+  const navigate = useNavigate();
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -20,7 +21,7 @@ export function Navigation() {
           </Link>
 
           {/* Navigation Links */}
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-4">
             <Link
               to="/"
               className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-all duration-300 ${
@@ -43,6 +44,17 @@ export function Navigation() {
               <Briefcase className="w-4 h-4" />
               Jobs
             </Link>
+            
+            <div className="h-6 w-px bg-gray-300 dark:bg-gray-600" />
+            
+            <button
+              onClick={() => navigate('/dashboard')}
+              className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-brand-purple to-brand-blue text-white rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+            >
+              <LogIn className="w-4 h-4" />
+              Login
+            </button>
+            
             <DarkModeToggle />
           </div>
         </div>
