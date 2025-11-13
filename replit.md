@@ -14,6 +14,7 @@ This repository contains comprehensive technical documentation for a Multi-Emplo
 - **docs/brief.md**: Complete system requirements brief with detailed technical specifications, workflow descriptions, feature requirements, and integration details
 - **docs/prd.md**: Product Requirements Document (PRD v1.8) with functional/non-functional requirements, epic structure, user stories, and comprehensive acceptance criteria
 - **docs/implementation-guide.md**: Comprehensive implementation plan with technical stack recommendations, development roadmap, team structure, and cost estimates
+- **docs/ui-specifications.md**: UI/UX specifications with landing page, dashboard, side menu layouts, component library, color system, and responsive design guidelines
 - **server.py**: Simple HTTP server for browsing documentation in Replit environment
 
 ### System Capabilities Documented
@@ -54,6 +55,14 @@ The documented system uses Azure-native architecture with:
 - **Brand Colors**: Purple (#A16AE8) + Blue (#8096FD)
 
 ## Recent Changes
+- 2025-11-13: **Created UI Specifications Document**
+  - Comprehensive landing page layout (hero, features, employment types showcase)
+  - Role-based side menu navigation (Admin, Recruiter, Client)
+  - Dashboard design with KPI cards, hiring funnel, recent activity, jobs requiring attention
+  - Purple (#A16AE8) + Blue (#8096FD) color system with employment type color coding
+  - shadcn/ui component library specifications
+  - Responsive design guidelines (desktop, tablet, mobile)
+  - Accessibility standards (WCAG 2.1 AA)
 - 2025-11-13: **Implementation Guide v2.0 - FINAL APPROVAL ✅**
   - **Major Stack Update:** Node.js + NestJS backend (from .NET), PostgreSQL (from Azure SQL), Tailwind CSS + shadcn/ui (from Material-UI), Custom SSO provider (from Teamified Accounts)
   - Updated Purple (#A16AE8) + Blue (#8096FD) brand colors throughout UI specifications
