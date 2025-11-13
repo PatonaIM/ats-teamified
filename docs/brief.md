@@ -13,6 +13,59 @@ This brief outlines the specific workflow requirements for the Multi-Employment 
 
 ---
 
+## MVP Scope Definition
+
+### MVP Priority Features (Phase 1 - Launch)
+
+The MVP focuses on **AI-powered differentiation** as the core competitive advantage, delivering intelligent hiring capabilities from day one:
+
+**✅ MVP - Phase 1 Features:**
+
+1. **AI Job Description Generation** - ChatGPT/LLM prompt-based generation with employment type-specific templates, manual editing and refinement, LinkedIn-optimized formatting
+2. **AI Interview Question Generation** - Template-based employment type-specific question libraries, basic resume keyword matching for customization, question library management
+3. **AI Sentiment Analysis & Candidate Engagement Intelligence** - Basic email response time tracking, simple engagement scoring based on observable metrics (response times, email count), manual recruiter alerts for candidates showing declining engagement
+4. **Advanced Analytics Dashboards** - Hiring funnel visualization, basic time-to-hire metrics by employment type, source tracking, simple conversion rate analytics
+
+**Core Supporting Infrastructure (MVP):**
+- Basic job management with employment type support (contract, part-time, full-time, EOR)
+- LinkedIn job posting with automatic synchronization
+- Simple 3-stage candidate pipeline (Screening → Interview → Offer)
+- Accept/reject decision workflows
+- Basic candidate profiles and email notifications
+- Teamified Accounts authentication integration
+
+**❌ Deferred to Phase 2 (Post-MVP with Data):**
+
+- **Advanced AI Automation:** ML-based sentiment analysis with NLP, competing offer detection, live interview assistant, automated bias detection, historical question effectiveness optimization (requires 50-100 completed hires)
+- **Candidate Portal & Behavioral Telemetry:** Portal activity monitoring, session tracking, assessment engagement metrics, document upload timeliness (enables advanced sentiment features)
+- **External Portal Integration:** AI screening results import, candidate portal interactive workflows
+- **Complex Workflows:** Multi-stage budget approvals, advanced document verification (blockchain, OCR, government databases)
+- **Multi-Channel Communications:** SMS, Slack, Teams integrations beyond email
+- **Advanced Assessment Integrations:** Third-party assessment platform connections
+
+**❌ Deferred to Phase 3:**
+
+- Multi-tenant white-label branding
+- Advanced compliance reporting (HIPAA, SOX specific requirements)
+- Performance prediction models requiring extensive historical data
+- Compensation benchmarking with external market data
+
+**MVP Value Proposition:**
+*"Launch with AI-assisted hiring tools that accelerate job posting, suggest proven interview questions, flag candidate engagement risks, and visualize hiring performance - establishing data collection infrastructure for future ML-powered optimization."*
+
+**Data Bootstrapping Strategy:**
+- **Phase 1 (MVP - Day 1):** Prompt-based AI generation, template libraries, rule-based metrics, manual intervention
+- **Phase 2 (50-100 hires):** ML model training begins, automated pattern recognition, improving accuracy
+- **Phase 3 (200+ hires):** Advanced predictions, high-accuracy models, full automation
+
+**Realistic MVP Capabilities:**
+- AI job descriptions use GPT-4 prompts with human review/editing (not fully automated)
+- Interview questions from validated libraries with basic keyword matching (not ML-optimized)
+- Engagement scoring tracks observable metrics only (email frequency/timing, not NLP sentiment)
+- Analytics show factual pipeline data (not predictive forecasting)
+
+---
+
 ## Core System Architecture
 
 ### Job Request Management System
@@ -298,7 +351,7 @@ flowchart TD
 
 ---
 
-## AI-Powered Candidate Engagement Intelligence
+## AI-Powered Candidate Engagement Intelligence **[MVP - Phase 1]**
 
 ### Sentiment Analysis System
 
@@ -433,7 +486,7 @@ Top Priority Candidates (Engagement Risk):
 
 ---
 
-## AI-Powered Interview Question Generation
+## AI-Powered Interview Question Generation **[MVP - Phase 1]**
 
 ### Intelligent Interview Question System
 

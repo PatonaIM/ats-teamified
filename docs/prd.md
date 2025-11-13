@@ -29,6 +29,167 @@ The system leverages external portal integration for initial candidate processin
 | 2025-11-13 | 1.4 | Updated authentication system to integrate with Teamified Accounts portal using OAuth 2.0/OpenID Connect instead of Azure AD | Product Manager |
 | 2025-11-13 | 1.5 | Added role-based job approval workflow requiring recruiter manager approval for client jobs while allowing direct activation for recruiter jobs | Product Manager |
 | 2025-11-13 | 1.6 | Expanded FR16 with comprehensive AI capabilities including Sentiment Analysis & Candidate Engagement Intelligence (FR16.1), AI-Powered Interview Question Generation (FR16.2), and detailed AI Integration Technical Specifications (FR16.3) | Product Manager |
+| 2025-11-13 | 1.7 | Defined MVP vs Full Product Scope with AI-powered differentiation strategy, labeled FR1.1, FR14, FR16.1, FR16.2 as [MVP Priority] features, added MVP implementation notes to Stories 1.3, 3.7, 5.6, and 6.1, established data bootstrapping strategy and success metrics | Product Manager |
+
+## MVP vs Full Product Scope
+
+### MVP Strategy: AI-Assisted Hiring with ML Growth Path
+
+The MVP focuses on delivering **AI-assisted hiring tools** that provide immediate productivity value while establishing data collection infrastructure for future ML-powered optimization. The strategy prioritizes prompt-based AI generation and template libraries with human oversight, then evolves to automated ML predictions as hiring data accumulates (50-200+ completed hires).
+
+### MVP Features (Phase 1 - Target Launch)
+
+#### Core AI Capabilities (MVP Priority)
+
+**✅ FR1.1 - AI Job Description Generation [MVP]**
+- **MVP Baseline:** GPT-4/Claude prompt-based generation with employment type templates, human review/editing required, LinkedIn formatting
+- **Deferred:** Multi-language generation, advanced tone customization, automatic optimization
+
+**✅ FR16.1 - Sentiment Analysis & Candidate Engagement Intelligence [MVP - Simplified]**
+- **MVP Baseline:** Email response time tracking, simple engagement score (0-100) based on observable metrics (response frequency, timing), manual recruiter alerts
+- **Deferred to Phase 2:** NLP sentiment analysis, portal activity monitoring, competing offer detection, automated interventions (requires candidate portal + 50-100 hires)
+
+**✅ FR16.2 - AI Interview Question Generation [MVP - Template-Based]**
+- **MVP Baseline:** Employment type-specific question libraries, basic keyword matching from resumes, question repository management
+- **Deferred to Phase 2:** Live interview assistant, automated bias detection, historical effectiveness optimization, ML-powered personalization (requires 50+ hires per role)
+
+**✅ FR14 - Advanced Analytics Dashboards [MVP - Descriptive Metrics]**
+- **MVP Baseline:** Hiring funnel visualization, time-to-hire metrics, source tracking, basic conversion rates, employment type comparisons
+- **Deferred to Phase 2:** Predictive analytics, forecasting, AI performance tracking (requires historical baseline data)
+
+#### Essential Supporting Infrastructure (MVP)
+
+**✅ Core Job Management (FR1, FR1.2, FR2)**
+- Job request creation with employment type support
+- Role-based approval workflows (client jobs require manager approval)
+- LinkedIn automatic posting and real-time synchronization
+- Basic job editing with LinkedIn sync
+
+**✅ Simplified Candidate Pipeline (FR5, FR6, FR11)**
+- 3-stage pipeline: Screening → Interview → Offer
+- Accept/reject decision workflows at each stage
+- Basic candidate profile management
+- Complete audit trails for decisions
+
+**✅ Basic Notifications (FR12 - Simplified)**
+- Email notifications for critical events
+- In-app notification center
+- (Deferred: SMS, Slack, Teams integrations)
+
+**✅ Authentication & Security (Teamified Accounts Integration)**
+- OAuth 2.0/OpenID Connect authentication
+- Role-based access control (RBAC)
+- Basic audit logging
+- Secure API authentication
+
+### Deferred to Phase 2 (Post-MVP)
+
+**❌ Advanced AI Automation (FR16.1, FR16.2 - Full ML Implementation)**
+- ML-based NLP sentiment analysis with predictive accuracy
+- Competing offer detection through pattern recognition
+- Live interview assistant with real-time suggestions
+- Automated bias detection and inclusive language recommendations
+- Historical question effectiveness optimization requiring 50+ hires per role
+- Behavioral modeling and predictive offer acceptance analytics
+- Rationale: These require candidate portal behavioral data and 50-200 completed hires for ML training; MVP establishes data collection infrastructure
+
+**❌ Candidate Portal & Behavioral Telemetry (FR3, FR4, FR9)**
+- Portal activity monitoring (login frequency, session duration, page interactions)
+- Assessment engagement metrics and document upload timeliness
+- AI screening results import from external portal
+- Interactive candidate workflows for assessments and interviews
+- Rationale: Portal enables Phase 2 advanced sentiment features; deferred to focus MVP on core hiring workflow
+
+**❌ Advanced Document Verification (FR7)**
+- Blockchain credential verification, automated OCR, government database checks
+- Rationale: Manual upload/review sufficient for MVP
+
+**❌ Complex Budget Approval Workflows (FR8)**
+- Multi-level approval chains with evidence-based documentation
+- Rationale: Simplified approval adequate for MVP
+
+**❌ Multi-Channel Notifications (FR12 - Full)**
+- SMS, Slack, Teams integrations beyond email
+- Rationale: Email + in-app sufficient for MVP
+
+**❌ Advanced Assessment Integrations (FR5 - Full)**
+- Third-party assessment platform connections
+- Rationale: Basic interview workflow sufficient for MVP
+
+### Deferred to Phase 3 (Future Enhancements)
+
+**❌ Multi-Tenant White-Label Branding**
+- Client-specific portal branding
+- Custom domain support
+- White-label candidate experience
+
+**❌ Advanced Compliance Reporting**
+- HIPAA-specific compliance features
+- SOX audit trail requirements
+- Industry-specific regulatory reporting
+
+**❌ Performance Prediction Models**
+- Candidate success prediction requiring extensive historical data (100+ hires)
+- Compensation benchmarking with external market data APIs
+- Advanced retention and performance forecasting
+
+### MVP Success Metrics
+
+**Primary KPIs (3-6 Months Post-Launch):**
+1. **AI Adoption Rate:** 80%+ of jobs use AI description generation
+2. **Engagement Detection Accuracy:** 70%+ accuracy in identifying at-risk candidates
+3. **Interview Question Usage:** 60%+ of interviews use AI-generated questions
+4. **Analytics Engagement:** 50%+ of users access dashboards weekly
+5. **Time-to-Hire Reduction:** 15%+ improvement vs manual processes
+6. **User Satisfaction:** NPS score >40 for AI features
+
+**AI Model Performance Targets:**
+- **MVP (Phase 1):** Prompt-based generation speed <3s, basic metrics accuracy not measured (human-validated outputs)
+- **Phase 2 (50-100 hires):** Sentiment prediction accuracy 60-70%, question effectiveness tracking begins
+- **Phase 3 (200+ hires):** Sentiment accuracy 80%+, interview question effectiveness 70%+
+- **Cost Targets:** $0.05-0.15 per job description generation (MVP), expanding to $0.10-0.50 per candidate with full ML features (Phase 2-3)
+
+### Data Bootstrapping Strategy
+
+**Phase 1 - MVP (0-50 Hires):**
+- Prompt-based AI generation with human review/editing
+- Template libraries for employment types
+- Rule-based engagement scoring (email frequency/response times only)
+- Descriptive analytics (factual pipeline metrics, no predictions)
+- Data collection infrastructure established
+
+**Phase 2 - ML Training Begins (50-200 Hires):**
+- ML model training with accumulated hire outcomes
+- NLP sentiment analysis deployment
+- Competing offer pattern recognition
+- Question effectiveness scoring (requires role-specific hire data)
+- Prediction accuracy: 60-70%
+
+**Phase 3 - Advanced Automation (200+ Hires):**
+- High-accuracy predictive models (80%+ accuracy)
+- Automated interview assistance and bias detection
+- Proactive candidate engagement interventions
+- Continuous model refinement and A/B testing
+
+### Implementation Philosophy
+
+**Ship Fast, Learn Fast:**
+The MVP prioritizes getting AI capabilities into users' hands quickly to:
+1. Validate AI feature value proposition with real users
+2. Collect hiring outcome data to train and improve ML models
+3. Identify highest-value enhancements based on actual usage patterns
+4. Establish competitive differentiation before feature parity competition
+
+**Complexity Layering:**
+**MVP delivers human-assisted AI tools, not fully automated ML systems.** Start with prompt-based LLM generation (GPT-4/Claude) requiring human validation, template libraries, and rule-based metrics. As hiring data accumulates (50-200+ completed hires with outcomes), layer in custom ML models for automated predictions, sentiment analysis, and optimization. This realistic approach provides immediate value while creating the data foundation for future AI sophistication.
+
+**Key MVP Simplifications:**
+- Job descriptions generated via prompts, edited by recruiters (not auto-posted)
+- Interview questions from curated libraries with keyword matching (not ML-personalized)
+- Engagement alerts based on observable email patterns (not NLP sentiment or portal behavior)
+- Analytics show descriptive stats and trends (not predictive forecasts)
+
+---
 
 ## Requirements
 
@@ -38,7 +199,9 @@ Based on the comprehensive technical specifications and workflow requirements ga
 
 **FR1:** The system shall support job request creation for four employment types: contract, part-time, full-time, and EOR with employment type-specific field configurations and validation rules.
 
-**FR1.1:** The system shall provide AI-powered job description generation using ChatGPT/LLM integration, creating professional job descriptions based on job title, employment type, key requirements, and company information with manual editing capabilities.
+**FR1.1 [MVP Priority]:** The system shall provide AI-powered job description generation using ChatGPT/LLM integration, creating professional job descriptions based on job title, employment type, key requirements, and company information with manual editing capabilities. 
+
+*MVP Implementation Note: Prompt-based generation using GPT-4/Claude with employment type templates. Recruiters review and edit all AI-generated content before posting. Auto-posting, multi-language generation, and tone customization deferred to Phase 2.*
 
 **FR1.2:** The system shall implement role-based job approval workflows where client-submitted job requests require recruiter manager approval before activation, while recruiter-submitted jobs activate immediately without approval requirements.
 
@@ -66,13 +229,15 @@ Based on the comprehensive technical specifications and workflow requirements ga
 
 **FR13:** The system shall support client configuration interfaces for pipeline setup, assessment integration, and approval workflow customization.
 
-**FR14:** The system shall provide real-time analytics and reporting on hiring funnels, time-to-hire metrics, source effectiveness, and budget performance.
+**FR14 [MVP Priority]:** The system shall provide real-time analytics and reporting on hiring funnels, time-to-hire metrics, source effectiveness, and budget performance.
+
+*MVP Implementation Note: Descriptive analytics dashboards show factual pipeline metrics, conversion rates, time-to-hire by type, and source tracking. Predictive forecasting, AI performance tracking (requires baseline), and custom report builders deferred to Phase 2.*
 
 **FR15:** The system shall maintain LinkedIn job posting synchronization for all job edits including title, description, requirements, employment type, salary, and location changes.
 
 **FR16:** The system shall provide AI-powered automated decision support capabilities including role-specific interview question generation, bias detection in hiring decisions, compensation benchmarking with market data analysis, and performance prediction models based on historical hiring data.
 
-**FR16.1 - Sentiment Analysis & Candidate Engagement Intelligence:** The system shall implement real-time sentiment analysis monitoring candidate engagement levels throughout the hiring pipeline through:
+**FR16.1 - Sentiment Analysis & Candidate Engagement Intelligence [MVP Priority]:** The system shall implement real-time sentiment analysis monitoring candidate engagement levels throughout the hiring pipeline through:
 - **Communication Pattern Analysis:** Track email response times, tone sentiment via NLP, message length trends, and question-asking behavior with baseline establishment and trend detection
 - **Portal Activity Monitoring:** Monitor login frequency, session duration, page interaction depth, assessment engagement patterns, and document upload timeliness with abnormal activity detection
 - **Engagement Scoring (0-100):** Real-time scoring based on response time trends (30%), communication sentiment (25%), portal activity (20%), assessment engagement (15%), and interview interaction (10%) with configurable thresholds
@@ -81,7 +246,7 @@ Based on the comprehensive technical specifications and workflow requirements ga
 - **Dashboard Integration:** Real-time candidate health widgets with color-coded risk levels, 30-day engagement trend visualizations, predictive offer acceptance indicators, and time-to-action recommendations
 - **Privacy Compliance:** GDPR-compliant processing with candidate consent, anonymized aggregate data for ML training, transparent scoring methodology disclosure, and opt-out capabilities
 
-**FR16.2 - AI-Powered Interview Question Generation:** The system shall provide intelligent interview question generation optimized for hiring success through:
+**FR16.2 - AI-Powered Interview Question Generation [MVP Priority]:** The system shall provide intelligent interview question generation optimized for hiring success through:
 - **Employment Type-Specific Templates:** Pre-built question sets for contract (project delivery, self-management), part-time (time management, flexibility), full-time (growth, culture, collaboration), and EOR (remote work, cross-cultural communication, timezone management) positions
 - **Resume-Based Customization:** AI analysis of candidate backgrounds to generate personalized questions relating specific prior experience to job requirements with technical deep-dive capabilities and transferable skills identification
 - **Historical Performance Optimization:** Machine learning models tracking question effectiveness with prediction accuracy scoring (minimum 50 successful hires per role), continuous learning from hire outcomes (retention >1 year, performance ratings), and A/B testing of question variations
@@ -354,6 +519,12 @@ so that I can efficiently post professional jobs with appropriate oversight and 
 14. Job request data model designed for extensibility, employment type-specific requirements, and approval workflow tracking
 15. Basic job listing and search functionality implemented for job management dashboard with role-based filtering
 16. Job request audit trail implemented tracking all changes, user actions, approval decisions, and AI generation history
+
+**MVP Implementation Focus:**
+- **Essential for MVP (Criteria 1-8, 10-12):** Job creation with employment types, role-based approval workflows, AI job description generation (FR1.1), basic editing, LinkedIn auto-posting
+- **MVP Simplified (Criteria 9):** Basic field validation; advanced dynamic field logic can be enhanced post-MVP
+- **Defer to Phase 2 (Criteria 13-14):** Advanced employment type templates and extensible data models; start with functional baseline
+- **Defer to Phase 2 (Criteria 15):** Advanced search/filtering; basic list view sufficient for MVP
 
 ### Story 1.4: Job Approval Workflow Management
 
@@ -659,6 +830,11 @@ so that I can conduct more effective interviews with questions tailored to emplo
 
 **Technical Dependencies:** Cross-reference FR16.2 for detailed interview question generation requirements and FR16.3 for AI integration technical specifications including LLM APIs, NLP components, ML models, data requirements, and performance targets.
 
+**MVP Implementation Focus:**
+- **Essential for MVP (Criteria 1-2, 7-8, 10, 12):** Employment type question templates, basic keyword matching from resumes, interview preparation workflow with question selection, question library management, LLM integration (GPT-4/Claude for template enhancement only), cost optimization
+- **Phase 2 Enhancement (Criteria 3-6, 9, 11):** Historical performance tracking, effectiveness analytics, live interview assistant, automated bias detection, scorecard integration, advanced privacy controls - all require 50+ hires per role and candidate portal behavioral data
+- **Realistic MVP Baseline:** Questions come from curated employment type libraries with basic keyword matching from candidate resumes; recruiters manually select 8-12 questions for interviews; no ML optimization or automated suggestions during interviews
+
 ## Epic 4: Budget Approval & Employment Type Workflows
 
 **Epic Goal:** Implement sophisticated budget approval processes with employment type-specific calculations, evidence-based decision making, and comprehensive approval chain management. This epic ensures financial accountability and enables confident hiring decisions with appropriate budget oversight and documentation.
@@ -849,11 +1025,16 @@ so that I can proactively identify and respond to declining candidate interest b
 
 **Technical Dependencies:** Cross-reference FR16.1 for detailed sentiment analysis requirements and FR16.3 for AI integration technical specifications including LLM APIs, NLP sentiment analysis, ML engagement scoring models, time-series analysis, data requirements, and performance targets.
 
+**MVP Implementation Focus:**
+- **Essential for MVP (Criteria 1, 3-4, 6, 11):** Email response time tracking, simple rule-based engagement scoring (0-100) using observable metrics, manual recruiter alerts at thresholds, dashboard with basic risk indicators, GDPR compliance with consent
+- **Phase 2 Enhancement (Criteria 2, 5, 7-10, 12):** Portal activity monitoring, NLP sentiment analysis, competing offer detection, interview interaction metrics, automated interventions, AI/ML integration, advanced analytics - all require candidate portal deployment and 50-100 completed hires for ML training
+- **Realistic MVP Baseline:** Engagement score calculated from email response frequency and timing only (not NLP or portal behavior); recruiters manually review low-scoring candidates and decide interventions; no automated actions or predictions
+
 ## Epic 6: Analytics, Reporting & System Optimization
 
 **Epic Goal:** Create comprehensive analytics platform providing actionable insights into hiring funnel performance, process efficiency, and system optimization opportunities while delivering customizable reporting capabilities for data-driven decision making. This epic transforms raw hiring data into strategic business intelligence.
 
-### Story 6.1: Hiring Funnel Analytics & Performance Metrics
+### Story 6.1: Hiring Funnel Analytics & Performance Metrics **[MVP Priority]**
 
 As a recruiting director,
 I want detailed hiring funnel analytics and performance metrics,
@@ -868,6 +1049,13 @@ so that I can identify bottlenecks, optimize processes, and improve hiring outco
 6. Recruiter performance analytics implemented measuring individual and team hiring success
 7. Pipeline health monitoring implemented identifying stalled candidates and process bottlenecks
 8. Predictive analytics implemented forecasting hiring completion times and success probabilities
+
+**MVP Implementation Focus:**
+- **Essential for MVP (Criteria 1-5, 7):** Hiring funnel visualization (FR14), stage conversion rates, time-to-hire metrics, source effectiveness, employment type comparisons, pipeline health monitoring - descriptive analytics showing factual data
+- **MVP Simplified (Criteria 6):** Basic recruiter performance metrics (hire count, time-to-fill); team analytics enhanced post-MVP
+- **Phase 2 Enhancement (Criteria 8):** Predictive analytics and forecasting require 100+ completed hires; MVP collects data, Phase 2 adds predictions
+
+**Integration Note:** This story supports FR14 (Advanced Analytics Dashboards) MVP baseline. AI performance tracking for sentiment accuracy and interview question effectiveness deferred to Phase 2 when sufficient baseline data exists.
 
 ### Story 6.2: Budget & Financial Analytics
 

@@ -3,6 +3,8 @@
 ## Overview
 This repository contains comprehensive technical documentation for a Multi-Employment ATS (Applicant Tracking System) designed to manage diverse employment types (contract, part-time, full-time, EOR) with Azure-native architecture, LinkedIn integration, external portal processing, AI-powered features, and comprehensive compliance capabilities.
 
+**MVP Strategy:** The system prioritizes **AI-powered differentiation** as the core competitive advantage, delivering intelligent hiring capabilities from day one including AI job description generation, AI interview question generation, sentiment analysis for candidate engagement monitoring, and advanced analytics dashboards.
+
 ## Project Type
 **Technical Documentation & Specifications** - This is a documentation repository containing detailed system requirements, product specifications, and architectural guidelines for building a sophisticated multi-employment ATS platform.
 
@@ -15,18 +17,28 @@ This repository contains comprehensive technical documentation for a Multi-Emplo
 
 ### System Capabilities Documented
 
-#### Core Features
+#### MVP Priority Features (Phase 1)
+
+**AI-Assisted Tools (MVP Core):**
+1. **AI Job Description Generation [MVP]**: GPT-4/Claude prompt-based generation with employment type templates, requires human review/editing before posting
+2. **AI Interview Question Generation [MVP]**: Template-based employment type question libraries with basic resume keyword matching for customization
+3. **Sentiment Analysis & Candidate Engagement Intelligence [MVP - Simplified]**: Email response time tracking, rule-based engagement scoring (0-100), manual recruiter alerts
+4. **Analytics Dashboards [MVP - Descriptive]**: Hiring funnel visualization, time-to-hire metrics, source effectiveness, basic conversion rates (no predictions)
+
+**Essential Supporting Infrastructure (MVP):**
 - Multi-employment type job management (contract, part-time, full-time, EOR)
 - LinkedIn Jobs API integration with bidirectional synchronization
-- External portal integration for AI-powered candidate screening
-- Configurable pipeline stages with accept/reject decision workflows
-- Comprehensive document verification (OCR, government databases, blockchain)
-- Budget approval processes with employment type-specific calculations
-- Intelligent multi-channel notification system
+- Simple 3-stage candidate pipeline (Screening → Interview → Offer)
+- Accept/reject decision workflows with audit trails
+- Basic email notifications and in-app alerts
+- Teamified Accounts authentication integration
 
-#### AI-Powered Features (Recently Added)
-- **Sentiment Analysis & Candidate Engagement Intelligence**: Real-time monitoring of candidate engagement through communication patterns, portal activity, and predictive analytics for competing offer detection
-- **AI-Powered Interview Question Generation**: Role-specific, resume-based question generation with bias detection, historical performance optimization, and live interview assistance
+#### Deferred to Phase 2 (Requires Data + Portal)
+- **Advanced AI Automation**: ML-based NLP sentiment analysis, competing offer detection, live interview assistant, automated bias detection, historical question optimization (needs 50-100 hires)
+- **Candidate Portal & Behavioral Telemetry**: Portal activity monitoring, session tracking, assessment engagement metrics (enables advanced AI features)
+- **External Portal Integration**: AI screening results import, interactive candidate workflows
+- **Complex Workflows**: Multi-stage budget approvals, blockchain document verification
+- **Multi-Channel Communications**: SMS, Slack, Teams integrations
 
 ## Architecture
 The documented system uses Azure-native architecture with:
@@ -56,27 +68,31 @@ The documented system uses Azure-native architecture with:
 - 2025-11-13: Added user stories to PRD epic structure
   - Story 3.7: AI-Powered Interview Question Generation (Epic 3)
   - Story 5.6: Sentiment Analysis & Candidate Engagement Intelligence (Epic 5)
+- 2025-11-13: **Defined MVP Scope with AI-Powered Differentiation Strategy (v1.7)**
+  - Added "MVP Scope Definition" section to brief.md
+  - Added "MVP vs Full Product Scope" section to prd.md
+  - Labeled FR1.1, FR14, FR16.1, FR16.2 as [MVP Priority] features
+  - Added MVP implementation notes to Stories 1.3, 3.7, 5.6, and 6.1
+  - Defined data bootstrapping strategy for AI model improvement
+  - Established MVP success metrics and KPIs
+  - Clearly delineated Phase 1 (MVP), Phase 2, and Phase 3 features
 
 ## AI Features Technical Specifications
 
 ### Sentiment Analysis (FR16.1, Story 5.6)
-- **Purpose**: Monitor candidate engagement to detect declining interest and competing offers
-- **Key Metrics**: Engagement score 0-100 based on response times, sentiment, portal activity
-- **Alerts**: Automated warnings at <70 (warning) and <50 (critical) engagement levels
-- **Tech Stack**: OpenAI/Anthropic NLP, time-series analysis, behavioral ML models
-- **Performance**: <2s response time, 80%+ prediction accuracy, $0.10-0.50 per candidate
+- **MVP Baseline**: Email response time tracking, rule-based engagement scoring (0-100), manual recruiter alerts
+- **Phase 2**: NLP sentiment analysis, portal activity monitoring, competing offer detection, automated interventions (requires portal + 50-100 hires)
+- **Phase 3**: 80%+ prediction accuracy, proactive engagement automation, ML-powered insights
 
 ### Interview Question Generation (FR16.2, Story 3.7)
-- **Purpose**: Generate optimized, bias-free interview questions tailored to roles and candidates
-- **Features**: Employment type templates, resume-based customization, live follow-up suggestions
-- **Optimization**: ML tracking of question effectiveness requiring 50+ successful hires per role
-- **Tech Stack**: GPT-4/Claude for generation, NLP for resume parsing, XGBoost for effectiveness scoring
-- **Performance**: <2s response time, 70%+ effectiveness accuracy, $0.10-0.50 per interview prep
+- **MVP Baseline**: Template-based employment type question libraries, basic resume keyword matching, question repository management
+- **Phase 2**: Live interview assistant, automated bias detection, historical effectiveness tracking (requires 50+ hires per role)
+- **Phase 3**: 70%+ effectiveness accuracy, ML-optimized personalization, continuous improvement
 
 ## Recommended Next Steps (from Architect Review)
-1. **Latency Validation**: Test real-world LLM response times to confirm <2s targets are achievable
-2. **Data Readiness Assessment**: Verify availability of 50-100 completed hires and 6+ months historical data
-3. **AI Cost Monitoring Plan**: Establish token budgets, caching strategies, and fallback tiers to maintain $0.10-0.50 cost range
+1. **MVP Simplification Complete**: Revised scope focuses on human-assisted AI tools, not fully automated ML systems
+2. **Data Collection Infrastructure**: MVP establishes foundation for Phase 2/3 ML improvements
+3. **Cost Monitoring**: Target $0.05-0.15 per job description for MVP (prompt-based generation only)
 
 ## Replit Setup
 Since this is a documentation repository, we've configured:
