@@ -298,6 +298,363 @@ flowchart TD
 
 ---
 
+## AI-Powered Candidate Engagement Intelligence
+
+### Sentiment Analysis System
+
+The ATS system provides real-time sentiment analysis to monitor candidate engagement levels throughout the hiring pipeline, enabling recruiters to proactively identify and respond to declining candidate interest before losing top talent.
+
+#### What It Monitors:
+
+**Communication Pattern Analysis:**
+- **Email Response Time:** Track response time trends (e.g., 2 hours → 6 hours → 24 hours)
+- **Response Tone:** NLP analysis of email sentiment (enthusiastic, neutral, formal, declining interest)
+- **Message Length Trends:** Monitor increasing brevity as potential disengagement signal
+- **Question Asking Behavior:** Engaged candidates ask questions; declining engagement shows fewer questions
+
+**Candidate Portal Activity:**
+- **Login Frequency:** Track portal visit patterns and declining activity
+- **Time on Portal:** Monitor session duration and page interaction depth
+- **Assessment Engagement:** Analyze completion speed and thoroughness
+- **Document Upload Behavior:** Prompt vs delayed document submissions
+
+**Interview Interaction Metrics:**
+- **Scheduling Response Time:** Speed of interview time slot selection
+- **Rescheduling Patterns:** Frequency of interview changes (red flag indicator)
+- **Pre-Interview Engagement:** Access to preparation materials and company information
+- **Post-Interview Follow-up:** Thank you notes and continued engagement
+
+#### Engagement Scoring System:
+
+**Real-Time Engagement Score (0-100):**
+- **90-100:** Highly Engaged - Strong interest, prompt responses, active portal use
+- **70-89:** Engaged - Normal engagement patterns, good communication
+- **50-69:** Declining Engagement ⚠️ - Warning signs, slowing responses
+- **Below 50:** At Risk 🚨 - Immediate action required, likely has other offers
+
+**Score Calculation Factors:**
+- Response time trends (30% weight)
+- Communication sentiment (25% weight)
+- Portal activity levels (20% weight)
+- Assessment engagement (15% weight)
+- Interview interaction (10% weight)
+
+#### Proactive Alert System:
+
+**Declining Engagement Alerts:**
+```
+⚠️ ENGAGEMENT ALERT: Sarah Chen (Senior Backend Engineer)
+Current Score: 62/100 (Down from 88 last week)
+
+Red Flags Detected:
+• Response time increased from 3h → 18h average
+• Portal last accessed 5 days ago (previously daily)
+• Email sentiment score dropped 25 points
+• Interview reschedule requested (2nd time)
+
+Recommended Actions:
+1. Expedite to final round within 48 hours
+2. Personal recruiter outreach (phone call recommended)
+3. Highlight unique role benefits and growth opportunities
+4. Check if compensation alignment still valid
+
+Likely Scenario: Candidate has competing offers in advanced stages
+Priority: HIGH - Act within 24 hours
+```
+
+**Competing Offer Detection:**
+The system identifies patterns indicating candidates are entertaining multiple offers:
+- **Sudden formality increase** in communications
+- **Delayed decision-making** at offer stage
+- **Increased questions about timeline flexibility**
+- **References to "other opportunities"** in communications
+- **Negotiation intensity** above baseline for role/level
+
+#### Integration with Hiring Pipeline:
+
+**Stage-Specific Monitoring:**
+- **Application Stage:** Baseline engagement establishment
+- **Screening Stage:** Early interest indicator tracking
+- **Assessment Stage:** Engagement depth analysis during tests
+- **Interview Stage:** Peak engagement monitoring and drop-off detection
+- **Offer Stage:** Final commitment signals and competing offer detection
+
+**Automated Intervention Triggers:**
+- Engagement score drops below 70: Alert assigned recruiter
+- Score drops below 50: Escalate to hiring manager + expedited process
+- Rescheduling detected: Immediate personal outreach required
+- Portal inactivity >3 days: Re-engagement email campaign triggered
+
+#### Recruiter Dashboard Integration:
+
+**Real-Time Candidate Health Widget:**
+```
+Top Priority Candidates (Engagement Risk):
+
+🚨 Michael Rodriguez - Score: 48/100 (↓32 in 7 days)
+   Position: DevOps Lead | Stage: Final Interview
+   Action: Call immediately - competing offer likely
+
+⚠️  Lisa Wang - Score: 65/100 (↓18 in 3 days)
+   Position: Product Manager | Stage: Offer Review
+   Action: Address concerns within 24h
+
+✅ James Kim - Score: 92/100 (↑5 in 7 days)
+   Position: Data Scientist | Stage: Technical Assessment
+   Status: Highly engaged, on track
+```
+
+**Engagement Trend Visualization:**
+- Line charts showing 30-day engagement score trends
+- Color-coded candidate cards (green/yellow/red based on scores)
+- Predictive indicators for offer acceptance likelihood
+- Time-to-action recommendations based on urgency
+
+#### Technical Implementation:
+
+**Data Sources:**
+- Email exchange metadata (timestamps, length, tone via NLP)
+- Candidate portal analytics (login times, page views, session duration)
+- Assessment platform integration (completion patterns, time spent)
+- Calendar system data (scheduling behavior, changes, confirmations)
+- Communication channels (Slack responses, Teams messages if applicable)
+
+**AI/ML Components:**
+- **Sentiment Analysis:** OpenAI/Anthropic NLP for email tone analysis
+- **Pattern Recognition:** Time-series analysis for engagement trend detection
+- **Behavioral Modeling:** Historical data on successful vs unsuccessful hires
+- **Predictive Analytics:** Likelihood of offer acceptance based on engagement patterns
+
+**Privacy & Compliance:**
+- Anonymized aggregate data for pattern learning
+- GDPR-compliant data processing with candidate consent
+- Transparent scoring methodology available to candidates
+- Opt-out options for candidates who prefer minimal tracking
+
+---
+
+## AI-Powered Interview Question Generation
+
+### Intelligent Interview Question System
+
+The ATS system leverages AI to generate role-specific, candidate-tailored interview questions that optimize for hiring success based on historical performance data and employment type requirements.
+
+#### Core Capabilities:
+
+**1. Role-Specific Question Generation**
+
+The system analyzes job requirements and automatically generates targeted interview questions:
+
+**Employment Type-Specific Templates:**
+
+**Contract Positions:**
+- Focus: Project delivery, self-management, specific skill validation
+- Example Questions:
+  - "Describe a contract project where you had to deliver results with minimal oversight"
+  - "How do you approach scope changes mid-contract?"
+  - "What's your typical communication cadence with clients during contract work?"
+
+**Part-Time Positions:**
+- Focus: Time management, flexibility, output quality despite limited hours
+- Example Questions:
+  - "How do you prioritize tasks when working limited hours per week?"
+  - "Describe how you maintain context when working part-time schedules"
+  - "How do you handle urgent requests outside your scheduled hours?"
+
+**Full-Time Positions:**
+- Focus: Long-term growth, cultural fit, team collaboration, career trajectory
+- Example Questions:
+  - "Where do you see yourself in this role after 2 years?"
+  - "Describe your ideal team collaboration environment"
+  - "How do you approach continuous learning and skill development?"
+
+**EOR Positions:**
+- Focus: Remote work capability, cross-cultural communication, timezone management
+- Example Questions:
+  - "How do you maintain productivity working across different timezones?"
+  - "Describe your experience working with distributed international teams"
+  - "How do you handle cultural differences in communication styles?"
+
+**2. Resume-Based Custom Question Generation**
+
+AI analyzes candidate's resume and generates personalized questions:
+
+```
+Candidate: Sarah Chen
+Previous: Senior Engineer at Uber (3 years)
+Current: Engineering Manager at Stripe (2 years)
+
+AI-Generated Custom Questions:
+
+1. "At Uber, you built real-time payment processing systems handling 
+   millions of transactions. How would you approach designing our 
+   logistics platform's payment infrastructure?"
+   
+   Why this question: Directly relates her specific experience to our needs
+
+2. "You transitioned from Senior Engineer to Engineering Manager at Stripe. 
+   What challenges did you face scaling from individual contributor to 
+   managing a team, and how would you apply those lessons here?"
+   
+   Why this question: Probes leadership transition relevant to our role
+
+3. "I see you worked on Uber's fraud detection system. Can you walk me 
+   through the ML models you implemented and how they'd apply to our 
+   risk management needs?"
+   
+   Why this question: Technical deep-dive into directly transferable skills
+```
+
+**3. Historical Performance-Based Optimization**
+
+The system learns from past successful hires to identify high-value questions:
+
+**Question Effectiveness Tracking:**
+```
+Backend Engineer Role - Top Performing Questions:
+
+✅ "Describe your approach to database optimization" 
+   → 87% prediction accuracy for high performers
+   → Asked in 156 interviews
+   → Strong performers provided specific examples with metrics
+
+✅ "How do you handle system failures in production?"
+   → 82% prediction accuracy
+   → Reveals problem-solving approach and incident management skills
+
+⚠️  "What's your favorite programming language?"
+   → 34% prediction accuracy (Low value)
+   → Recommendation: Remove or replace with technical depth question
+```
+
+**Continuous Learning:**
+- Track which questions correlated with successful hires (stayed >1 year, high performance ratings)
+- Identify questions that didn't predict success (remove from templates)
+- Suggest new questions based on emerging role requirements
+- A/B test question variations to optimize effectiveness
+
+**4. Real-Time Follow-Up Question Suggestions**
+
+During interviews, AI suggests dynamic follow-up questions based on candidate responses:
+
+**Live Interview Assistant:**
+```
+Candidate Response: "I implemented a microservices architecture..."
+
+AI Suggested Follow-ups:
+1. "What made you choose microservices over a monolith in that scenario?"
+   (Tests architectural decision-making)
+
+2. "How did you handle service communication and eventual consistency?"
+   (Probes technical depth)
+
+3. "What challenges did you face during the migration?"
+   (Reveals problem-solving and lessons learned)
+```
+
+**5. Bias Detection & Mitigation**
+
+AI monitors interview questions to prevent discriminatory or biased questioning:
+
+**Automatic Flagging:**
+- ❌ "Are you planning to have children?" → BLOCKED (Illegal in most jurisdictions)
+- ⚠️  "You're quite young for this role..." → WARNING (Age discrimination risk)
+- ⚠️  "Where are you originally from?" → WARNING (National origin discrimination)
+- ✅ "Describe your experience with distributed systems" → APPROVED
+
+**Inclusive Language Recommendations:**
+- Replace "culture fit" questions with "values alignment" questions
+- Avoid questions that favor specific educational backgrounds
+- Ensure technical questions are skill-based, not based on specific company/tool experience
+
+#### Interview Preparation Workflow:
+
+**Pre-Interview Setup:**
+1. **AI Analysis:** System analyzes job requirements + candidate resume
+2. **Question Generation:** Creates 15-20 role-specific questions
+3. **Customization:** Recruiter reviews and selects 8-12 questions for interview
+4. **Distribution:** Questions sent to interview panel with scoring rubrics
+
+**During Interview:**
+5. **Live Suggestions:** AI provides real-time follow-up question recommendations
+6. **Note-Taking Assistant:** Optional AI transcription and key point extraction
+7. **Red Flag Detection:** Alerts for concerning responses or incomplete answers
+
+**Post-Interview:**
+8. **Response Analysis:** AI analyzes candidate answers for quality and depth
+9. **Scoring Assistance:** Suggests scores based on response quality vs rubric
+10. **Comparative Analysis:** Benchmarks against other candidates and historical data
+
+#### Integration with ATS Pipeline:
+
+**Interview Stage Configuration:**
+- **Question Library:** Pre-built templates by role category and employment type
+- **Custom Question Builder:** AI-assisted custom question creation
+- **Question Effectiveness Dashboard:** Data on which questions predict success
+- **Interview Scorecard Templates:** Structured evaluation forms with AI-suggested criteria
+
+**Interviewer Experience:**
+```
+Interview Panel Dashboard for: Sarah Chen (Backend Engineer)
+
+📋 AI-Generated Interview Guide:
+
+Core Technical Questions (6 questions):
+✓ Distributed systems architecture (Required - 87% predictive accuracy)
+✓ Database optimization approaches (Required - 82% predictive accuracy)
+✓ Production incident management (Recommended)
+
+Resume-Specific Questions (3 questions):
+✓ Uber's real-time payment system architecture
+✓ Stripe engineering manager transition
+✓ Fraud detection ML implementation
+
+Employment Type Questions (2 questions - Full-Time):
+✓ Long-term career goals and growth expectations
+✓ Team collaboration and mentorship approach
+
+Live AI Assistant: ON
+Bias Detection: ENABLED
+Auto-Transcription: ENABLED (with consent)
+```
+
+#### Technical Implementation:
+
+**AI/ML Components:**
+- **Question Generation:** GPT-4/Claude API for natural language generation
+- **Resume Parsing:** NLP extraction of skills, experience, achievements
+- **Historical Analysis:** Machine learning models correlating questions with hire success
+- **Sentiment Analysis:** Real-time candidate response quality assessment
+- **Bias Detection:** Pattern matching against discriminatory question databases
+
+**Data Requirements:**
+- Minimum 50 completed interviews per role for pattern recognition
+- Historical hire performance data (retention, performance reviews)
+- Interview notes and outcomes for ML training
+- Job requirement taxonomies and skill mappings
+
+**Cost Optimization:**
+- Batch question generation for similar roles
+- Cache frequently used questions
+- Use GPT-3.5 for simple templates, GPT-4 for complex customization
+- Estimated cost: $0.10-0.50 per interview preparation
+
+#### Privacy & Compliance:
+
+**Data Protection:**
+- Interview recording requires explicit candidate consent
+- Transcriptions anonymized for ML training
+- GDPR-compliant data retention (delete after hiring cycle completion)
+- Candidate access to their interview data upon request
+
+**Fairness Standards:**
+- Regular bias audits on question effectiveness across demographics
+- Diverse training data to prevent algorithmic bias
+- Human oversight on all AI-generated questions
+- Transparency reports on hiring outcome patterns
+
+---
+
 ## Pipeline Stage Movement System
 
 ### Accept/Reject Based Progression

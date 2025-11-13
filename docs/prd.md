@@ -28,6 +28,7 @@ The system leverages external portal integration for initial candidate processin
 | 2025-11-13 | 1.3 | Enhanced document verification with blockchain support and expanded compliance to include SOX requirements based on brief analysis | Product Manager |
 | 2025-11-13 | 1.4 | Updated authentication system to integrate with Teamified Accounts portal using OAuth 2.0/OpenID Connect instead of Azure AD | Product Manager |
 | 2025-11-13 | 1.5 | Added role-based job approval workflow requiring recruiter manager approval for client jobs while allowing direct activation for recruiter jobs | Product Manager |
+| 2025-11-13 | 1.6 | Expanded FR16 with comprehensive AI capabilities including Sentiment Analysis & Candidate Engagement Intelligence (FR16.1), AI-Powered Interview Question Generation (FR16.2), and detailed AI Integration Technical Specifications (FR16.3) | Product Manager |
 
 ## Requirements
 
@@ -70,6 +71,33 @@ Based on the comprehensive technical specifications and workflow requirements ga
 **FR15:** The system shall maintain LinkedIn job posting synchronization for all job edits including title, description, requirements, employment type, salary, and location changes.
 
 **FR16:** The system shall provide AI-powered automated decision support capabilities including role-specific interview question generation, bias detection in hiring decisions, compensation benchmarking with market data analysis, and performance prediction models based on historical hiring data.
+
+**FR16.1 - Sentiment Analysis & Candidate Engagement Intelligence:** The system shall implement real-time sentiment analysis monitoring candidate engagement levels throughout the hiring pipeline through:
+- **Communication Pattern Analysis:** Track email response times, tone sentiment via NLP, message length trends, and question-asking behavior with baseline establishment and trend detection
+- **Portal Activity Monitoring:** Monitor login frequency, session duration, page interaction depth, assessment engagement patterns, and document upload timeliness with abnormal activity detection
+- **Engagement Scoring (0-100):** Real-time scoring based on response time trends (30%), communication sentiment (25%), portal activity (20%), assessment engagement (15%), and interview interaction (10%) with configurable thresholds
+- **Proactive Alert System:** Automated alerts when engagement scores drop below 70 (warning) or 50 (critical) with recruiter dashboard notifications, recommended interventions, and escalation to hiring managers
+- **Competing Offer Detection:** Pattern recognition for formality increases, delayed decision-making, timeline flexibility questions, references to other opportunities, and negotiation intensity above baseline
+- **Dashboard Integration:** Real-time candidate health widgets with color-coded risk levels, 30-day engagement trend visualizations, predictive offer acceptance indicators, and time-to-action recommendations
+- **Privacy Compliance:** GDPR-compliant processing with candidate consent, anonymized aggregate data for ML training, transparent scoring methodology disclosure, and opt-out capabilities
+
+**FR16.2 - AI-Powered Interview Question Generation:** The system shall provide intelligent interview question generation optimized for hiring success through:
+- **Employment Type-Specific Templates:** Pre-built question sets for contract (project delivery, self-management), part-time (time management, flexibility), full-time (growth, culture, collaboration), and EOR (remote work, cross-cultural communication, timezone management) positions
+- **Resume-Based Customization:** AI analysis of candidate backgrounds to generate personalized questions relating specific prior experience to job requirements with technical deep-dive capabilities and transferable skills identification
+- **Historical Performance Optimization:** Machine learning models tracking question effectiveness with prediction accuracy scoring (minimum 50 successful hires per role), continuous learning from hire outcomes (retention >1 year, performance ratings), and A/B testing of question variations
+- **Real-Time Follow-Up Suggestions:** Live interview assistant providing contextual follow-up questions based on candidate responses, probing technical depth, revealing problem-solving approaches, and testing decision-making frameworks
+- **Bias Detection & Mitigation:** Automatic flagging of discriminatory questions (illegal, age, national origin, family status), inclusive language recommendations, and compliance monitoring across protected characteristics
+- **Interview Preparation Workflow:** Pre-interview AI analysis generating 15-20 questions, recruiter customization interface selecting 8-12 final questions, question distribution to interview panels with scoring rubrics, and post-interview response analysis
+- **Question Library Management:** Centralized repository of validated questions by role and employment type, effectiveness tracking with usage analytics and prediction accuracy, continuous improvement based on hire success correlation, and client-specific customization options
+- **Integration Requirements:** OpenAI/Anthropic API for natural language generation, resume parsing with NLP skill extraction, historical hire database with performance outcomes, and minimum 50 interviews per role for pattern recognition
+
+**FR16.3 - AI Integration Technical Specifications:**
+- **LLM Integration:** OpenAI GPT-4 or Anthropic Claude for advanced analysis, GPT-3.5 for simple templates, secure API key management via Azure Key Vault, rate limiting and cost monitoring, content filtering for compliance
+- **NLP Components:** Sentiment analysis for email tone (positive, neutral, negative, declining interest), entity extraction from resumes and job descriptions, text classification for question categorization, named entity recognition for skills and experience
+- **Machine Learning Models:** XGBoost/Random Forest for engagement scoring, time-series analysis for pattern detection, collaborative filtering for question recommendation, binary classifiers for offer acceptance prediction
+- **Data Requirements:** Minimum 50-100 completed hires for baseline models, 6+ months historical engagement data, structured feedback on hire success/failure with performance metrics, continuous data pipeline for model retraining
+- **Performance Targets:** API response times <2 seconds for real-time analysis, batch processing for non-urgent analysis within 30 minutes, 80%+ accuracy for engagement risk prediction, 70%+ accuracy for interview question effectiveness
+- **Cost Management:** Token optimization for LLM calls, caching of frequently generated questions, batch processing for similar roles, estimated $0.10-0.50 per candidate for AI analysis
 
 ### Non Functional
 
@@ -609,6 +637,28 @@ so that interviews can be efficiently coordinated, conducted, and evaluated acro
 11. Panel interview coordination implemented with multiple interviewer scheduling and feedback consolidation
 12. Interview recording and note-taking capabilities implemented with secure storage and access controls
 
+### Story 3.7: AI-Powered Interview Question Generation
+
+As a hiring manager or recruiter,
+I want AI-generated role-specific interview questions optimized for hiring success,
+so that I can conduct more effective interviews with questions tailored to employment type, candidate background, and proven performance indicators.
+
+#### Acceptance Criteria
+1. Employment type-specific question templates implemented generating targeted questions for contract (project delivery, self-management), part-time (time management, flexibility), full-time (growth, culture, collaboration), and EOR positions (remote work, cross-cultural communication, timezone management) as defined in FR16.2
+2. Resume-based question customization implemented using AI analysis to generate personalized questions relating candidate's specific prior experience to job requirements with technical deep-dive capabilities
+3. Historical performance tracking implemented monitoring which questions correlate with successful hires (retention >1 year, high performance ratings) with prediction accuracy scoring requiring minimum 50 successful hires per role as specified in FR16.2
+4. Question effectiveness analytics dashboard implemented showing prediction accuracy percentages, usage statistics, and continuous improvement recommendations with A/B testing capabilities for question variations
+5. Live interview assistant implemented providing real-time AI-suggested follow-up questions based on candidate responses, probing technical depth, revealing problem-solving approaches, and testing decision-making frameworks
+6. Bias detection and mitigation implemented with automatic flagging of discriminatory questions (illegal, age, national origin, family status), inclusive language recommendations, and compliance monitoring across protected characteristics as specified in FR16.2
+7. Interview preparation workflow implemented with pre-interview AI analysis generating 15-20 questions, recruiter customization interface for selecting 8-12 final questions, question distribution to interview panels with scoring rubrics, and post-interview response quality analysis
+8. Question library management implemented with centralized repository organized by role and employment type, effectiveness tracking with usage analytics and prediction accuracy, and client-specific customization options
+9. Interview scorecard integration implemented with AI-suggested evaluation criteria, structured scoring systems, and comparative candidate analysis benchmarked against historical data
+10. AI model integration implemented using OpenAI GPT-4/Anthropic Claude for advanced question generation, GPT-3.5 for template-based questions, and NLP for resume parsing with skill extraction as detailed in FR16.3
+11. Privacy and compliance controls implemented with candidate consent for interview recording/transcription, GDPR-compliant data processing, anonymized ML training data, and transparent bias audit reporting
+12. Cost optimization implemented with question caching for similar roles, batch processing, token optimization for LLM calls, targeting estimated $0.10-0.50 per interview preparation as specified in FR16.3
+
+**Technical Dependencies:** Cross-reference FR16.2 for detailed interview question generation requirements and FR16.3 for AI integration technical specifications including LLM APIs, NLP components, ML models, data requirements, and performance targets.
+
 ## Epic 4: Budget Approval & Employment Type Workflows
 
 **Epic Goal:** Implement sophisticated budget approval processes with employment type-specific calculations, evidence-based decision making, and comprehensive approval chain management. This epic ensures financial accountability and enables confident hiring decisions with appropriate budget oversight and documentation.
@@ -776,6 +826,28 @@ so that I can continuously improve the candidate journey and employer branding.
 6. Response time analytics implemented measuring candidate and staff response speeds
 7. Employer branding metrics implemented tracking candidate perception and recommendation likelihood
 8. Process improvement insights implemented identifying opportunities to enhance candidate experience
+
+### Story 5.6: Sentiment Analysis & Candidate Engagement Intelligence
+
+As a recruiter or hiring manager,
+I want real-time sentiment analysis monitoring candidate engagement levels throughout the hiring pipeline,
+so that I can proactively identify and respond to declining candidate interest before losing top talent to competing offers.
+
+#### Acceptance Criteria
+1. Communication pattern analysis implemented tracking email response time trends (baseline vs current), NLP-based tone sentiment scoring (enthusiastic, neutral, formal, declining), message length pattern analysis, and question-asking behavior monitoring as specified in FR16.1
+2. Candidate portal activity monitoring implemented tracking login frequency, session duration, page interaction depth, assessment engagement patterns, and document upload timeliness with abnormal activity detection and alerting
+3. Real-time engagement scoring system (0-100) implemented with weighted calculation using response time trends (30%), communication sentiment (25%), portal activity (20%), assessment engagement (15%), and interview interaction (10%) with configurable threshold levels as defined in FR16.1
+4. Proactive alert system implemented with automatic notifications when engagement scores drop below 70 (warning level) or 50 (critical level), recruiter dashboard alerts, recommended intervention actions, and escalation to hiring managers for high-priority candidates
+5. Competing offer detection implemented using pattern recognition for formality increases in communications, delayed decision-making at offer stage, increased questions about timeline flexibility, references to "other opportunities", and negotiation intensity above role/level baseline
+6. Recruiter dashboard integration implemented with real-time candidate health widgets showing color-coded risk levels (green/yellow/red), 30-day engagement trend visualizations with line charts, predictive offer acceptance indicators, and time-to-action recommendations based on urgency
+7. Interview interaction metrics implemented tracking scheduling response time, rescheduling pattern frequency as red flag indicators, pre-interview engagement with preparation materials, and post-interview follow-up communication quality
+8. Automated intervention trigger system implemented with score-based actions: engagement <70 alerts recruiter, <50 escalates to hiring manager + expedites process, rescheduling detected triggers personal outreach, portal inactivity >3 days initiates re-engagement campaigns
+9. Engagement trend analytics implemented with historical pattern comparison, candidate cohort benchmarking, stage-specific engagement baseline establishment, and declining engagement early warning detection
+10. AI/ML integration implemented using OpenAI/Anthropic NLP for email sentiment analysis, time-series pattern recognition for engagement trend detection, behavioral modeling using historical successful vs unsuccessful hire data, and predictive analytics for offer acceptance likelihood as detailed in FR16.3
+11. Privacy and compliance controls implemented with GDPR-compliant data processing requiring candidate consent, anonymized aggregate data for ML pattern learning, transparent scoring methodology disclosure to candidates, and opt-out capabilities for minimal tracking preferences
+12. Performance optimization implemented targeting API response times <2 seconds for real-time analysis, batch processing for non-urgent analysis within 30 minutes, 80%+ accuracy for engagement risk prediction, and cost management estimated at $0.10-0.50 per candidate as specified in FR16.3
+
+**Technical Dependencies:** Cross-reference FR16.1 for detailed sentiment analysis requirements and FR16.3 for AI integration technical specifications including LLM APIs, NLP sentiment analysis, ML engagement scoring models, time-series analysis, data requirements, and performance targets.
 
 ## Epic 6: Analytics, Reporting & System Optimization
 
