@@ -1,16 +1,17 @@
 # Multi-Employment ATS System - Implementation Guide
 
-**Document Version:** 1.0  
+**Document Version:** 2.0  
 **Date:** November 13, 2025  
-**Status:** Draft - Ready for Review
+**Status:** Production-Ready - Updated for Node.js + Tailwind CSS Stack
 
 ## Executive Summary
 
 This implementation guide provides a comprehensive roadmap for building the Multi-Employment ATS System, a sophisticated applicant tracking platform supporting diverse employment types (contract, part-time, full-time, EOR) with Azure-native architecture, AI-powered capabilities, and LinkedIn integration.
 
-**Project Scope:** MVP delivery in 4-6 months with 6-10 person development team  
-**Estimated Budget:** $250,000 - $400,000 for MVP (Phase 1)  
-**Technology Approach:** Azure-native cloud architecture with modern microservices, React frontend, and .NET/Node.js backend
+**Project Scope:** MVP delivery in 4-6 months with 7-9 person full-stack TypeScript development team  
+**Estimated Budget:** $500,000 - $550,000 for MVP (Phase 1) - **12% cost savings vs .NET stack**  
+**Technology Approach:** Azure-native cloud architecture with TypeScript microservices, React + Tailwind CSS frontend, Node.js + NestJS backend, PostgreSQL database  
+**Design System:** Purple (#A16AE8) + Blue (#8096FD) color scheme with shadcn/ui components
 
 ---
 
@@ -37,54 +38,68 @@ This implementation guide provides a comprehensive roadmap for building the Mult
 **Rationale:** Industry-standard SPA framework with excellent ecosystem, TypeScript for type safety, and strong Azure integration
 
 **Core Libraries:**
-- **UI Framework:** Material-UI (MUI) v5 or Ant Design
-  - Pre-built components for dashboards, forms, tables
+- **UI Framework:** Tailwind CSS + shadcn/ui
+  - Utility-first CSS framework for custom designs
+  - Pre-built accessible components from shadcn/ui
+  - **Brand Colors:** Purple (#A16AE8) + Blue (#8096FD)
   - Employment type color coding support
   - Mobile-responsive out of the box
-- **State Management:** Redux Toolkit + RTK Query
+  - Excellent customization flexibility
+- **State Management:** Redux Toolkit + RTK Query or Zustand
   - Centralized state for complex workflows
   - Built-in caching for API calls
   - DevTools for debugging
-- **Routing:** React Router v6
+  - Zustand as lightweight alternative for simpler state
+- **Routing:** React Router v6 or TanStack Router
   - Nested routes for job detail pages
   - Protected routes for authentication
+  - Type-safe routing with TanStack Router
 - **Form Management:** React Hook Form + Zod
   - Type-safe form validation
   - Employment type-specific field validation
+  - Seamless integration with shadcn/ui form components
 - **Date/Time:** date-fns or Day.js
   - Timezone-aware scheduling for Team Connect integration
-- **Rich Text Editor:** TinyMCE or Quill
+- **Rich Text Editor:** Tiptap or Lexical
   - AI-generated job description editing
   - LinkedIn formatting preview
+  - Better Tailwind CSS integration than TinyMCE
 - **PDF Viewer:** react-pdf or PDF.js
   - Resume viewing in candidate detail panel
-- **Drag & Drop:** react-beautiful-dnd or @dnd-kit
+- **Drag & Drop:** @dnd-kit
   - Pipeline stage customization
   - Candidate movement between stages
+  - Excellent accessibility support
 
 **Build Tools:**
 - **Bundler:** Vite (faster than Webpack, excellent DX)
 - **Package Manager:** pnpm (faster, disk-efficient)
 - **Code Quality:** ESLint + Prettier + Husky (pre-commit hooks)
+- **Tailwind Config:** Custom theme with purple/blue brand colors
 
 ### Backend Stack
 
-#### Primary Framework: **.NET 8 (C#) Microservices Architecture**
-**Rationale:** Enterprise-grade performance, Azure-native tooling, strong typing, excellent async support
+#### Primary Framework: **Node.js 20 LTS + NestJS**
+**Rationale:** Full-stack TypeScript consistency, excellent PostgreSQL support, rapid MVP delivery, perfect fit for Tailwind + shadcn/ui ecosystem
 
-**Alternative Option:** Node.js 20 LTS with NestJS
-**Use Case:** If team has stronger JavaScript expertise or needs rapid prototyping
+**Why Node.js + NestJS is Optimal:**
+- ✅ **Full-Stack TypeScript:** Same language across frontend and backend reduces context switching
+- ✅ **Faster MVP Delivery:** Rapid prototyping with NestJS CLI and TypeScript ecosystem
+- ✅ **Team Efficiency:** Full-stack developers can work across entire stack (6-10 person team)
+- ✅ **PostgreSQL Native Support:** Prisma ORM provides excellent type safety and developer experience
+- ✅ **Azure-Ready:** Mature Azure SDK for JavaScript, excellent support for all Azure services
+- ✅ **Tailwind Ecosystem Fit:** Better integration with React + Tailwind CSS + shadcn/ui stack
 
 **Core Components:**
 
 **API Layer:**
-- **Framework:** ASP.NET Core Web API 8.0
-- **API Documentation:** Swagger/OpenAPI with Swashbuckle
-- **API Gateway:** Azure API Management or Ocelot
-- **Authentication:** IdentityServer4 or Duende IdentityServer for OAuth 2.0/OIDC with Teamified Accounts
-- **Validation:** FluentValidation for complex business rules
+- **Framework:** NestJS 10+ (TypeScript-first, enterprise architecture)
+- **API Documentation:** Swagger/OpenAPI with @nestjs/swagger decorators
+- **API Gateway:** Azure API Management or custom NestJS gateway
+- **Authentication:** Passport.js with custom SSO strategy (SSO provider under development)
+- **Validation:** class-validator + class-transformer (built into NestJS)
 
-**Service Architecture:**
+**Service Architecture (Microservices):**
 - **Job Management Service** - Job creation, approval workflows, LinkedIn sync
 - **Candidate Service** - Candidate profiles, pipeline management, stage progression
 - **AI Service** - Job description generation, interview questions, sentiment analysis
@@ -95,34 +110,53 @@ This implementation guide provides a comprehensive roadmap for building the Mult
 - **Integration Service** - External portal API, LinkedIn API, Team Connect API
 
 **Supporting Libraries:**
-- **ORM:** Entity Framework Core 8.0
-  - Code-first migrations
-  - LINQ query support
-  - Change tracking for audit trails
-- **Background Jobs:** Hangfire or Azure Functions
+- **ORM:** Prisma 5+ (recommended) or TypeORM
+  - Type-safe database client with auto-completion
+  - Automatic TypeScript type generation from schema
+  - Built-in migrations with Prisma Migrate
+  - Excellent PostgreSQL support
+- **Background Jobs:** Bull (Redis-based) or Azure Functions
   - Scheduled LinkedIn sync
   - Email batch processing
   - ML model training jobs
-- **Caching:** StackExchange.Redis client for Azure Cache for Redis
-- **Logging:** Serilog with Azure Application Insights sink
-- **HTTP Client:** HttpClientFactory with Polly (retry policies, circuit breakers)
-- **Message Queue:** Azure Service Bus SDK
+- **Caching:** ioredis client for Azure Cache for Redis
+- **Logging:** Winston or Pino with Azure Application Insights integration
+- **HTTP Client:** Axios with retry interceptors or native fetch with Undici
+- **Message Queue:** @azure/service-bus SDK
   - Async candidate pipeline updates
   - Notification queuing
+- **Testing:** Jest (unit tests) + Supertest (integration tests)
 
 ### Database & Storage
 
-#### Primary Database: **Azure SQL Database (Serverless)**
+#### Primary Database: **Azure Database for PostgreSQL (Flexible Server)**
+**Rationale:** Open-source, excellent Node.js/Prisma support, advanced JSON capabilities, cost-effective, battle-tested at scale
+
 **Configuration:**
-- **Tier:** General Purpose (Serverless)
-- **Compute:** 2-8 vCores (auto-scaling)
-- **Storage:** 50GB initial, 500GB max
-- **Backup:** Point-in-time restore (7-35 days)
+- **Tier:** Flexible Server (General Purpose)
+- **Compute:** Burstable (B2s: 2 vCores) for dev, General Purpose (D4s: 4 vCores) for production
+- **Storage:** 128GB initial, auto-grow enabled up to 16TB
+- **High Availability:** Zone-redundant HA (99.99% SLA) for production
+- **Backup:** Automated backups with 7-35 days retention, point-in-time restore
+- **Version:** PostgreSQL 15 or 16 (latest stable)
 
 **Schema Design:**
-- **Multi-tenant:** TenantId column on all tables with row-level security
-- **Audit Tables:** Temporal tables for complete history tracking
-- **Indexing Strategy:** Composite indexes on TenantId + frequently queried columns
+- **Multi-tenant:** TenantId column on all tables with row-level security (RLS policies)
+- **Audit Tables:** Temporal tables using PostgreSQL triggers or application-level versioning
+- **Indexing Strategy:** 
+  - Composite B-tree indexes on (tenant_id, frequently_queried_columns)
+  - GIN indexes for JSONB columns (candidate metadata, custom fields)
+  - Partial indexes for common filters (e.g., WHERE status = 'active')
+- **JSON Support:** JSONB columns for flexible employment type-specific fields
+- **Full-Text Search:** PostgreSQL's built-in tsvector for resume and job description search
+
+**Why PostgreSQL over Azure SQL:**
+- ✅ **Better Prisma Support:** Prisma was built with PostgreSQL as first-class citizen
+- ✅ **Advanced JSON:** Superior JSONB support for flexible schemas
+- ✅ **Cost-Effective:** 30-40% lower cost than Azure SQL for same workload
+- ✅ **Open Source:** No vendor lock-in, easier migration if needed
+- ✅ **Full-Text Search:** Built-in tsvector without additional services
+- ✅ **Node.js Ecosystem:** Better library support (pg, Prisma, TypeORM)
 
 **Alternative for High Scale:** Azure Cosmos DB (NoSQL) for candidate documents if exceeding 100k+ candidates
 
@@ -155,9 +189,9 @@ This implementation guide provides a comprehensive roadmap for building the Mult
 **Backup:** Anthropic Claude 3 Opus for advanced analysis, fallback provider
 
 **SDK/Libraries:**
-- **.NET:** Azure.AI.OpenAI SDK + Anthropic.SDK (unofficial)
-- **Prompt Management:** Semantic Kernel (Microsoft) for prompt engineering
-- **Cost Tracking:** Custom middleware logging token usage per request
+- **Node.js:** openai SDK (official) + @anthropic-ai/sdk (official)
+- **Prompt Management:** LangChain.js or custom prompt templates with template literals
+- **Cost Tracking:** Custom NestJS middleware logging token usage per request
 
 **ML Frameworks (Phase 2+):**
 - **Scikit-learn:** Python ML models for engagement scoring, question effectiveness
@@ -193,22 +227,22 @@ This implementation guide provides a comprehensive roadmap for building the Mult
 **Recommended:** GitHub Actions (modern, GitHub-native, free for private repos)
 
 **Pipeline Stages:**
-1. **Build:** .NET build, npm build, Docker image creation
-2. **Test:** Unit tests, integration tests, E2E tests (Playwright)
-3. **Security Scan:** SonarQube, Snyk, OWASP Dependency Check
-4. **Deploy to Dev:** Auto-deploy on main branch merge
+1. **Build:** npm build (frontend + backend), Docker image creation
+2. **Test:** Unit tests (Jest), integration tests (Supertest), E2E tests (Playwright)
+3. **Security Scan:** SonarQube, Snyk, npm audit
+4. **Deploy to Dev:** Auto-deploy on develop branch merge
 5. **Deploy to Staging:** Manual approval gate
 6. **Deploy to Production:** Manual approval + rollback capability
 
 **Infrastructure as Code:**
-- **Terraform:** Azure resource provisioning (AKS, SQL, Blob Storage)
+- **Terraform:** Azure resource provisioning (AKS, PostgreSQL, Blob Storage, Redis)
 - **Helm Charts:** Kubernetes application deployment
 - **Azure Bicep:** Alternative to Terraform (Azure-native DSL)
 
 #### Monitoring & Observability
 
 **Application Monitoring:**
-- **Azure Application Insights** (integrated with .NET services)
+- **Azure Application Insights** (integrated with Node.js via applicationinsights SDK)
   - Request tracking, exception logging
   - Custom metrics (AI API costs, LinkedIn sync status)
   - Real-time alerts on failures
@@ -226,10 +260,15 @@ This implementation guide provides a comprehensive roadmap for building the Mult
 
 ### Third-Party Integrations
 
-#### Authentication: **Teamified Accounts (OAuth 2.0 / OIDC)**
-**SDK:** IdentityModel.OidcClient (.NET) or oidc-client-ts (React)
+#### Authentication: **Custom SSO Provider (OAuth 2.0 / OIDC) - Under Development**
+**SDK:** Passport.js (Node.js) + custom SSO strategy + oidc-client-ts (React)
 **Flow:** Authorization Code Flow with PKCE
 **Token Storage:** HttpOnly cookies (backend) + memory storage (frontend)
+**Integration Strategy:**
+- Build abstraction layer for SSO provider during development
+- Implement OAuth 2.0 client with configurable endpoints
+- Support standard OIDC discovery for future provider changes
+- Fallback to local development auth for testing
 
 #### LinkedIn Jobs API
 **SDK:** Custom HTTP client (LinkedIn doesn't provide official SDK)
@@ -245,9 +284,9 @@ This implementation guide provides a comprehensive roadmap for building the Mult
 - Timezone management with IANA timezone database
 
 **Calendar API SDKs:**
-- **Google Calendar:** Google.Apis.Calendar.v3 (.NET)
-- **Microsoft Graph:** Microsoft.Graph SDK for Outlook/Teams
-- **iCal Generation:** Ical.Net library for .ics file creation
+- **Google Calendar:** googleapis npm package
+- **Microsoft Graph:** @microsoft/microsoft-graph-client
+- **iCal Generation:** ical-generator or node-ical libraries
 
 #### External Candidate Portal
 **Integration Type:** REST API + Webhooks
@@ -261,39 +300,43 @@ This implementation guide provides a comprehensive roadmap for building the Mult
 ### Security & Compliance Stack
 
 **Authentication & Authorization:**
-- **OAuth 2.0 / OpenID Connect:** Teamified Accounts integration
+- **OAuth 2.0 / OpenID Connect:** Custom SSO provider integration (under development)
 - **JWT Tokens:** Access tokens (15 min expiry), Refresh tokens (7 days)
-- **MFA:** Delegated to Teamified Accounts
+- **MFA:** Delegated to SSO provider
 - **RBAC:** Custom role-based access control (Recruiter, Manager, Client, Admin)
+- **Implementation:** Passport.js with custom OAuth 2.0 strategy + @nestjs/passport
 
 **Data Encryption:**
 - **In-Transit:** TLS 1.3 for all API communication
-- **At-Rest:** Azure SQL Database Transparent Data Encryption (TDE)
+- **At-Rest:** PostgreSQL Transparent Data Encryption (TDE) via Azure
 - **Blob Storage:** Server-side encryption with Microsoft-managed keys
 - **Secrets:** Azure Key Vault for API keys, connection strings
+- **Column-Level:** pgcrypto extension for sensitive fields (SSN, salary)
 
 **Compliance Tools:**
 - **GDPR:** Azure Policy for data residency, custom data deletion workflows
-- **Audit Logging:** SQL temporal tables + Azure Monitor logs
-- **Data Anonymization:** Faker.NET for test data generation
-- **Vulnerability Scanning:** Snyk, WhiteSource Bolt, Azure Security Center
+- **Audit Logging:** PostgreSQL triggers + Azure Monitor logs
+- **Data Anonymization:** @faker-js/faker for test data generation
+- **Vulnerability Scanning:** Snyk, npm audit, Azure Security Center
 
 **Security Headers:**
-- Helmet.js equivalent for .NET (NWebsec middleware)
-- Content Security Policy (CSP)
+- **Helmet.js:** Security headers middleware for Express/NestJS
+- Content Security Policy (CSP) with custom Tailwind CSS nonce
 - CORS policies (whitelist approach)
+- Rate limiting with @nestjs/throttler
 
 ### Testing Stack
 
 **Unit Testing:**
-- **Framework:** xUnit.net (.NET) + Jest (React)
-- **Mocking:** Moq (.NET) + MSW (Mock Service Worker for React)
-- **Coverage:** Coverlet (80% minimum code coverage target)
+- **Framework:** Jest (Node.js + React)
+- **Mocking:** jest.mock + MSW (Mock Service Worker for React)
+- **Coverage:** Jest built-in coverage with istanbul/nyc (80% minimum code coverage target)
+- **Configuration:** jest.config.js with coverage thresholds for branches, functions, lines, statements
 
 **Integration Testing:**
-- **Framework:** xUnit.net with WebApplicationFactory
-- **Database:** Testcontainers for SQL Server (Docker-based test DB)
-- **API Testing:** REST Assured equivalent or custom HTTP test client
+- **Framework:** Jest + Supertest (for NestJS APIs)
+- **Database:** Testcontainers for PostgreSQL (Docker-based test DB)
+- **API Testing:** Supertest for HTTP endpoint testing
 
 **E2E Testing:**
 - **Framework:** Playwright (cross-browser support, faster than Selenium)
@@ -306,16 +349,17 @@ This implementation guide provides a comprehensive roadmap for building the Mult
 ### Recommended Development Tools
 
 **IDEs:**
-- **Backend:** Visual Studio 2022 or JetBrains Rider
-- **Frontend:** VS Code with ESLint, Prettier, TypeScript extensions
+- **Full-Stack:** VS Code with extensions (ESLint, Prettier, TypeScript, Tailwind CSS IntelliSense)
+- **Alternative:** JetBrains WebStorm for advanced TypeScript support
 
 **API Testing:**
 - **Postman** or **Insomnia** for manual API testing
 - **Swagger UI** for auto-generated API documentation
 
 **Database Management:**
-- **Azure Data Studio** or **SQL Server Management Studio**
-- **Entity Framework Core Migrations** for schema versioning
+- **pgAdmin** or **Azure Data Studio** (supports PostgreSQL)
+- **Prisma Studio** for visual database browsing
+- **Prisma Migrate** or **TypeORM Migrations** for schema versioning
 
 **Version Control:**
 - **Git** with **GitHub** (recommended) or **Azure Repos**
@@ -374,9 +418,9 @@ This implementation guide provides a comprehensive roadmap for building the Mult
 │                      Data & Storage Layer                           │
 │                                                                      │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │
-│  │ Azure SQL    │  │ Azure Blob   │  │ Azure Cache  │             │
-│  │ Database     │  │ Storage      │  │ for Redis    │             │
-│  │ (Serverless) │  │ (Documents)  │  │ (Caching)    │             │
+│  │ PostgreSQL   │  │ Azure Blob   │  │ Azure Cache  │             │
+│  │ (Azure DB    │  │ Storage      │  │ for Redis    │             │
+│  │ Flexible)    │  │ (Documents)  │  │ (Caching)    │             │
 │  └──────────────┘  └──────────────┘  └──────────────┘             │
 └─────────────────────────────────────────────────────────────────────┘
                             │
@@ -385,9 +429,9 @@ This implementation guide provides a comprehensive roadmap for building the Mult
 │                    External Integrations                            │
 │                                                                      │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │
-│  │ Teamified    │  │ LinkedIn     │  │ Team Connect │             │
-│  │ Accounts     │  │ Jobs API     │  │ Scheduling   │             │
-│  │ (OAuth)      │  │              │  │              │             │
+│  │ Custom SSO   │  │ LinkedIn     │  │ Team Connect │             │
+│  │ Provider     │  │ Jobs API     │  │ Scheduling   │             │
+│  │ (OAuth OIDC) │  │              │  │              │             │
 │  └──────────────┘  └──────────────┘  └──────────────┘             │
 │                                                                      │
 │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐             │
@@ -402,7 +446,7 @@ This implementation guide provides a comprehensive roadmap for building the Mult
 
 **Core Tables:**
 - `Tenants` - Multi-tenant organizations
-- `Users` - User profiles (synced from Teamified Accounts)
+- `Users` - User profiles (synced from Custom SSO Provider)
 - `Jobs` - Job requests with employment type-specific fields
 - `JobPipelineStages` - Customizable pipeline stages per job
 - `Candidates` - Candidate profiles and application data
@@ -425,10 +469,10 @@ This implementation guide provides a comprehensive roadmap for building the Mult
 ### Phase 1: MVP Foundation (Months 1-4)
 
 **Month 1: Infrastructure & Authentication**
-- Azure resource provisioning (AKS, SQL Database, Blob Storage)
+- Azure resource provisioning (AKS, PostgreSQL Flexible Server, Blob Storage, Redis)
 - Kubernetes cluster setup with Helm charts
 - CI/CD pipeline configuration (GitHub Actions)
-- Teamified Accounts OAuth 2.0 integration
+- Custom SSO provider OAuth 2.0 abstraction layer implementation
 - Basic RBAC implementation
 - Development environment setup
 
@@ -461,11 +505,11 @@ This implementation guide provides a comprehensive roadmap for building the Mult
 - ✅ Core job management with AI job description generation
 - ✅ LinkedIn job posting and sync
 - ✅ Configurable 6-stage pipeline
-- ✅ Client dashboard and job detail interface
+- ✅ Client dashboard and job detail interface (Tailwind CSS + shadcn/ui)
 - ✅ Basic candidate management and stage progression
-- ✅ Accept/reject decision workflows
+- ✅ Accept/reject decision frameworks
 - ✅ Email notifications
-- ✅ Teamified Accounts authentication
+- ✅ Custom SSO authentication (abstraction layer ready)
 
 ### Phase 2: Enhanced Features & Data Collection (Months 5-8)
 
@@ -563,11 +607,11 @@ This implementation guide provides a comprehensive roadmap for building the Mult
 - PRD refinement workshops
 
 **Sprint 1-2 (Week 3-6): Infrastructure & Authentication**
-- Epic 1 Stories: 1.1 (Azure Infrastructure), 1.2 (Teamified Accounts)
+- Epic 1 Stories: 1.1 (Azure Infrastructure), 1.2 (Custom SSO Provider)
 - AKS cluster provisioning with Terraform
-- Azure SQL Database and Blob Storage setup
-- OAuth 2.0 integration with Teamified Accounts
-- RBAC implementation
+- Azure Database for PostgreSQL Flexible Server and Blob Storage setup
+- OAuth 2.0 abstraction layer for Custom SSO provider (with local auth fallback)
+- RBAC implementation with Passport.js
 - Monitoring and logging setup
 
 **Sprint 3-4 (Week 7-10): Job Management Foundation**
@@ -643,53 +687,43 @@ This implementation guide provides a comprehensive roadmap for building the Mult
    - Risk management
    - **Time:** Full-time (100%)
 
-2. **Backend Engineers (2-3)**
-   - .NET microservices development
+2. **Full-Stack TypeScript Engineers (3-4)**
+   - NestJS microservices development
+   - React + Tailwind CSS UI development
    - API design and implementation
-   - Database schema design
-   - Integration development (LinkedIn, Teamified Accounts, Team Connect)
+   - Database schema design with Prisma
+   - Integration development (LinkedIn, Custom SSO, Team Connect)
    - **Time:** Full-time (100%)
-   - **Skills:** C#/.NET Core, Entity Framework, Azure, REST APIs, OAuth 2.0
+   - **Skills:** TypeScript, Node.js, NestJS, React, Prisma, PostgreSQL, REST APIs, OAuth 2.0, Tailwind CSS
 
-3. **Frontend Engineers (2)**
-   - React UI development
-   - State management and API integration
-   - Responsive design implementation
-   - UI/UX component library
-   - **Time:** Full-time (100%)
-   - **Skills:** React, TypeScript, Redux, Material-UI, CSS
+   **Note:** Full-stack TypeScript engineers are preferred over separate backend/frontend specialists to maximize team efficiency with a 6-10 person team. This reduces context switching and enables faster feature delivery.
 
-4. **Full-Stack Engineer (1)**
-   - Bridge frontend and backend teams
-   - End-to-end feature development
-   - Integration testing
-   - **Time:** Full-time (100%)
-   - **Skills:** .NET + React, API integration, problem-solving
-
-5. **DevOps Engineer (1)**
+6. **DevOps Engineer (1)**
    - Azure infrastructure management
    - CI/CD pipeline maintenance
    - Kubernetes cluster operations
+   - PostgreSQL and Redis management
    - Monitoring and alerting setup
    - **Time:** Full-time (100%)
-   - **Skills:** Azure, Kubernetes, Terraform, Docker, GitHub Actions
+   - **Skills:** Azure, Kubernetes, Terraform, Docker, GitHub Actions, PostgreSQL, Node.js deployment
 
-6. **QA Engineer (1)**
+5. **QA Engineer (1)**
    - Test plan creation and execution
    - Automated test development (unit, integration, E2E)
    - Bug tracking and regression testing
    - Performance and load testing
    - **Time:** Full-time (100%)
-   - **Skills:** Playwright, xUnit, API testing, test automation
+   - **Skills:** Playwright, Jest, Supertest, API testing, test automation
 
 **Extended Team (Part-time/Advisory):**
 
 7. **UI/UX Designer (0.5 FTE)**
-   - Dashboard and interface design
+   - Dashboard and interface design (Tailwind CSS + shadcn/ui)
    - User flow optimization
-   - Design system creation
+   - Design system creation with purple (#A16AE8) + blue (#8096FD) brand colors
    - Usability testing
    - **Time:** Part-time (50%)
+   - **Skills:** Figma, Tailwind CSS, shadcn/ui, responsive design
 
 8. **Data Scientist / ML Engineer (0.25 FTE for Phase 1, 1.0 FTE for Phase 2-3)**
    - OpenAI/Anthropic prompt engineering
@@ -710,17 +744,23 @@ This implementation guide provides a comprehensive roadmap for building the Mult
     - Sprint planning facilitation
     - **Time:** Full-time (100%)
 
-**Total Estimated Headcount:** 8-10 FTE for MVP (Phase 1)
+**Total Estimated Headcount:** 7-9 FTE for MVP (Phase 1)
+
+**Note on Team Structure:** The recommended approach prioritizes full-stack TypeScript engineers over separate backend (.NET) and frontend (React) specialists. This organizational choice:
+- Reduces context switching between languages (single TypeScript codebase)
+- Enables faster feature delivery with end-to-end ownership
+- Improves team velocity with smaller headcount (7-9 vs 8-10)
+- Simplifies hiring (one job description vs multiple specializations)
+- Better aligns with Tailwind CSS + shadcn/ui + Prisma TypeScript-first ecosystem
 
 ### Skill Requirements Matrix
 
 | Role | Primary Skills | Nice-to-Have | Tools |
 |------|---------------|--------------|-------|
-| Backend Engineer | C#, .NET Core 8, EF Core, Azure SQL, REST APIs, OAuth 2.0 | Microservices, Event-driven architecture, Redis | Visual Studio, Postman, Azure Portal |
-| Frontend Engineer | React 18, TypeScript, Redux, Material-UI, REST API integration | Vite, Storybook, Accessibility | VS Code, Figma, DevTools |
-| DevOps Engineer | Azure (AKS, ACR, SQL), Kubernetes, Terraform, Docker, GitHub Actions | Helm, Istio, Prometheus | kubectl, Terraform, Azure CLI |
-| QA Engineer | Playwright, xUnit, Jest, API testing, test automation | k6 load testing, security testing | Postman, Playwright, Azure Test Plans |
-| UI/UX Designer | Figma, Adobe XD, responsive design, user research | Design systems, accessibility, prototyping | Figma, Miro, UsabilityHub |
+| Full-Stack TypeScript Engineer | TypeScript, Node.js, NestJS, React 18, Prisma, PostgreSQL, REST APIs, OAuth 2.0, Tailwind CSS, shadcn/ui | Microservices, Event-driven architecture, Redis, Azure | VS Code, Postman, pgAdmin, Prisma Studio |
+| DevOps Engineer | Azure (AKS, ACR, PostgreSQL), Kubernetes, Terraform, Docker, GitHub Actions | Helm, Istio, Prometheus, Node.js performance tuning | kubectl, Terraform, Azure CLI |
+| QA Engineer | Playwright, Jest, Supertest, API testing, test automation, TypeScript | k6 load testing, security testing | Postman, Playwright, Jest |
+| UI/UX Designer | Figma, Tailwind CSS, shadcn/ui, responsive design, user research | Design systems, accessibility, prototyping | Figma, Miro, UsabilityHub |
 
 ---
 
@@ -735,24 +775,24 @@ This implementation guide provides a comprehensive roadmap for building the Mult
 
 **Software:**
 - **OS:** Windows 11, macOS, or Ubuntu 22.04 LTS
-- **Docker Desktop:** 4.25+ (for local Kubernetes, databases)
+- **Docker Desktop:** 4.25+ (for local PostgreSQL, Redis, testing)
 - **Node.js:** 20 LTS
-- **.NET SDK:** 8.0
+- **pnpm:** 8+ (package manager)
 - **Git:** 2.40+
-- **IDE:** Visual Studio 2022 or VS Code + extensions
+- **IDE:** VS Code with extensions (ESLint, Prettier, TypeScript, Tailwind CSS IntelliSense, Prisma)
 
 ### Environment Tiers
 
 **1. Local Development**
-- Docker Compose for local services (SQL Server, Redis)
+- Docker Compose for local services (PostgreSQL, Redis)
 - LocalStack for Azure service emulation (optional)
-- Mock external APIs (LinkedIn, Teamified Accounts)
-- Hot reload enabled for fast iteration
+- Mock external APIs (LinkedIn, Custom SSO)
+- Hot reload enabled (Vite HMR for React, NestJS watch mode)
 
 **2. Development (Shared)**
 - Azure Dev/Test subscription
 - Shared AKS cluster with namespace per developer
-- Shared Azure SQL Database (dev tier)
+- Shared Azure Database for PostgreSQL (Burstable B2s tier)
 - Continuous deployment from `develop` branch
 
 **3. Staging (Pre-Production)**
@@ -770,16 +810,17 @@ This implementation guide provides a comprehensive roadmap for building the Mult
 ### Configuration Management
 
 **Secrets Management:**
-- **Local:** User secrets (.NET) + .env files (React) - NOT committed to Git
+- **Local:** .env files (NOT committed to Git) with dotenv package
 - **Azure:** Azure Key Vault for all environments (Dev, Staging, Prod)
 - **CI/CD:** GitHub Secrets for deployment credentials
 
 **Environment Variables:**
-- `ASPNETCORE_ENVIRONMENT` (Development, Staging, Production)
-- `REACT_APP_API_URL` (API base URL per environment)
-- `AZURE_SQL_CONNECTION_STRING` (from Key Vault)
+- `NODE_ENV` (development, staging, production)
+- `VITE_API_URL` (API base URL per environment for React)
+- `DATABASE_URL` (PostgreSQL connection string from Key Vault)
+- `REDIS_URL` (Redis connection string from Key Vault)
 - `OPENAI_API_KEY` (from Key Vault)
-- `TEAMIFIED_OAUTH_CLIENT_ID` (from Key Vault)
+- `SSO_CLIENT_ID` / `SSO_CLIENT_SECRET` (from Key Vault)
 
 ---
 
@@ -887,11 +928,11 @@ jobs:
 
 **Approach:** Forward-only migrations with backward compatibility
 
-**Tools:** Entity Framework Core Migrations
+**Tools:** Prisma Migrate (recommended) or TypeORM Migrations
 
 **Process:**
-1. **Local:** Generate migration with `dotnet ef migrations add`
-2. **Dev:** Auto-apply migrations on deployment
+1. **Local:** Generate migration with `npx prisma migrate dev --name migration_name`
+2. **Dev:** Auto-apply migrations on deployment with `prisma migrate deploy`
 3. **Staging:** Manual migration review and approval
 4. **Production:** Manual migration with backup and rollback plan
 
@@ -899,6 +940,8 @@ jobs:
 - Never drop columns in production (mark as deprecated, remove in future release)
 - Add new columns as nullable, populate data, then add NOT NULL constraint
 - Test migrations on production-size dataset in staging
+- Use `prisma migrate diff` to review changes before applying
+- Always create backup before production migrations
 
 ---
 
@@ -906,11 +949,12 @@ jobs:
 
 ### Authentication & Authorization
 
-**OAuth 2.0 / OpenID Connect with Teamified Accounts:**
+**OAuth 2.0 / OpenID Connect with Custom SSO Provider:**
 - **Token Expiry:** Access tokens (15 min), Refresh tokens (7 days)
 - **Token Storage:** HttpOnly cookies (backend), memory storage (frontend)
 - **PKCE:** Proof Key for Code Exchange for public clients
-- **MFA:** Delegated to Teamified Accounts (no custom implementation)
+- **MFA:** Delegated to Custom SSO Provider (handled by SSO provider)
+- **Implementation:** Passport.js with custom OAuth 2.0 strategy, abstraction layer for configurability
 
 **Role-Based Access Control (RBAC):**
 - **Roles:** Admin, Recruiter Manager, Recruiter, Client, Candidate
@@ -921,8 +965,9 @@ jobs:
 
 **Encryption:**
 - **In-Transit:** TLS 1.3 for all API communication, HTTPS-only
-- **At-Rest:** Azure SQL TDE (Transparent Data Encryption), Blob Storage encryption
-- **Application-Level:** Sensitive fields (SSN, salary) encrypted with AES-256
+- **At-Rest:** PostgreSQL TDE (Transparent Data Encryption via Azure), Blob Storage encryption
+- **Column-Level:** pgcrypto extension for sensitive fields (SSN, salary) with AES-256
+- **Application-Level:** Additional encryption layer with crypto-js for highly sensitive data
 
 **Data Retention:**
 - **Active Candidates:** Indefinite (until manual deletion or GDPR request)
@@ -961,25 +1006,24 @@ jobs:
 ### MVP Phase 1 (4-6 months) Cost Breakdown
 
 **Personnel Costs (6-month estimate):**
-- 2 Backend Engineers: $120k/year × 2 × 0.5 = **$120,000**
-- 2 Frontend Engineers: $110k/year × 2 × 0.5 = **$110,000**
-- 1 Full-Stack Engineer: $115k/year × 0.5 = **$57,500**
+- 3-4 Full-Stack TypeScript Engineers: $120k/year × 3.5 × 0.5 = **$210,000**
 - 1 DevOps Engineer: $130k/year × 0.5 = **$65,000**
-- 1 QA Engineer: $90k/year × 0.5 = **$45,000**
+- 1 QA Engineer: $95k/year × 0.5 = **$47,500**
 - 1 Engineering Manager: $150k/year × 0.5 = **$75,000**
-- 0.5 UI/UX Designer: $100k/year × 0.5 × 0.5 = **$25,000**
-- **Subtotal Personnel:** ~**$497,500**
+- 0.5 UI/UX Designer: $105k/year × 0.5 × 0.5 = **$26,250**
+- 0.25 Data Scientist/ML Engineer: $140k/year × 0.25 × 0.5 = **$17,500**
+- **Subtotal Personnel:** ~**$441,250**
 
 **Azure Infrastructure Costs (6 months):**
 - **AKS Cluster:** 3 nodes × Standard_D4s_v3 @ $140/month = $420/month × 6 = **$2,520**
-- **Azure SQL Database:** Serverless (2-8 vCores) @ $300/month × 6 = **$1,800**
+- **Azure Database for PostgreSQL:** Flexible Server (Burstable B2s) @ $180/month × 6 = **$1,080**
 - **Azure Blob Storage:** 100GB hot tier @ $20/month × 6 = **$120**
 - **Azure Cache for Redis:** Basic tier @ $15/month × 6 = **$90**
 - **Azure Application Insights:** 10GB/month @ $50/month × 6 = **$300**
 - **Azure Load Balancer:** Standard tier @ $30/month × 6 = **$180**
 - **Azure Container Registry:** Standard tier @ $20/month × 6 = **$120**
 - **Bandwidth:** 500GB/month @ $50/month × 6 = **$300**
-- **Subtotal Azure:** ~**$5,430**
+- **Subtotal Azure:** ~**$4,710**
 
 **Third-Party Services (6 months):**
 - **OpenAI API:** 1M tokens/month @ $0.03/1k = $30/month × 6 = **$180**
@@ -990,10 +1034,11 @@ jobs:
 - **Subtotal Services:** ~**$1,320**
 
 **Software Licenses & Tools (one-time + 6 months):**
-- **Visual Studio Enterprise:** $250/month × 3 × 6 = **$4,500** (or use Community edition - free)
+- **VS Code:** Free (open source)
 - **Figma Professional:** $15/user × 2 × 6 = **$180**
 - **Postman Team:** $12/user × 5 × 6 = **$360**
-- **Subtotal Tools:** ~**$5,040**
+- **GitHub Team:** $4/user × 8 × 6 = **$192**
+- **Subtotal Tools:** ~**$732**
 
 **Testing & Security (one-time):**
 - **Load Testing (k6 Cloud):** $500
@@ -1001,14 +1046,20 @@ jobs:
 - **Accessibility Audit:** $2,000
 - **Subtotal:** ~**$7,500**
 
-**Contingency (10%):** ~**$51,700**
+**Contingency (10%):** ~**$45,700**
 
-### Total MVP Budget: **$568,490** (approximately $250k-$400k depending on team size and location)
+### Total MVP Budget: **$502,692** (~$500k-$550k depending on team size and location)
 
-**Phase 2 (Months 5-8) Estimate:** +$350,000 (ML engineer, expanded team)  
-**Phase 3 (Months 9-12) Estimate:** +$400,000 (ML infrastructure, optimization)
+**Cost Savings vs .NET Stack:** ~$66k (12% reduction) due to:
+- Smaller team (7-9 vs 8-10 FTE)
+- No Visual Studio Enterprise licenses ($4,500 saved)
+- Lower PostgreSQL costs vs Azure SQL ($720 saved)
+- Full-stack engineers reduce coordination overhead
 
-**Total Project Budget (12 months):** ~**$1.3M - $1.5M**
+**Phase 2 (Months 5-8) Estimate:** +$320,000 (ML engineer, expanded team - lower than .NET estimate)  
+**Phase 3 (Months 9-12) Estimate:** +$370,000 (ML infrastructure, optimization - lower than .NET estimate)
+
+**Total Project Budget (12 months):** ~**$1.19M - $1.24M** (12% savings vs .NET stack estimate of $1.3M-$1.5M)
 
 ### Ongoing Operational Costs (Monthly, Post-Launch)
 
@@ -1038,7 +1089,7 @@ jobs:
 
 | Risk | Likelihood | Impact | Mitigation Strategy |
 |------|-----------|--------|---------------------|
-| **Teamified Accounts API changes** | Low | High | Maintain abstraction layer, version API contracts, automated integration tests, communication with Teamified team. |
+| **Custom SSO Provider API changes** | Medium | High | Maintain abstraction layer, version API contracts, automated integration tests, OIDC discovery endpoint support for dynamic updates. |
 | **Team Connect API unavailable** | Medium | Medium | Build integration as optional feature, fallback to manual scheduling, alternative calendar integrations (Google/Outlook). |
 | **External portal schema changes** | High | High | API versioning, backward compatibility, data validation layer, change notification process with portal team. |
 
@@ -1096,26 +1147,44 @@ jobs:
 
 ### Technology Selection Rationale
 
-**Why .NET Core over Node.js for Backend?**
-- Enterprise-grade performance and type safety
-- Better Azure integration and tooling
-- Strong async/await support for external API calls
-- Mature ecosystem for microservices (Dapr, Steeltoe)
-- Easier debugging and profiling
+**Why Node.js + NestJS over .NET for Backend?**
+- Full-stack TypeScript consistency (same language frontend and backend)
+- Faster MVP delivery with smaller team (6-10 people)
+- Better PostgreSQL ecosystem (Prisma, TypeORM, node-postgres)
+- Excellent Tailwind CSS + shadcn/ui integration
+- Easier to hire full-stack TypeScript developers
+- Enterprise-grade with NestJS architecture (similar to .NET structure)
+- Mature Azure SDK for JavaScript
 
 **Why React over Angular/Vue?**
 - Largest ecosystem and community
 - Excellent TypeScript support
-- Mature UI libraries (Material-UI, Ant Design)
+- Tailwind CSS + shadcn/ui are React-first
 - Better performance for complex dashboards
 - Easier to find experienced developers
 
+**Why Tailwind CSS + shadcn/ui over Material-UI?**
+- Custom branding with purple (#A16AE8) + blue (#8096FD) color scheme
+- Utility-first approach for faster development
+- Smaller bundle size (only used utilities)
+- Better design flexibility and customization
+- shadcn/ui provides accessible, headless components
+- No opinionated design system to override
+
+**Why PostgreSQL over Azure SQL?**
+- Better Prisma/TypeORM support (built for PostgreSQL)
+- Superior JSONB support for flexible schemas
+- 30-40% lower cost for same workload
+- Open-source, no vendor lock-in
+- Built-in full-text search (tsvector)
+- Better Node.js ecosystem integration
+
 **Why Azure over AWS/GCP?**
-- Best integration with .NET stack
+- Excellent PostgreSQL hosting (Azure Database for PostgreSQL)
 - Unified security model (Azure AD, Key Vault)
-- Excellent SQL Server hosting (Azure SQL)
 - Strong Kubernetes support (AKS)
-- Familiarity with existing team (if applicable)
+- Mature Node.js SDK (@azure/*)
+- Cost-effective for startups
 
 **Why Kubernetes over Azure App Service?**
 - Microservices architecture flexibility
@@ -1124,22 +1193,108 @@ jobs:
 - Advanced traffic management (Istio, canary deployments)
 - Future-proof for scale
 
+### Tailwind CSS Configuration Example
+
+```javascript
+// tailwind.config.js
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: [
+    "./src/**/*.{js,jsx,ts,tsx}",
+    "./components/**/*.{js,jsx,ts,tsx}",
+  ],
+  theme: {
+    extend: {
+      colors: {
+        // Brand Colors
+        primary: {
+          DEFAULT: '#A16AE8', // Purple
+          50: '#F5F0FF',
+          100: '#EBE2FF',
+          200: '#D6C5FF',
+          300: '#C2A8FF',
+          400: '#AD8BFF',
+          500: '#A16AE8', // Primary Purple
+          600: '#8B4FD9',
+          700: '#7335CA',
+          800: '#5B1CB6',
+          900: '#430397',
+        },
+        secondary: {
+          DEFAULT: '#8096FD', // Blue
+          50: '#F0F3FF',
+          100: '#E0E7FF',
+          200: '#C7D2FE',
+          300: '#A4BBFE',
+          400: '#8096FD', // Secondary Blue
+          500: '#6366F1',
+          600: '#4F46E5',
+          700: '#4338CA',
+          800: '#3730A3',
+          900: '#312E81',
+        },
+        // Employment Type Colors
+        contract: '#FF6B6B',
+        parttime: '#4ECDC4',
+        fulltime: '#45B7D1',
+        eor: '#FFA07A',
+      },
+      fontFamily: {
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+      },
+    },
+  },
+  plugins: [
+    require('@tailwindcss/forms'),
+    require('@tailwindcss/typography'),
+  ],
+}
+```
+
+### shadcn/ui Components Setup
+
+```bash
+# Initialize shadcn/ui
+npx shadcn-ui@latest init
+
+# Add commonly used components
+npx shadcn-ui@latest add button
+npx shadcn-ui@latest add card
+npx shadcn-ui@latest add dialog
+npx shadcn-ui@latest add dropdown-menu
+npx shadcn-ui@latest add form
+npx shadcn-ui@latest add input
+npx shadcn-ui@latest add label
+npx shadcn-ui@latest add select
+npx shadcn-ui@latest add table
+npx shadcn-ui@latest add tabs
+npx shadcn-ui@latest add toast
+```
+
 ### Recommended Learning Resources
 
-**For Backend Engineers:**
-- [Microsoft Learn: .NET Microservices Architecture](https://learn.microsoft.com/en-us/dotnet/architecture/microservices/)
-- [Azure Kubernetes Service Documentation](https://learn.microsoft.com/en-us/azure/aks/)
-- [Entity Framework Core Best Practices](https://learn.microsoft.com/en-us/ef/core/)
+**For Full-Stack Engineers:**
+- [NestJS Documentation](https://docs.nestjs.com/)
+- [Prisma Quickstart](https://www.prisma.io/docs/getting-started/quickstart)
+- [TypeScript Handbook](https://www.typescriptlang.org/docs/handbook/intro.html)
+- [Azure SDK for JavaScript](https://learn.microsoft.com/en-us/javascript/api/overview/azure/)
 
 **For Frontend Engineers:**
 - [React TypeScript Cheatsheet](https://react-typescript-cheatsheet.netlify.app/)
+- [Tailwind CSS Documentation](https://tailwindcss.com/docs)
+- [shadcn/ui Documentation](https://ui.shadcn.com/)
 - [Redux Toolkit Official Tutorial](https://redux-toolkit.js.org/tutorials/overview)
-- [Material-UI Documentation](https://mui.com/)
+
+**For Backend Engineers:**
+- [NestJS Microservices](https://docs.nestjs.com/microservices/basics)
+- [Prisma Best Practices](https://www.prisma.io/docs/guides/performance-and-optimization)
+- [PostgreSQL Performance Tuning](https://www.postgresql.org/docs/current/performance-tips.html)
 
 **For DevOps Engineers:**
-- [Azure DevOps Labs](https://www.azuredevopslabs.com/)
+- [Azure Kubernetes Service Documentation](https://learn.microsoft.com/en-us/azure/aks/)
 - [Kubernetes Best Practices](https://kubernetes.io/docs/concepts/cluster-administration/)
 - [Terraform Azure Provider](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs)
+- [Docker Best Practices](https://docs.docker.com/develop/dev-best-practices/)
 
 ---
 
@@ -1147,6 +1302,7 @@ jobs:
 
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
+| 2.0 | 2025-11-13 | Product Manager | **Major Stack Update:** Node.js + NestJS backend (from .NET), Tailwind CSS + shadcn/ui frontend (from Material-UI), PostgreSQL (from Azure SQL), Custom SSO provider (from Teamified Accounts), Purple/Blue brand colors, Full-stack TypeScript team structure, Updated cost estimates (~$66k savings) |
 | 1.0 | 2025-11-13 | Product Manager | Initial implementation guide creation with technical stack and phased roadmap |
 
 ---
