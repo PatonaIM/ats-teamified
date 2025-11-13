@@ -55,6 +55,14 @@ The documented system uses Azure-native architecture with:
 - **Brand Colors**: Purple (#A16AE8) + Blue (#8096FD)
 
 ## Recent Changes
+- 2025-11-13: **Created Epic Documentation in docs/epics Folder**
+  - Epic 1: Foundation & Core Infrastructure (8 stories, 4 months MVP)
+  - Epic 2: External Portal Integration & Candidate Processing (7 stories, 2 months MVP + 3 months Phase 2)
+  - Epic 3: Assessment, Interview & Document Verification Systems (7 stories, AI questions in MVP, full platform Phase 2)
+  - Epic 4: Budget Approval & Employment Type Workflows (5 stories, Phase 2)
+  - Epic 5: Candidate Experience & Notification Platform (6 stories, simplified sentiment in MVP, full portal Phase 2)
+  - Epic 6: Analytics, Reporting & System Optimization (5 stories, descriptive analytics MVP, predictive Phase 2)
+  - README.md with epic overview, dependencies, success metrics, and technology stack
 - 2025-11-13: **Created UI Specifications Document (v2.0 - Expanded with External Portal Integration)**
   - Comprehensive landing page layout (hero, features, employment types showcase)
   - Role-based side menu navigation (Admin, Recruiter, Client)
