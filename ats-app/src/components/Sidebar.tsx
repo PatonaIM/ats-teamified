@@ -9,12 +9,14 @@ import {
   ChevronLeft,
   ChevronRight,
   UserCircle,
-  LogOut
+  LogOut,
+  CheckCircle2
 } from 'lucide-react';
 
 const menuItems = [
   { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { path: '/dashboard/jobs', icon: Briefcase, label: 'Jobs' },
+  { path: '/dashboard/approvals', icon: CheckCircle2, label: 'Approvals' },
   { path: '/dashboard/candidates', icon: Users, label: 'Candidates' },
   { path: '/dashboard/analytics', icon: BarChart3, label: 'Analytics' },
 ];
