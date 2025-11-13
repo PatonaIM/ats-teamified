@@ -70,6 +70,16 @@ The documented system uses Azure-native architecture with:
   - shadcn/ui component library specifications with code examples
   - Responsive design guidelines (desktop, tablet, mobile)
   - Accessibility standards (WCAG 2.1 AA)
+- 2025-11-13: **Implementation Guide v2.1 - External Portal Integration Architecture Added**
+  - **NEW: External Portal Integration section** with complete API specifications, webhooks, data flows
+  - Bidirectional communication patterns (ATS ↔ Candidate Portal)
+  - Assessment assignment/completion flow with score synchronization
+  - Interview scheduling via Team Connect with candidate confirmation
+  - Document request/upload workflows with Azure Blob Storage integration
+  - Offer acceptance flow with e-signature support
+  - Database schema for portal integration (6 new tables)
+  - Retry logic, circuit breaker patterns, HMAC security, idempotency handling
+  - Monitoring and observability specifications
 - 2025-11-13: **Implementation Guide v2.0 - FINAL APPROVAL ✅**
   - **Major Stack Update:** Node.js + NestJS backend (from .NET), PostgreSQL (from Azure SQL), Tailwind CSS + shadcn/ui (from Material-UI), Custom SSO provider (from Teamified Accounts)
   - Updated Purple (#A16AE8) + Blue (#8096FD) brand colors throughout UI specifications

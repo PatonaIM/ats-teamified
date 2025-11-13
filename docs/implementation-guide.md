@@ -462,6 +462,582 @@ This implementation guide provides a comprehensive roadmap for building the Mult
 - `SentimentScores` - Candidate engagement scoring history
 - `MLModels` - Model metadata and version tracking
 
+**External Portal Integration Tables:**
+- `PortalAssessments` - Assessment assignments and results
+- `PortalInterviews` - Interview scheduling and confirmations
+- `PortalDocumentRequests` - Document requests sent to portal
+- `PortalActivityLog` - All portal interactions and timestamps
+- `WebhookEvents` - Incoming webhook events from external portal
+- `SyncQueue` - Queued sync operations with retry logic
+
+---
+
+## External Portal Integration Architecture
+
+### Overview
+
+The ATS system integrates bidirectionally with an **External Candidate Portal** where candidates complete assessments, upload documents, confirm interviews, and accept offers. This integration ensures real-time synchronization of candidate data between both systems.
+
+### Integration Pattern
+
+**Architecture Type:** Event-driven microservices with REST APIs + Webhooks
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                        ATS System (Our System)                      │
+│                                                                      │
+│  ┌────────────────────┐         ┌────────────────────┐             │
+│  │  Integration       │         │  Webhook Handler   │             │
+│  │  Service           │◄────────│  Service           │             │
+│  │  (Outbound)        │         │  (Inbound)         │             │
+│  └────────────────────┘         └────────────────────┘             │
+│           │                              ▲                          │
+│           │ POST /api/v1/...            │ POST /webhooks/...       │
+│           ▼                              │                          │
+└───────────────────────────────────────────────────────────────────┘
+            │                              │
+            │ HTTPS (REST)                 │ HTTPS (Webhooks)
+            ▼                              │
+┌───────────────────────────────────────────────────────────────────┐
+│                   External Candidate Portal API                    │
+│                                                                     │
+│  ┌────────────────┐  ┌────────────────┐  ┌────────────────┐      │
+│  │  Assessments   │  │  Interviews    │  │  Documents     │      │
+│  │  API           │  │  API           │  │  API           │      │
+│  └────────────────┘  └────────────────┘  └────────────────┘      │
+└───────────────────────────────────────────────────────────────────┘
+```
+
+### Data Flow Scenarios
+
+#### 1. Assessment Assignment Flow
+
+**ATS → Portal (Outbound):**
+```typescript
+// ATS Integration Service
+POST https://candidate-portal.example.com/api/v1/assessments
+
+Request:
+{
+  "candidate_id": "cand_12345",
+  "assessment_type": "technical_javascript",
+  "job_id": "job_67890",
+  "due_date": "2025-11-20T23:59:59Z",
+  "callback_url": "https://ats.example.com/webhooks/portal/assessment-completed",
+  "metadata": {
+    "ats_candidate_id": "uuid-here",
+    "ats_job_id": "uuid-here"
+  }
+}
+
+Response:
+{
+  "assessment_id": "assess_abc123",
+  "candidate_portal_url": "https://portal.example.com/assessments/assess_abc123",
+  "status": "pending",
+  "created_at": "2025-11-13T10:00:00Z"
+}
+```
+
+**Portal → ATS (Inbound Webhook):**
+```typescript
+// Webhook received when candidate completes assessment
+POST https://ats.example.com/webhooks/portal/assessment-completed
+
+Request:
+{
+  "event": "assessment.completed",
+  "timestamp": "2025-11-14T14:30:00Z",
+  "assessment_id": "assess_abc123",
+  "candidate_id": "cand_12345",
+  "results": {
+    "score": 85,
+    "time_taken_minutes": 45,
+    "completed_at": "2025-11-14T14:30:00Z",
+    "breakdown": {
+      "code_quality": 90,
+      "problem_solving": 80,
+      "best_practices": 85
+    }
+  },
+  "metadata": {
+    "ats_candidate_id": "uuid-here",
+    "ats_job_id": "uuid-here"
+  },
+  "signature": "sha256_hmac_signature_here"
+}
+
+Response (from ATS):
+{
+  "received": true,
+  "processed_at": "2025-11-14T14:30:01Z"
+}
+```
+
+#### 2. Interview Scheduling Flow
+
+**ATS → Portal (Team Connect Integration):**
+```typescript
+// ATS creates interview via Team Connect, notifies portal
+POST https://candidate-portal.example.com/api/v1/interviews
+
+Request:
+{
+  "candidate_id": "cand_12345",
+  "job_id": "job_67890",
+  "interview_type": "technical",
+  "proposed_slots": [
+    {"start": "2025-11-15T14:00:00Z", "end": "2025-11-15T15:00:00Z"},
+    {"start": "2025-11-16T10:00:00Z", "end": "2025-11-16T11:00:00Z"}
+  ],
+  "meeting_link": "https://zoom.us/j/123456789",
+  "interviewers": ["Jane Smith", "Mike Johnson"],
+  "callback_url": "https://ats.example.com/webhooks/portal/interview-confirmed"
+}
+
+Response:
+{
+  "interview_id": "int_xyz789",
+  "status": "awaiting_confirmation",
+  "candidate_portal_url": "https://portal.example.com/interviews/int_xyz789"
+}
+```
+
+**Portal → ATS (Candidate Confirms):**
+```typescript
+POST https://ats.example.com/webhooks/portal/interview-confirmed
+
+Request:
+{
+  "event": "interview.confirmed",
+  "timestamp": "2025-11-13T09:15:00Z",
+  "interview_id": "int_xyz789",
+  "candidate_id": "cand_12345",
+  "selected_slot": {
+    "start": "2025-11-15T14:00:00Z",
+    "end": "2025-11-15T15:00:00Z"
+  },
+  "status": "confirmed",
+  "signature": "sha256_hmac_signature_here"
+}
+```
+
+#### 3. Document Request Flow
+
+**ATS → Portal:**
+```typescript
+POST https://candidate-portal.example.com/api/v1/document-requests
+
+Request:
+{
+  "candidate_id": "cand_12345",
+  "job_id": "job_67890",
+  "documents_required": [
+    {
+      "type": "portfolio",
+      "description": "Please upload your design portfolio",
+      "required": true
+    },
+    {
+      "type": "references",
+      "description": "2-3 professional references",
+      "required": true
+    }
+  ],
+  "due_date": "2025-11-20T23:59:59Z",
+  "callback_url": "https://ats.example.com/webhooks/portal/document-uploaded"
+}
+```
+
+**Portal → ATS (Document Uploaded):**
+```typescript
+POST https://ats.example.com/webhooks/portal/document-uploaded
+
+Request:
+{
+  "event": "document.uploaded",
+  "timestamp": "2025-11-14T16:45:00Z",
+  "candidate_id": "cand_12345",
+  "document_type": "portfolio",
+  "document": {
+    "filename": "sarah_johnson_portfolio.pdf",
+    "size_bytes": 1258291,
+    "content_type": "application/pdf",
+    "download_url": "https://portal.example.com/documents/download/doc_abc123?token=temp_token",
+    "checksum_sha256": "abcdef123456..."
+  },
+  "signature": "sha256_hmac_signature_here"
+}
+
+// ATS downloads document from provided URL and stores in Azure Blob Storage
+```
+
+#### 4. Offer Acceptance Flow
+
+**ATS → Portal:**
+```typescript
+POST https://candidate-portal.example.com/api/v1/offers
+
+Request:
+{
+  "candidate_id": "cand_12345",
+  "job_id": "job_67890",
+  "offer_letter_url": "https://ats-blob.example.com/offers/offer_letter_123.pdf",
+  "offer_details": {
+    "position": "Senior Full-Stack Developer",
+    "salary": "$120,000",
+    "start_date": "2025-12-01",
+    "employment_type": "full-time"
+  },
+  "requires_signature": true,
+  "expiry_date": "2025-11-30T23:59:59Z",
+  "callback_url": "https://ats.example.com/webhooks/portal/offer-accepted"
+}
+```
+
+**Portal → ATS (Offer Decision):**
+```typescript
+POST https://ats.example.com/webhooks/portal/offer-accepted
+
+Request:
+{
+  "event": "offer.accepted",
+  "timestamp": "2025-11-16T11:20:00Z",
+  "candidate_id": "cand_12345",
+  "offer_id": "offer_123",
+  "decision": "accepted",
+  "signed_document_url": "https://portal.example.com/documents/signed/offer_123_signed.pdf",
+  "signature_timestamp": "2025-11-16T11:19:45Z",
+  "signature": "sha256_hmac_signature_here"
+}
+```
+
+### API Design Specifications
+
+#### Authentication
+
+**Method:** API Key + HMAC Signature
+
+```typescript
+// Outbound requests (ATS → Portal)
+headers: {
+  'Authorization': 'Bearer API_KEY_FROM_PORTAL',
+  'Content-Type': 'application/json',
+  'X-ATS-Request-ID': 'unique-request-id',
+  'X-ATS-Timestamp': '2025-11-13T10:00:00Z'
+}
+
+// Inbound webhooks (Portal → ATS)
+// Verify HMAC signature in request body
+function verifyWebhookSignature(payload: string, signature: string): boolean {
+  const secret = process.env.PORTAL_WEBHOOK_SECRET;
+  const computedSignature = crypto
+    .createHmac('sha256', secret)
+    .update(payload)
+    .digest('hex');
+  
+  return crypto.timingSafeEqual(
+    Buffer.from(signature),
+    Buffer.from(computedSignature)
+  );
+}
+```
+
+#### Retry Logic
+
+**Outbound Requests (ATS → Portal):**
+```typescript
+// Exponential backoff with max 5 retries
+const retryConfig = {
+  maxRetries: 5,
+  baseDelay: 1000, // 1 second
+  maxDelay: 60000, // 1 minute
+  backoffFactor: 2
+};
+
+async function sendToPortalWithRetry(endpoint: string, data: any) {
+  for (let attempt = 0; attempt < retryConfig.maxRetries; attempt++) {
+    try {
+      const response = await axios.post(endpoint, data, { timeout: 30000 });
+      
+      // Log success to SyncQueue table
+      await db.syncQueue.update({
+        status: 'completed',
+        completed_at: new Date(),
+        response: response.data
+      });
+      
+      return response.data;
+    } catch (error) {
+      const delay = Math.min(
+        retryConfig.baseDelay * Math.pow(retryConfig.backoffFactor, attempt),
+        retryConfig.maxDelay
+      );
+      
+      if (attempt < retryConfig.maxRetries - 1) {
+        await sleep(delay);
+        continue;
+      }
+      
+      // Log failure to SyncQueue table
+      await db.syncQueue.update({
+        status: 'failed',
+        error: error.message,
+        retry_count: attempt + 1
+      });
+      
+      throw error;
+    }
+  }
+}
+```
+
+**Inbound Webhooks (Portal → ATS):**
+```typescript
+// Idempotency check using event ID
+async function handleWebhook(req: Request, res: Response) {
+  const eventId = req.body.event_id || req.headers['x-event-id'];
+  
+  // Check if already processed
+  const existing = await db.webhookEvents.findOne({ event_id: eventId });
+  if (existing) {
+    return res.status(200).json({ received: true, duplicate: true });
+  }
+  
+  // Verify signature
+  if (!verifyWebhookSignature(req.rawBody, req.body.signature)) {
+    return res.status(401).json({ error: 'Invalid signature' });
+  }
+  
+  // Store event for idempotency
+  await db.webhookEvents.create({
+    event_id: eventId,
+    event_type: req.body.event,
+    payload: req.body,
+    received_at: new Date(),
+    status: 'processing'
+  });
+  
+  // Process webhook asynchronously
+  processWebhookAsync(req.body);
+  
+  // Respond immediately (within 5 seconds)
+  return res.status(200).json({ received: true, processed_at: new Date() });
+}
+```
+
+### Database Schema for Portal Integration
+
+```sql
+-- Portal Assessments
+CREATE TABLE portal_assessments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  candidate_id UUID NOT NULL REFERENCES candidates(id),
+  job_id UUID NOT NULL REFERENCES jobs(id),
+  portal_assessment_id VARCHAR(255) NOT NULL UNIQUE,
+  assessment_type VARCHAR(100) NOT NULL,
+  status VARCHAR(50) NOT NULL, -- pending, in_progress, completed, overdue
+  score INTEGER,
+  time_taken_minutes INTEGER,
+  breakdown JSONB, -- Performance breakdown by category
+  assigned_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  due_date TIMESTAMPTZ,
+  completed_at TIMESTAMPTZ,
+  portal_url TEXT,
+  last_synced_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Portal Interviews
+CREATE TABLE portal_interviews (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  candidate_id UUID NOT NULL REFERENCES candidates(id),
+  job_id UUID NOT NULL REFERENCES jobs(id),
+  portal_interview_id VARCHAR(255) NOT NULL UNIQUE,
+  interview_type VARCHAR(100) NOT NULL,
+  status VARCHAR(50) NOT NULL, -- awaiting_confirmation, confirmed, rescheduled, declined, completed
+  scheduled_start TIMESTAMPTZ,
+  scheduled_end TIMESTAMPTZ,
+  meeting_link TEXT,
+  interviewers JSONB, -- Array of interviewer names
+  candidate_confirmed_at TIMESTAMPTZ,
+  portal_url TEXT,
+  last_synced_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Portal Document Requests
+CREATE TABLE portal_document_requests (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  candidate_id UUID NOT NULL REFERENCES candidates(id),
+  job_id UUID NOT NULL REFERENCES jobs(id),
+  portal_request_id VARCHAR(255) NOT NULL UNIQUE,
+  document_type VARCHAR(100) NOT NULL,
+  description TEXT,
+  status VARCHAR(50) NOT NULL, -- pending, uploaded, overdue
+  required BOOLEAN DEFAULT true,
+  due_date TIMESTAMPTZ,
+  uploaded_at TIMESTAMPTZ,
+  document_id UUID REFERENCES documents(id), -- Link to uploaded document
+  portal_url TEXT,
+  last_synced_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Portal Activity Log
+CREATE TABLE portal_activity_log (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  candidate_id UUID NOT NULL REFERENCES candidates(id),
+  activity_type VARCHAR(100) NOT NULL, -- assessment_completed, interview_confirmed, document_uploaded, etc.
+  description TEXT,
+  metadata JSONB,
+  occurred_at TIMESTAMPTZ NOT NULL,
+  synced_at TIMESTAMPTZ DEFAULT NOW(),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Webhook Events (Idempotency)
+CREATE TABLE webhook_events (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  event_id VARCHAR(255) NOT NULL UNIQUE, -- From external portal
+  event_type VARCHAR(100) NOT NULL,
+  payload JSONB NOT NULL,
+  status VARCHAR(50) NOT NULL, -- processing, completed, failed
+  error_message TEXT,
+  received_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  processed_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  
+  INDEX idx_webhook_events_event_id (event_id),
+  INDEX idx_webhook_events_event_type (event_type),
+  INDEX idx_webhook_events_status (status)
+);
+
+-- Sync Queue (Retry Management)
+CREATE TABLE sync_queue (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  entity_type VARCHAR(100) NOT NULL, -- assessment, interview, document, offer
+  entity_id UUID NOT NULL,
+  operation VARCHAR(50) NOT NULL, -- create, update, delete
+  endpoint TEXT NOT NULL,
+  payload JSONB NOT NULL,
+  status VARCHAR(50) NOT NULL, -- pending, in_progress, completed, failed
+  retry_count INTEGER DEFAULT 0,
+  max_retries INTEGER DEFAULT 5,
+  last_error TEXT,
+  next_retry_at TIMESTAMPTZ,
+  completed_at TIMESTAMPTZ,
+  response JSONB,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+  
+  INDEX idx_sync_queue_status (status),
+  INDEX idx_sync_queue_next_retry (next_retry_at) WHERE status = 'pending'
+);
+```
+
+### Real-time Synchronization
+
+**WebSocket Connection (Optional - Phase 2):**
+```typescript
+// For real-time updates without polling
+import { io } from 'socket.io-client';
+
+const socket = io('wss://candidate-portal.example.com', {
+  auth: {
+    token: process.env.PORTAL_API_KEY
+  }
+});
+
+socket.on('candidate.activity', (data) => {
+  // Real-time updates: assessment started, document uploaded, etc.
+  updateCandidateActivityUI(data);
+});
+```
+
+**Polling Fallback (MVP - Phase 1):**
+```typescript
+// Poll for updates every 5 minutes as fallback
+setInterval(async () => {
+  const pendingAssessments = await db.portalAssessments.find({
+    status: 'pending',
+    last_synced_at: { lt: new Date(Date.now() - 5 * 60 * 1000) }
+  });
+  
+  for (const assessment of pendingAssessments) {
+    const status = await fetchAssessmentStatus(assessment.portal_assessment_id);
+    await updateAssessmentStatus(assessment.id, status);
+  }
+}, 5 * 60 * 1000);
+```
+
+### Error Handling
+
+**Circuit Breaker Pattern:**
+```typescript
+import CircuitBreaker from 'opossum';
+
+const circuitBreakerOptions = {
+  timeout: 30000, // 30 seconds
+  errorThresholdPercentage: 50,
+  resetTimeout: 60000 // 1 minute
+};
+
+const portalApiCall = new CircuitBreaker(async (endpoint, data) => {
+  return await axios.post(endpoint, data);
+}, circuitBreakerOptions);
+
+portalApiCall.on('open', () => {
+  console.error('Circuit breaker opened - Portal API unavailable');
+  // Alert operations team
+});
+
+portalApiCall.on('halfOpen', () => {
+  console.info('Circuit breaker half-open - Testing Portal API');
+});
+```
+
+### Security Considerations
+
+1. **HMAC Signature Verification**: All webhook payloads must be signed
+2. **API Key Rotation**: Keys rotated every 90 days
+3. **TLS 1.3**: All communication encrypted
+4. **Rate Limiting**: 1000 requests/minute per tenant
+5. **IP Whitelisting**: Portal API IPs whitelisted in ATS firewall
+6. **Request Timeout**: 30-second timeout on all outbound requests
+7. **Data Validation**: Schema validation on all webhook payloads
+
+### Monitoring & Observability
+
+**Key Metrics:**
+- Webhook processing time (target: < 500ms)
+- Sync queue success rate (target: > 99%)
+- API call latency (target: < 1 second p95)
+- Failed webhooks requiring manual intervention
+- Document download success rate
+
+**Alerts:**
+- Circuit breaker open for > 5 minutes
+- Sync queue failures > 10 in 1 hour
+- Webhook processing backlog > 100 events
+- Assessment overdue notifications not sent
+
+**Logging:**
+```typescript
+// Structured logging for all portal interactions
+logger.info('Portal API call', {
+  endpoint: '/api/v1/assessments',
+  candidate_id: 'uuid',
+  job_id: 'uuid',
+  response_time_ms: 250,
+  status_code: 200,
+  request_id: 'req_123'
+});
+```
+
 ---
 
 ## Implementation Phases
