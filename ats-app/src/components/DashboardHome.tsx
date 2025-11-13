@@ -32,11 +32,61 @@ export function DashboardHome() {
   const fetchDashboardStats = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:3001/api/dashboard/stats');
-      const data = await response.json();
-      setStats(data);
+      
+      // Fetch jobs and approvals separately using direct URLs
+      const [jobsRes, approvalsRes] = await Promise.all([
+        fetch('http://localhost:3001/api/jobs'),
+        fetch('http://localhost:3001/api/approvals?status=pending')
+      ]);
+      
+      const jobs = await jobsRes.json();
+      const approvals = await approvalsRes.json();
+      
+      // Calculate stats from jobs data
+      const totalJobs = jobs.length;
+      const activeJobs = jobs.filter((j: any) => j.status === 'published').length;
+      const draftJobs = jobs.filter((j: any) => j.status === 'draft').length;
+      const pendingApprovals = approvals.length;
+      
+      // Get recent jobs (last 5)
+      const recentJobs = jobs
+        .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+        .slice(0, 5)
+        .map((job: any) => ({
+          id: job.id,
+          title: job.title,
+          employment_type: job.employment_type,
+          status: job.status,
+          city: job.location?.split(',')[0] || job.city || 'Unknown',
+          country: job.location?.split(',')[1]?.trim() || job.country || 'Unknown',
+          candidate_count: job.candidate_count || 0
+        }));
+      
+      const overdueApprovals = approvals.filter((a: any) => {
+        const createdAt = new Date(a.created_at);
+        const hoursSinceCreated = (Date.now() - createdAt.getTime()) / (1000 * 60 * 60);
+        return hoursSinceCreated > 24; // Consider overdue after 24 hours
+      }).length;
+      
+      setStats({
+        totalJobs,
+        activeJobs,
+        draftJobs,
+        pendingApprovals,
+        overdueApprovals,
+        recentJobs
+      });
     } catch (error) {
       console.error('Error fetching dashboard stats:', error);
+      // Set empty stats to avoid infinite loading
+      setStats({
+        totalJobs: 0,
+        activeJobs: 0,
+        draftJobs: 0,
+        pendingApprovals: 0,
+        overdueApprovals: 0,
+        recentJobs: []
+      });
     } finally {
       setLoading(false);
     }
