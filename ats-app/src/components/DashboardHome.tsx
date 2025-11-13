@@ -56,18 +56,18 @@ export function DashboardHome() {
       </div>
 
       {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
         {stats.map((stat, index) => {
           const Icon = stat.icon;
           return (
             <div
               key={stat.label}
-              className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer animate-scale-in"
+              className="bg-white dark:bg-gray-800 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300 border border-gray-100 dark:border-gray-700"
               style={{ animationDelay: `${index * 100}ms` }}
             >
               <div className="flex items-start justify-between mb-4">
-                <div className={`w-12 h-12 rounded-lg bg-gradient-to-br ${stat.color} flex items-center justify-center shadow-lg`}>
-                  <Icon className="w-6 h-6 text-white" />
+                <div className={`w-14 h-14 rounded-full bg-gradient-to-br ${stat.color} flex items-center justify-center shadow-sm`}>
+                  <Icon className="w-7 h-7 text-white" />
                 </div>
                 <div className={`flex items-center gap-1 text-sm font-semibold ${
                   stat.trend === 'up' ? 'text-green-500' : 'text-red-500'
@@ -76,10 +76,10 @@ export function DashboardHome() {
                   {stat.change}
                 </div>
               </div>
-              <div className="text-2xl font-bold text-gray-900 dark:text-white mb-1">
+              <div className="text-3xl font-bold text-gray-900 dark:text-white mb-1">
                 {stat.value}
               </div>
-              <div className="text-sm text-gray-600 dark:text-gray-400">
+              <div className="text-sm text-gray-500 dark:text-gray-400">
                 {stat.label}
               </div>
             </div>
@@ -88,9 +88,9 @@ export function DashboardHome() {
       </div>
 
       {/* Recent Jobs & Quick Actions */}
-      <div className="grid lg:grid-cols-3 gap-6">
+      <div className="grid lg:grid-cols-3 gap-5">
         {/* Recent Jobs */}
-        <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 animate-slide-up delay-200">
+        <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6 border border-gray-100 dark:border-gray-700">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white">Recent Jobs</h2>
             <a href="/dashboard/jobs" className="text-sm text-brand-purple hover:text-brand-blue transition-colors font-medium">
@@ -128,18 +128,18 @@ export function DashboardHome() {
         </div>
 
         {/* Quick Actions */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 animate-slide-up delay-300">
+        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6 border border-gray-100 dark:border-gray-700">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Quick Actions</h2>
           <div className="space-y-3">
-            <button className="w-full flex items-center gap-3 p-4 rounded-lg bg-gradient-to-r from-brand-purple to-brand-blue text-white hover:shadow-lg transition-all duration-300 hover:scale-105">
+            <button className="w-full flex items-center gap-3 p-4 rounded-xl bg-purple-600 text-white hover:bg-purple-700 transition-all duration-200 shadow-sm hover:shadow-md">
               <Briefcase className="w-5 h-5" />
               <span className="font-semibold">Post New Job</span>
             </button>
-            <button className="w-full flex items-center gap-3 p-4 rounded-lg border-2 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-brand-purple hover:text-brand-purple transition-all duration-300">
+            <button className="w-full flex items-center gap-3 p-4 rounded-xl border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200">
               <Users className="w-5 h-5" />
               <span className="font-semibold">Add Candidate</span>
             </button>
-            <button className="w-full flex items-center gap-3 p-4 rounded-lg border-2 border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-brand-purple hover:text-brand-purple transition-all duration-300">
+            <button className="w-full flex items-center gap-3 p-4 rounded-xl border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all duration-200">
               <Target className="w-5 h-5" />
               <span className="font-semibold">View Analytics</span>
             </button>
