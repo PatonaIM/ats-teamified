@@ -4,6 +4,14 @@ export function getApiBaseUrl(): string {
   }
   
   if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    
+    if (hostname.includes('.replit.dev')) {
+      const protocol = window.location.protocol;
+      const backendHostname = hostname.replace(/-5000-/, '-3001-').replace(/-00-/, '-3001-00-');
+      return `${protocol}//${backendHostname}`;
+    }
+    
     return '';
   }
   
@@ -24,12 +32,20 @@ export async function apiRequest<T = any>(
     const response = await fetch(url, {
       ...options,
       signal: controller.signal,
+      headers: {
+        ...options?.headers,
+        'Cache-Control': 'no-cache',
+      },
     });
     
     clearTimeout(timeoutId);
     
-    if (!response.ok) {
+    if (!response.ok && response.status !== 304) {
       throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+    }
+    
+    if (response.status === 204 || response.status === 304 || response.headers.get('content-length') === '0') {
+      return {} as T;
     }
     
     return await response.json();
