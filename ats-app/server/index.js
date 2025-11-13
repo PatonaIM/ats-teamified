@@ -110,6 +110,97 @@ app.get('/api/jobs', async (req, res) => {
   }
 });
 
+app.post('/api/jobs', async (req, res) => {
+  console.log('[Backend] Received POST /api/jobs request');
+  try {
+    const jobData = req.body;
+    
+    // Validate required fields
+    if (!jobData.title || !jobData.employmentType) {
+      return res.status(400).json({ 
+        error: 'Missing required fields',
+        message: 'Job title and employment type are required' 
+      });
+    }
+    
+    // Convert camelCase employment type to database format
+    const employmentTypeMap = {
+      'fullTime': 'Full-time',
+      'partTime': 'Part-time',
+      'contract': 'Contract',
+      'eor': 'EOR'
+    };
+    
+    const insertQuery = `
+      INSERT INTO jobs (
+        title,
+        employment_type,
+        description,
+        requirements,
+        department,
+        city,
+        country,
+        remote_flag,
+        salary_from,
+        salary_to,
+        salary_currency,
+        salary_text,
+        job_status,
+        created_at,
+        updated_at
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      RETURNING *
+    `;
+    
+    const params = [
+      jobData.title,
+      employmentTypeMap[jobData.employmentType] || 'Full-time',
+      jobData.description || '',
+      jobData.keySkills || '',
+      'Engineering',
+      'Remote',
+      'Global',
+      true,
+      null,
+      null,
+      'USD',
+      '',
+      'active'
+    ];
+    
+    console.log('[Backend] Inserting new job:', jobData.title);
+    const result = await query(insertQuery, params);
+    
+    const newJob = result.rows[0];
+    console.log('[Backend] Job created successfully:', newJob.id);
+    
+    // Return normalized job data
+    const normalizedJob = {
+      ...newJob,
+      employment_type: normalizeEmploymentType(newJob.employment_type),
+      status: newJob.job_status || newJob.status,
+      company_name: newJob.department,
+      location: `${newJob.city}, ${newJob.country}`,
+      remote_ok: newJob.remote_flag,
+      salary_min: newJob.salary_from,
+      salary_max: newJob.salary_to,
+      salary_display: `${newJob.salary_currency} ${newJob.salary_text}`,
+      candidate_count: 0,
+      active_candidates: 0,
+      recruiter_name: 'HR Team',
+      linkedin_synced: false
+    };
+    
+    res.status(201).json(normalizedJob);
+  } catch (error) {
+    console.error('[Backend] Error creating job:', error);
+    res.status(500).json({ 
+      error: 'Failed to create job',
+      message: error.message 
+    });
+  }
+});
+
 app.get('/api/jobs/:id', async (req, res) => {
   try {
     const { id } = req.params;

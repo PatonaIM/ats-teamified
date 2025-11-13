@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
+import type { EmploymentType } from '../utils/employmentTypes';
+import { employmentTypeConfigs } from '../utils/employmentTypes';
 
-type EmploymentType = 'fullTime' | 'partTime' | 'contract' | 'eor' | '';
+type EmploymentTypeOrEmpty = EmploymentType | '';
 
 interface JobFormData {
   title: string;
@@ -10,7 +12,7 @@ interface JobFormData {
   experienceLevel: string;
   companyInfo: string;
   specialRequirements: string;
-  employmentType: EmploymentType;
+  employmentType: EmploymentTypeOrEmpty;
   
   contractDuration?: string;
   contractValue?: string;
@@ -45,10 +47,12 @@ interface JobFormProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: JobFormData) => void;
+  isSubmitting?: boolean;
+  initialData?: Partial<JobFormData>;
 }
 
-const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit }) => {
-  const [formData, setFormData] = useState<JobFormData>({
+const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitting = false, initialData }) => {
+  const getInitialFormData = (): JobFormData => ({
     title: '',
     description: '',
     keySkills: '',
@@ -56,9 +60,18 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit }) => {
     companyInfo: '',
     specialRequirements: '',
     employmentType: '',
+    ...initialData
   });
 
+  const [formData, setFormData] = useState<JobFormData>(getInitialFormData());
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (!isOpen) {
+      setFormData(getInitialFormData());
+      setErrors({});
+    }
+  }, [isOpen]);
 
   const handleChange = (field: keyof JobFormData, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -443,12 +456,12 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit }) => {
                 value={formData.employmentType}
                 onChange={(e) => handleChange('employmentType', e.target.value)}
                 className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${errors.employmentType ? 'border-red-500' : 'border-gray-300'}`}
+                disabled={isSubmitting}
               >
                 <option value="">Select employment type</option>
-                <option value="fullTime">Full-Time</option>
-                <option value="partTime">Part-Time</option>
-                <option value="contract">Contract</option>
-                <option value="eor">EOR (Employer of Record)</option>
+                {Object.values(employmentTypeConfigs).map(config => (
+                  <option key={config.value} value={config.value}>{config.label}</option>
+                ))}
               </select>
               {errors.employmentType && <p className="text-red-500 text-sm mt-1">{errors.employmentType}</p>}
             </div>
@@ -538,15 +551,20 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit }) => {
             <button
               type="button"
               onClick={onClose}
-              className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+              disabled={isSubmitting}
+              className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-6 py-2 bg-gradient-to-r from-purple-600 to-blue-500 text-white rounded-lg hover:shadow-lg transition-all"
+              disabled={isSubmitting}
+              className="px-6 py-2 bg-gradient-to-r from-purple-600 to-blue-500 text-white rounded-lg hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
-              Create Job
+              {isSubmitting && (
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+              )}
+              {isSubmitting ? 'Creating...' : 'Create Job'}
             </button>
           </div>
         </form>

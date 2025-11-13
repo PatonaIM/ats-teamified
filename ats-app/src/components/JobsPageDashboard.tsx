@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Search, Plus, Briefcase, MapPin, DollarSign, Users, Calendar, CheckCircle, Clock, XCircle, Pause } from 'lucide-react';
+import JobForm from './JobForm';
+import { getEmploymentTypeColors, getEmploymentTypeLabel } from '../utils/employmentTypes';
 
 window.addEventListener('unhandledrejection', (event) => {
   console.error('Unhandled promise rejection:', event.reason);
@@ -23,20 +25,6 @@ interface Job {
   linkedin_synced: boolean;
 }
 
-const employmentTypeColors: Record<string, { bg: string; border: string; text: string }> = {
-  contract: { bg: 'bg-blue-100 dark:bg-blue-900/30', border: 'border-blue-500', text: 'text-blue-700 dark:text-blue-300' },
-  partTime: { bg: 'bg-green-100 dark:bg-green-900/30', border: 'border-green-500', text: 'text-green-700 dark:text-green-300' },
-  fullTime: { bg: 'bg-orange-100 dark:bg-orange-900/30', border: 'border-orange-500', text: 'text-orange-700 dark:text-orange-300' },
-  eor: { bg: 'bg-purple-100 dark:bg-purple-900/30', border: 'border-purple-500', text: 'text-purple-700 dark:text-purple-300' },
-  default: { bg: 'bg-gray-100 dark:bg-gray-900/30', border: 'border-gray-500', text: 'text-gray-700 dark:text-gray-300' }
-};
-
-const employmentTypeLabels: Record<string, string> = {
-  contract: 'Contract',
-  partTime: 'Part-Time',
-  fullTime: 'Full-Time',
-  eor: 'EOR'
-};
 
 const statusIcons = {
   active: <CheckCircle className="w-4 h-4 text-green-500" />,
@@ -52,6 +40,8 @@ export function JobsPageDashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [employmentTypeFilter, setEmploymentTypeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchJobs = useCallback(async () => {
     try {
@@ -110,6 +100,33 @@ export function JobsPageDashboard() {
     return `${Math.floor(diffDays / 30)} months ago`;
   };
 
+  const handleCreateJob = async (formData: any) => {
+    try {
+      setIsSubmitting(true);
+      const response = await fetch('/api/jobs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.message || 'Failed to create job');
+      }
+      
+      const newJob = await response.json();
+      setJobs(prev => [newJob, ...prev]);
+      setIsCreateModalOpen(false);
+      await fetchJobs();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to create job';
+      console.error('Create job error:', message);
+      alert('Error: ' + message);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -118,7 +135,10 @@ export function JobsPageDashboard() {
           <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Jobs</h1>
           <p className="text-gray-600 dark:text-gray-400">Manage all your job postings</p>
         </div>
-        <button className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-brand-purple to-brand-blue text-white rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
+        <button 
+          onClick={() => setIsCreateModalOpen(true)}
+          className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-brand-purple to-brand-blue text-white rounded-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+        >
           <Plus className="w-5 h-5" />
           Create Job
         </button>
@@ -168,7 +188,7 @@ export function JobsPageDashboard() {
             <span className="text-sm text-gray-600 dark:text-gray-400">Active Filters:</span>
             {employmentTypeFilter !== 'all' && (
               <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-brand-purple/10 text-brand-purple text-sm">
-                {employmentTypeLabels[employmentTypeFilter as keyof typeof employmentTypeLabels]}
+                {getEmploymentTypeLabel(employmentTypeFilter)}
                 <button onClick={() => setEmploymentTypeFilter('all')} className="hover:text-brand-purple/70">×</button>
               </span>
             )}
@@ -227,8 +247,8 @@ export function JobsPageDashboard() {
       ) : (
         <div className="space-y-4">
           {jobs.map((job, index) => {
-            const typeColors = employmentTypeColors[job.employment_type] || employmentTypeColors.default;
-            const typeLabel = employmentTypeLabels[job.employment_type] || job.employment_type;
+            const typeColors = getEmploymentTypeColors(job.employment_type);
+            const typeLabel = getEmploymentTypeLabel(job.employment_type);
             
             return (
               <div
@@ -316,6 +336,13 @@ export function JobsPageDashboard() {
           })}
         </div>
       )}
+
+      <JobForm 
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
+        onSubmit={handleCreateJob}
+        isSubmitting={isSubmitting}
+      />
     </div>
   );
 }
