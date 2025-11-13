@@ -1,47 +1,107 @@
-import { Briefcase, Users, Zap, TrendingUp, CheckCircle, ArrowRight, Sparkles } from 'lucide-react';
+import { Briefcase, Users, Zap, TrendingUp, CheckCircle, ArrowRight, Sparkles, Clock, Target, BarChart3, Shield, Rocket, Star } from 'lucide-react';
 
 export function LandingPage() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900 dark:to-gray-800">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       {/* Hero Section */}
-      <section className="pt-20 pb-32 px-6">
-        <div className="max-w-7xl mx-auto">
+      <section className="relative pt-20 pb-32 px-6 overflow-hidden">
+        {/* Animated Background Elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-20 left-10 w-72 h-72 bg-brand-purple/10 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute bottom-20 right-10 w-96 h-96 bg-brand-blue/10 rounded-full blur-3xl animate-pulse delay-1000" />
+        </div>
+
+        <div className="max-w-7xl mx-auto relative z-10">
           <div className="text-center">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-brand-purple/10 to-brand-blue/10 dark:from-brand-purple/20 dark:to-brand-blue/20 border border-brand-purple/20 dark:border-brand-purple/30 mb-8">
-              <Sparkles className="w-4 h-4 text-brand-purple" />
-              <span className="text-sm font-medium text-brand-purple dark:text-brand-purple">
+            {/* Badge */}
+            <div className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-gradient-to-r from-brand-purple/10 via-brand-blue/10 to-brand-purple/10 dark:from-brand-purple/20 dark:via-brand-blue/20 dark:to-brand-purple/20 border border-brand-purple/20 dark:border-brand-purple/30 mb-8 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105">
+              <Sparkles className="w-4 h-4 text-brand-purple animate-pulse" />
+              <span className="text-sm font-semibold bg-gradient-to-r from-brand-purple to-brand-blue bg-clip-text text-transparent">
                 AI-Powered Hiring Intelligence
               </span>
+              <Star className="w-4 h-4 text-brand-blue animate-pulse" />
             </div>
             
-            <h1 className="text-6xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-brand-purple to-brand-blue bg-clip-text text-transparent leading-tight">
+            {/* Main Headline */}
+            <h1 className="text-6xl md:text-7xl lg:text-8xl font-bold mb-6 bg-gradient-to-r from-brand-purple via-purple-500 to-brand-blue bg-clip-text text-transparent leading-tight tracking-tight">
               Multi-Employment
               <br />
               ATS Platform
             </h1>
             
-            <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 mb-12 max-w-3xl mx-auto leading-relaxed">
+            {/* Subheadline */}
+            <p className="text-xl md:text-2xl text-gray-600 dark:text-gray-300 mb-8 max-w-3xl mx-auto leading-relaxed font-medium">
               Streamline your hiring process with AI-powered job descriptions, intelligent interview questions, and real-time candidate engagement tracking.
             </p>
+
+            {/* Social Proof */}
+            <div className="flex items-center justify-center gap-6 mb-12 text-sm text-gray-600 dark:text-gray-400">
+              <div className="flex items-center gap-2">
+                <Star className="w-4 h-4 text-yellow-500 fill-yellow-500" />
+                <span className="font-semibold">4.9/5 Rating</span>
+              </div>
+              <div className="h-4 w-px bg-gray-300 dark:bg-gray-600" />
+              <div className="flex items-center gap-2">
+                <Users className="w-4 h-4 text-brand-purple" />
+                <span className="font-semibold">10,000+ Recruiters</span>
+              </div>
+              <div className="h-4 w-px bg-gray-300 dark:bg-gray-600" />
+              <div className="flex items-center gap-2">
+                <Zap className="w-4 h-4 text-brand-blue" />
+                <span className="font-semibold">60% Faster Hiring</span>
+              </div>
+            </div>
             
+            {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button className="group px-8 py-4 bg-gradient-to-r from-brand-purple to-brand-blue text-white rounded-lg font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-2">
-                Get Started Free
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              <button className="group relative px-8 py-4 bg-gradient-to-r from-brand-purple via-purple-500 to-brand-blue text-white rounded-xl font-semibold text-lg shadow-[0_4px_20px_rgba(161,106,232,0.4)] hover:shadow-[0_8px_30px_rgba(161,106,232,0.6)] transition-all duration-300 flex items-center justify-center gap-2 overflow-hidden hover:scale-105">
+                <span className="relative z-10">Get Started Free</span>
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform relative z-10" />
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-blue-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
               </button>
-              <button className="px-8 py-4 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-300 border border-gray-200 dark:border-gray-700">
+              <button className="group px-8 py-4 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-300 border-2 border-gray-200 dark:border-gray-700 hover:border-brand-purple/50 dark:hover:border-brand-purple/50 hover:scale-105">
                 Watch Demo
+                <span className="inline-block ml-2 group-hover:translate-x-1 transition-transform">→</span>
               </button>
             </div>
           </div>
         </div>
       </section>
 
+      {/* Stats Section */}
+      <section className="py-16 px-6 bg-white dark:bg-gray-800/50 border-y border-gray-200 dark:border-gray-700">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+            {[
+              { value: '10,000+', label: 'Active Recruiters', icon: <Users className="w-6 h-6" /> },
+              { value: '500K+', label: 'Candidates Hired', icon: <Target className="w-6 h-6" /> },
+              { value: '60%', label: 'Time Saved', icon: <Clock className="w-6 h-6" /> },
+              { value: '95%', label: 'Satisfaction Rate', icon: <Star className="w-6 h-6" /> }
+            ].map((stat, index) => (
+              <div key={index} className="text-center group hover:scale-105 transition-transform duration-300">
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-lg bg-gradient-to-br from-brand-purple/10 to-brand-blue/10 text-brand-purple mb-3 group-hover:shadow-lg transition-shadow">
+                  {stat.icon}
+                </div>
+                <div className="text-3xl md:text-4xl font-bold bg-gradient-to-r from-brand-purple to-brand-blue bg-clip-text text-transparent mb-1">
+                  {stat.value}
+                </div>
+                <div className="text-sm text-gray-600 dark:text-gray-400 font-medium">
+                  {stat.label}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Features Section */}
-      <section className="py-20 px-6 bg-white dark:bg-gray-800/50">
+      <section className="py-24 px-6 bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold mb-4 text-gray-900 dark:text-white">
+            <div className="inline-block px-4 py-2 rounded-full bg-brand-purple/10 dark:bg-brand-purple/20 border border-brand-purple/20 mb-4">
+              <span className="text-sm font-semibold text-brand-purple">FEATURES</span>
+            </div>
+            <h2 className="text-5xl md:text-6xl font-bold mb-6 text-gray-900 dark:text-white">
               Intelligent Hiring,{' '}
               <span className="bg-gradient-to-r from-brand-purple to-brand-blue bg-clip-text text-transparent">
                 Simplified
@@ -52,46 +112,56 @@ export function LandingPage() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
             {[
               {
-                icon: <Sparkles className="w-6 h-6" />,
+                icon: <Sparkles className="w-7 h-7" />,
                 title: 'AI Job Descriptions',
                 description: 'Generate professional, employment type-specific job postings in seconds',
-                color: 'from-brand-purple to-purple-400'
+                color: 'from-brand-purple to-purple-400',
+                gradient: 'from-brand-purple/5 to-purple-400/5'
               },
               {
-                icon: <Users className="w-6 h-6" />,
+                icon: <Users className="w-7 h-7" />,
                 title: 'Smart Interview Questions',
                 description: 'AI-powered questions tailored to role requirements and candidate experience',
-                color: 'from-brand-blue to-blue-400'
+                color: 'from-brand-blue to-blue-400',
+                gradient: 'from-brand-blue/5 to-blue-400/5'
               },
               {
-                icon: <TrendingUp className="w-6 h-6" />,
+                icon: <TrendingUp className="w-7 h-7" />,
                 title: 'Sentiment Analysis',
                 description: 'Real-time candidate engagement tracking to prevent talent loss',
-                color: 'from-purple-500 to-brand-purple'
+                color: 'from-purple-500 to-brand-purple',
+                gradient: 'from-purple-500/5 to-brand-purple/5'
               },
               {
-                icon: <Briefcase className="w-6 h-6" />,
-                title: 'Multi-Employment Support',
+                icon: <Briefcase className="w-7 h-7" />,
+                title: 'Multi-Employment',
                 description: 'Manage contract, part-time, full-time, and EOR positions seamlessly',
-                color: 'from-blue-500 to-brand-blue'
+                color: 'from-blue-500 to-brand-blue',
+                gradient: 'from-blue-500/5 to-brand-blue/5'
               }
             ].map((feature, index) => (
               <div
                 key={index}
-                className="group p-6 rounded-2xl bg-gradient-to-br from-gray-50 to-white dark:from-gray-800 dark:to-gray-700 border border-gray-200 dark:border-gray-600 hover:shadow-xl transition-all duration-300"
+                className="group relative p-8 rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:border-transparent hover:shadow-2xl transition-all duration-500 hover:-translate-y-2"
               >
-                <div className={`inline-flex p-3 rounded-lg bg-gradient-to-br ${feature.color} text-white mb-4`}>
-                  {feature.icon}
+                {/* Gradient Border Effect */}
+                <div className={`absolute inset-0 rounded-2xl bg-gradient-to-br ${feature.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
+                <div className="absolute inset-[1px] rounded-2xl bg-white dark:bg-gray-800" />
+                
+                <div className="relative">
+                  <div className={`inline-flex p-4 rounded-xl bg-gradient-to-br ${feature.color} text-white mb-5 shadow-lg group-hover:shadow-xl group-hover:scale-110 transition-all duration-300`}>
+                    {feature.icon}
+                  </div>
+                  <h3 className="text-xl font-bold mb-3 text-gray-900 dark:text-white">
+                    {feature.title}
+                  </h3>
+                  <p className="text-gray-600 dark:text-gray-400 leading-relaxed">
+                    {feature.description}
+                  </p>
                 </div>
-                <h3 className="text-xl font-bold mb-2 text-gray-900 dark:text-white">
-                  {feature.title}
-                </h3>
-                <p className="text-gray-600 dark:text-gray-400">
-                  {feature.description}
-                </p>
               </div>
             ))}
           </div>
@@ -99,10 +169,13 @@ export function LandingPage() {
       </section>
 
       {/* Employment Types Showcase */}
-      <section className="py-20 px-6">
+      <section className="py-24 px-6 bg-white dark:bg-gray-800/50">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <h2 className="text-4xl md:text-5xl font-bold mb-4 text-gray-900 dark:text-white">
+            <div className="inline-block px-4 py-2 rounded-full bg-brand-blue/10 dark:bg-brand-blue/20 border border-brand-blue/20 mb-4">
+              <span className="text-sm font-semibold text-brand-blue">EMPLOYMENT TYPES</span>
+            </div>
+            <h2 className="text-5xl md:text-6xl font-bold mb-6 text-gray-900 dark:text-white">
               Support All Employment Types
             </h2>
             <p className="text-xl text-gray-600 dark:text-gray-400 max-w-2xl mx-auto">
@@ -115,41 +188,57 @@ export function LandingPage() {
               {
                 type: 'Contract',
                 color: 'bg-employment-contract',
+                borderColor: 'border-employment-contract',
                 icon: '💼',
-                description: 'Project-based hiring with milestone tracking'
+                description: 'Project-based hiring with milestone tracking',
+                features: ['Milestone tracking', 'Flexible contracts', 'Payment schedules']
               },
               {
                 type: 'Part-Time',
                 color: 'bg-employment-partTime',
+                borderColor: 'border-employment-partTime',
                 icon: '⏰',
-                description: 'Flexible schedules and hour management'
+                description: 'Flexible schedules and hour management',
+                features: ['Hour tracking', 'Shift scheduling', 'Flexible hours']
               },
               {
                 type: 'Full-Time',
                 color: 'bg-employment-fullTime',
+                borderColor: 'border-employment-fullTime',
                 icon: '🏢',
-                description: 'Comprehensive benefits and career growth'
+                description: 'Comprehensive benefits and career growth',
+                features: ['Full benefits', 'Career paths', 'Onboarding']
               },
               {
                 type: 'EOR',
                 color: 'bg-employment-eor',
+                borderColor: 'border-employment-eor',
                 icon: '🌍',
-                description: 'Global hiring with compliance support'
+                description: 'Global hiring with compliance support',
+                features: ['Global compliance', 'Legal support', 'Multi-currency']
               }
             ].map((employment, index) => (
               <div
                 key={index}
-                className="group relative overflow-hidden rounded-2xl bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:shadow-xl transition-all duration-300"
+                className={`group relative overflow-hidden rounded-2xl bg-white dark:bg-gray-800 border-2 ${employment.borderColor} hover:shadow-2xl transition-all duration-500 hover:-translate-y-2`}
               >
-                <div className={`h-2 ${employment.color}`} />
-                <div className="p-6">
-                  <div className="text-4xl mb-3">{employment.icon}</div>
-                  <h3 className="text-2xl font-bold mb-2 text-gray-900 dark:text-white">
+                <div className={`h-3 ${employment.color}`} />
+                <div className="p-8">
+                  <div className="text-5xl mb-4 group-hover:scale-110 transition-transform duration-300">{employment.icon}</div>
+                  <h3 className="text-2xl font-bold mb-3 text-gray-900 dark:text-white">
                     {employment.type}
                   </h3>
-                  <p className="text-gray-600 dark:text-gray-400">
+                  <p className="text-gray-600 dark:text-gray-400 mb-4 leading-relaxed">
                     {employment.description}
                   </p>
+                  <ul className="space-y-2">
+                    {employment.features.map((feature, idx) => (
+                      <li key={idx} className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+                        <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
+                        {feature}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               </div>
             ))}
@@ -158,33 +247,38 @@ export function LandingPage() {
       </section>
 
       {/* Benefits Section */}
-      <section className="py-20 px-6 bg-white dark:bg-gray-800/50">
+      <section className="py-24 px-6 bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-800">
         <div className="max-w-7xl mx-auto">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div>
-              <h2 className="text-4xl md:text-5xl font-bold mb-6 text-gray-900 dark:text-white">
+              <div className="inline-block px-4 py-2 rounded-full bg-brand-purple/10 dark:bg-brand-purple/20 border border-brand-purple/20 mb-6">
+                <span className="text-sm font-semibold text-brand-purple">WHY CHOOSE US</span>
+              </div>
+              <h2 className="text-5xl md:text-6xl font-bold mb-6 text-gray-900 dark:text-white leading-tight">
                 Why Choose Our{' '}
                 <span className="bg-gradient-to-r from-brand-purple to-brand-blue bg-clip-text text-transparent">
                   ATS Platform?
                 </span>
               </h2>
-              <p className="text-xl text-gray-600 dark:text-gray-400 mb-8">
+              <p className="text-xl text-gray-600 dark:text-gray-400 mb-10 leading-relaxed">
                 Built for modern recruiting teams who demand efficiency, intelligence, and results
               </p>
               
-              <div className="space-y-4">
+              <div className="space-y-5">
                 {[
-                  'AI-powered job descriptions save 60% creation time',
-                  'Real-time engagement tracking prevents candidate drop-off',
-                  'LinkedIn integration with automatic posting',
-                  '6-stage customizable pipeline for every job',
-                  'Hiring funnel analytics for data-driven decisions',
-                  'Custom SSO integration for enterprise security'
+                  { icon: <Sparkles className="w-5 h-5" />, text: 'AI-powered job descriptions save 60% creation time' },
+                  { icon: <TrendingUp className="w-5 h-5" />, text: 'Real-time engagement tracking prevents candidate drop-off' },
+                  { icon: <Rocket className="w-5 h-5" />, text: 'LinkedIn integration with automatic posting' },
+                  { icon: <BarChart3 className="w-5 h-5" />, text: '6-stage customizable pipeline for every job' },
+                  { icon: <Target className="w-5 h-5" />, text: 'Hiring funnel analytics for data-driven decisions' },
+                  { icon: <Shield className="w-5 h-5" />, text: 'Custom SSO integration for enterprise security' }
                 ].map((benefit, index) => (
-                  <div key={index} className="flex items-start gap-3">
-                    <CheckCircle className="w-6 h-6 text-green-500 flex-shrink-0 mt-1" />
-                    <span className="text-lg text-gray-700 dark:text-gray-300">
-                      {benefit}
+                  <div key={index} className="group flex items-start gap-4 p-4 rounded-xl hover:bg-gradient-to-r hover:from-brand-purple/5 hover:to-brand-blue/5 transition-all duration-300 hover:translate-x-2">
+                    <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-gradient-to-br from-brand-purple to-brand-blue flex items-center justify-center text-white shadow-lg group-hover:shadow-xl group-hover:scale-110 transition-all duration-300">
+                      {benefit.icon}
+                    </div>
+                    <span className="text-lg text-gray-700 dark:text-gray-300 font-medium pt-2">
+                      {benefit.text}
                     </span>
                   </div>
                 ))}
@@ -192,14 +286,23 @@ export function LandingPage() {
             </div>
 
             <div className="relative">
-              <div className="aspect-square rounded-2xl bg-gradient-to-br from-brand-purple/20 to-brand-blue/20 dark:from-brand-purple/30 dark:to-brand-blue/30 p-8 border border-brand-purple/30 dark:border-brand-purple/40">
-                <div className="h-full flex items-center justify-center text-center">
+              <div className="relative aspect-square rounded-3xl bg-gradient-to-br from-brand-purple/20 via-purple-400/20 to-brand-blue/20 dark:from-brand-purple/30 dark:via-purple-400/30 dark:to-brand-blue/30 p-12 border-2 border-brand-purple/30 dark:border-brand-purple/40 shadow-2xl overflow-hidden">
+                {/* Decorative circles */}
+                <div className="absolute top-10 right-10 w-32 h-32 bg-brand-purple/20 rounded-full blur-2xl animate-pulse" />
+                <div className="absolute bottom-10 left-10 w-40 h-40 bg-brand-blue/20 rounded-full blur-2xl animate-pulse delay-1000" />
+                
+                <div className="relative h-full flex items-center justify-center text-center">
                   <div>
-                    <Zap className="w-20 h-20 text-brand-purple mx-auto mb-4" />
-                    <p className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-                      10x Faster Hiring
+                    <div className="inline-flex items-center justify-center w-24 h-24 rounded-2xl bg-gradient-to-br from-brand-purple to-brand-blue text-white shadow-2xl mb-6">
+                      <Zap className="w-12 h-12" />
+                    </div>
+                    <p className="text-6xl font-bold bg-gradient-to-r from-brand-purple to-brand-blue bg-clip-text text-transparent mb-4">
+                      10x Faster
                     </p>
-                    <p className="text-gray-600 dark:text-gray-400">
+                    <p className="text-2xl font-semibold text-gray-900 dark:text-white mb-3">
+                      Hiring Process
+                    </p>
+                    <p className="text-lg text-gray-600 dark:text-gray-400">
                       With AI-powered automation
                     </p>
                   </div>
@@ -211,23 +314,44 @@ export function LandingPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 px-6">
-        <div className="max-w-4xl mx-auto text-center">
-          <div className="rounded-3xl bg-gradient-to-r from-brand-purple to-brand-blue p-12 shadow-2xl">
-            <h2 className="text-4xl md:text-5xl font-bold mb-6 text-white">
-              Ready to Transform Your Hiring?
-            </h2>
-            <p className="text-xl text-white/90 mb-8 max-w-2xl mx-auto">
-              Join innovative companies using AI-powered recruiting to hire top talent faster
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <button className="group px-8 py-4 bg-white text-brand-purple rounded-lg font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-300 flex items-center justify-center gap-2">
-                Start Free Trial
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </button>
-              <button className="px-8 py-4 bg-white/10 backdrop-blur-sm text-white rounded-lg font-semibold text-lg border-2 border-white/30 hover:bg-white/20 transition-all duration-300">
-                Schedule Demo
-              </button>
+      <section className="py-24 px-6">
+        <div className="max-w-5xl mx-auto">
+          <div className="relative rounded-3xl bg-gradient-to-r from-brand-purple via-purple-500 to-brand-blue p-16 shadow-2xl overflow-hidden">
+            {/* Decorative elements */}
+            <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
+            <div className="absolute bottom-0 left-0 w-80 h-80 bg-white/5 rounded-full blur-3xl" />
+            
+            <div className="relative text-center">
+              <h2 className="text-5xl md:text-6xl font-bold mb-6 text-white leading-tight">
+                Ready to Transform
+                <br />
+                Your Hiring?
+              </h2>
+              <p className="text-xl text-white/90 mb-10 max-w-2xl mx-auto leading-relaxed">
+                Join innovative companies using AI-powered recruiting to hire top talent faster
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <button className="group px-10 py-5 bg-white text-brand-purple rounded-xl font-semibold text-lg shadow-2xl hover:shadow-[0_20px_50px_rgba(255,255,255,0.3)] transition-all duration-300 flex items-center justify-center gap-2 hover:scale-105">
+                  Start Free Trial
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </button>
+                <button className="group px-10 py-5 bg-white/10 backdrop-blur-sm text-white rounded-xl font-semibold text-lg border-2 border-white/30 hover:bg-white/20 hover:border-white/50 transition-all duration-300 hover:scale-105">
+                  Schedule Demo
+                  <span className="inline-block ml-2 group-hover:translate-x-1 transition-transform">→</span>
+                </button>
+              </div>
+              
+              {/* Trust indicators */}
+              <div className="mt-10 flex items-center justify-center gap-8 text-white/80">
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5" />
+                  <span className="text-sm font-medium">No credit card required</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5" />
+                  <span className="text-sm font-medium">14-day free trial</span>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -235,10 +359,18 @@ export function LandingPage() {
 
       {/* Footer */}
       <footer className="py-12 px-6 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
-        <div className="max-w-7xl mx-auto text-center">
-          <p className="text-gray-600 dark:text-gray-400">
-            © 2025 Multi-Employment ATS Platform. Powered by AI.
-          </p>
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center">
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <Sparkles className="w-5 h-5 text-brand-purple" />
+              <span className="text-lg font-bold bg-gradient-to-r from-brand-purple to-brand-blue bg-clip-text text-transparent">
+                Multi-Employment ATS
+              </span>
+            </div>
+            <p className="text-gray-600 dark:text-gray-400 text-sm">
+              © 2025 Multi-Employment ATS Platform. Powered by AI. All rights reserved.
+            </p>
+          </div>
         </div>
       </footer>
     </div>
