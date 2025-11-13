@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Clock, CheckCircle2, XCircle, AlertTriangle, Search, Calendar } from 'lucide-react';
 import { getEmploymentTypeConfig } from '../utils/employmentTypes';
+import { apiRequest } from '../utils/api';
 
 interface Approval {
   approval_id: string;
@@ -36,8 +37,7 @@ export default function ApprovalsPage() {
   const fetchApprovals = async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:3001/api/approvals?status=pending');
-      const data = await response.json();
+      const data = await apiRequest<Approval[]>('/api/approvals?status=pending');
       setApprovals(data);
     } catch (error) {
       console.error('Error fetching approvals:', error);
@@ -51,7 +51,7 @@ export default function ApprovalsPage() {
     if (!confirmation) return;
 
     try {
-      const response = await fetch(`http://localhost:3001/api/approvals/${approvalId}/approve`, {
+      await apiRequest(`/api/approvals/${approvalId}/approve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -59,11 +59,9 @@ export default function ApprovalsPage() {
           comments: 'Approved via manager dashboard'
         })
       });
-
-      if (response.ok) {
-        alert('Job approved successfully!');
-        fetchApprovals();
-      }
+      
+      alert('Job approved successfully!');
+      fetchApprovals();
     } catch (error) {
       console.error('Error approving job:', error);
       alert('Failed to approve job');
@@ -78,7 +76,7 @@ export default function ApprovalsPage() {
     }
 
     try {
-      const response = await fetch(`http://localhost:3001/api/approvals/${approvalId}/reject`, {
+      await apiRequest(`/api/approvals/${approvalId}/reject`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -86,11 +84,9 @@ export default function ApprovalsPage() {
           comments
         })
       });
-
-      if (response.ok) {
-        alert('Job rejected with feedback');
-        fetchApprovals();
-      }
+      
+      alert('Job rejected with feedback');
+      fetchApprovals();
     } catch (error) {
       console.error('Error rejecting job:', error);
       alert('Failed to reject job');
@@ -107,7 +103,7 @@ export default function ApprovalsPage() {
     if (!confirmation) return;
 
     try {
-      const response = await fetch('http://localhost:3001/api/approvals/bulk-approve', {
+      const result = await apiRequest<{ approved: number; total: number }>('/api/approvals/bulk-approve', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -116,13 +112,10 @@ export default function ApprovalsPage() {
           comments: 'Bulk approved via manager dashboard'
         })
       });
-
-      const result = await response.json();
-      if (response.ok) {
-        alert(`Successfully approved ${result.approved}/${result.total} jobs`);
-        setSelectedApprovals(new Set());
-        fetchApprovals();
-      }
+      
+      alert(`Successfully approved ${result.approved}/${result.total} jobs`);
+      setSelectedApprovals(new Set());
+      fetchApprovals();
     } catch (error) {
       console.error('Error in bulk approval:', error);
       alert('Failed to bulk approve jobs');
