@@ -4,6 +4,18 @@
 This project is a Multi-Employment Applicant Tracking System (ATS) designed to manage various employment types (contract, part-time, full-time, EOR). Its core purpose is to provide intelligent hiring capabilities through AI-powered features, ensuring comprehensive compliance and seamless integration with external platforms like LinkedIn. The system's primary competitive advantage is its AI differentiation, offering tools for job description generation, interview question generation, candidate sentiment analysis, and advanced analytics from its initial phase.
 
 ## Recent Changes
+**November 13, 2025** - Implemented Dashboard Portal with Collapsible Sidebar Navigation:
+- Created Sidebar component with 5 menu items (Dashboard, Jobs, Candidates, Analytics, Settings)
+- Implemented collapsible sidebar with smooth width transitions (256px ↔ 80px)
+- Built DashboardLayout component managing sidebar state and main content margin synchronization
+- Created DashboardHome page with KPI stats cards, recent jobs list, and quick action buttons
+- Created JobsPageDashboard variant integrated within dashboard layout
+- Updated routing: public routes (/, /jobs) and dashboard routes (/dashboard/*)
+- Changed landing page CTA from "View Jobs" to "Login to Portal" directing to /dashboard
+- Implemented prefix-based active state highlighting for nested routes
+- Added top header bar with search, notifications, user profile, and dark mode toggle
+- Applied gradient branding throughout with hover effects and smooth animations
+
 **November 13, 2025** - Implemented Job Listing Page with Azure PostgreSQL Integration:
 - Created Express.js backend server with PostgreSQL database connection (port 3001)
 - Set up Azure PostgreSQL database schema with jobs table including all employment type fields
@@ -39,8 +51,9 @@ The system employs an Azure-native, microservices-based architecture.
 - **Design Principles:** Responsive design, dark mode support, Inter font family, gradient-heavy design, smooth animations.
 - **Animation System:** Custom keyframe animations (float, slide, scale, gradient-shift), staggered delays, hover interactions.
 - **Key UI Elements:** Landing page with hero/stats/features/benefits sections, role-based side menu, dashboard with KPI cards and hiring funnel, Jobs List page with filters/search/cards, Candidate Pipeline Kanban board, Candidate Profile page, External Portal Integration elements.
-- **Landing Page Implementation:** Fully functional prototype in `ats-app/` with animated hero section, stats section, features grid, employment types showcase, benefits section, CTA section, and footer. Includes dark mode toggle, responsive design, and interactive animations throughout.
+- **Landing Page Implementation:** Fully functional prototype in `ats-app/` with animated hero section, stats section, features grid, employment types showcase, benefits section, CTA section, and footer. Includes dark mode toggle, responsive design, and interactive animations throughout. "Login to Portal" button navigates to /dashboard.
 - **Jobs Page Implementation:** Fully functional with Azure PostgreSQL backend integration, displaying 6 jobs with real-time filtering, search, employment type badges, LinkedIn sync indicators, pipeline progress bars, and smooth slide-up animations.
+- **Dashboard Portal Implementation:** Complete admin portal with collapsible sidebar navigation (Dashboard, Jobs, Candidates, Analytics, Settings). DashboardLayout manages sidebar collapse state with synchronized content margins. Top header includes global search, notification bell, user profile dropdown, and dark mode toggle. Dashboard home displays KPI cards with trend indicators, recent jobs preview, and quick action buttons.
 
 **Technical Implementations & Feature Specifications:**
 - **Backend Infrastructure (MVP):**
@@ -91,11 +104,15 @@ ats-app/                     # Full-stack application (React + Express)
 │   └── setup-db.js         # Database schema and sample data setup
 ├── src/                    # React frontend
 │   ├── components/
-│   │   ├── LandingPage.tsx # Animated landing page with hero/features/CTA
-│   │   ├── JobsPage.tsx    # Job listing with filters, search, animations
-│   │   ├── Navigation.tsx  # Navigation bar with Home/Jobs links
+│   │   ├── LandingPage.tsx        # Animated landing page (public)
+│   │   ├── JobsPage.tsx           # Public job listing page
+│   │   ├── Navigation.tsx         # Public navigation (Home/Jobs)
+│   │   ├── DashboardLayout.tsx    # Portal layout with sidebar/header
+│   │   ├── Sidebar.tsx            # Collapsible side navigation
+│   │   ├── DashboardHome.tsx      # Dashboard home with KPIs
+│   │   ├── JobsPageDashboard.tsx  # Jobs page for portal
 │   │   └── DarkModeToggle.tsx
-│   ├── App.tsx             # React Router configuration
+│   ├── App.tsx             # React Router (public + dashboard routes)
 │   └── index.css           # Custom animations (float, slide, gradient)
 ├── package.json            # Scripts: dev:all (runs frontend + backend)
 └── vite.config.ts          # Vite config with /api proxy to port 3001
