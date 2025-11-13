@@ -30,6 +30,7 @@ The system leverages external portal integration for initial candidate processin
 | 2025-11-13 | 1.5 | Added role-based job approval workflow requiring recruiter manager approval for client jobs while allowing direct activation for recruiter jobs | Product Manager |
 | 2025-11-13 | 1.6 | Expanded FR16 with comprehensive AI capabilities including Sentiment Analysis & Candidate Engagement Intelligence (FR16.1), AI-Powered Interview Question Generation (FR16.2), and detailed AI Integration Technical Specifications (FR16.3) | Product Manager |
 | 2025-11-13 | 1.7 | Defined MVP vs Full Product Scope with AI-powered differentiation strategy, labeled FR1.1, FR14, FR16.1, FR16.2 as [MVP Priority] features, added MVP implementation notes to Stories 1.3, 3.7, 5.6, and 6.1, established data bootstrapping strategy and success metrics | Product Manager |
+| 2025-11-13 | 1.8 | Added explicit 6-stage pipeline sequence (Screening → Shortlist → Client Endorsement → Client Interview → Offer → Offer Accepted), clarified screening data comes exclusively from candidate portal, added FR17 (Team Connect integration), FR18 (Client Dashboard UI), FR19 (Job Detail Page Layout), updated Story 1.3 with pipeline stage customization, added Story 2.6 (Client Position Dashboard) and Story 2.7 (Job Detail & Candidate Management Interface) | Product Manager |
 
 ## MVP vs Full Product Scope
 
@@ -65,11 +66,13 @@ The MVP focuses on delivering **AI-assisted hiring tools** that provide immediat
 - LinkedIn automatic posting and real-time synchronization
 - Basic job editing with LinkedIn sync
 
-**✅ Simplified Candidate Pipeline (FR5, FR6, FR11)**
-- 3-stage pipeline: Screening → Interview → Offer
+**✅ Configurable Candidate Pipeline (FR5, FR6, FR11)**
+- Default 6-stage pipeline: Screening → Shortlist → Client Endorsement → Client Interview → Offer → Offer Accepted
+- Client customization capabilities to add, remove, rename, or reorder stages during job creation/editing
 - Accept/reject decision workflows at each stage
 - Basic candidate profile management
-- Complete audit trails for decisions
+- Complete audit trails for decisions and stage modifications
+- All employment types use same pipeline stages (only budget approval workflows differ)
 
 **✅ Basic Notifications (FR12 - Simplified)**
 - Email notifications for critical events
@@ -209,9 +212,15 @@ Based on the comprehensive technical specifications and workflow requirements ga
 
 **FR3:** The system shall route all LinkedIn applications to the external portal for initial processing while maintaining application tracking and candidate profile management within the ATS.
 
+*Screening Data Source:* The Screening stage data (AI interviews, initial assessments, qualification scoring) comes exclusively from the candidate portal. The ATS does NOT conduct screening; it receives screening results from the external portal for import into subsequent pipeline stages (Shortlist, Client Endorsement, etc.).
+
 **FR4:** The system shall integrate with external portal to receive AI screening results, candidate profiles, and qualification status for import into ATS pipeline management.
 
 **FR5:** The system shall implement configurable pipeline stages that clients can customize with assessments, interviews, and evaluation criteria specific to their hiring requirements.
+
+*Default Pipeline Stages:* Screening → Shortlist → Client Endorsement → Client Interview → Offer → Offer Accepted
+
+*Stage Customization:* Clients can add, remove, rename, or reorder stages during job request creation or editing. All employment types (contract, part-time, full-time, EOR) use the same configurable pipeline stages; only budget approval workflows differ by employment type.
 
 **FR6:** The system shall enforce accept/reject decision making at every stage with no "maybe" or "hold" options, ensuring definitive progression or removal from pipeline.
 
@@ -263,6 +272,24 @@ Based on the comprehensive technical specifications and workflow requirements ga
 - **Data Requirements:** Minimum 50-100 completed hires for baseline models, 6+ months historical engagement data, structured feedback on hire success/failure with performance metrics, continuous data pipeline for model retraining
 - **Performance Targets:** API response times <2 seconds for real-time analysis, batch processing for non-urgent analysis within 30 minutes, 80%+ accuracy for engagement risk prediction, 70%+ accuracy for interview question effectiveness
 - **Cost Management:** Token optimization for LLM calls, caching of frequently generated questions, batch processing for similar roles, estimated $0.10-0.50 per candidate for AI analysis
+
+**FR17:** The system shall integrate with Team Connect external application for interview scheduling with automated calendar synchronization, meeting invitation generation, and participant availability management across multiple time zones.
+
+*Integration Capabilities:* Real-time availability sync, automated interview invitations with calendar links, timezone-aware scheduling, interviewer panel coordination, reschedule workflows, and interview confirmation tracking.
+
+**FR18:** The system shall provide a client dashboard interface displaying all open job positions with real-time pipeline stage visualization and candidate count metrics per stage.
+
+*Dashboard Features:* Employment type filtering, stage-specific candidate counts, pipeline health indicators, time-in-stage metrics, accept/reject ratio tracking, and quick access to job detail views.
+
+**FR19:** The system shall provide a comprehensive job detail page with split-screen interface layout optimized for candidate review and pipeline management.
+
+*Layout Specifications:*
+- **Short Job Info:** Displayed on same page header with job title, employment type, posting date, and key metrics
+- **Long Job Info:** Accessible via popup/modal with complete job description, requirements, benefits, and LinkedIn posting details
+- **Left Sidebar:** Pipeline stages list with drag-and-drop stage navigation, candidate count per stage, visual stage progression indicators
+- **Candidate List (Left Sidebar):** Candidates displayed under each respective stage with quick filters, sort options, and stage-specific views
+- **Right Sidebar:** Detailed candidate information panel with resume viewer, application history timeline, assessment results, interview notes, document verification status
+- **Action Buttons (Right Sidebar):** Prominent "Move to Next Stage" (green) and "Disqualify" (red) buttons with decision confirmation workflows and required reason selection for rejections
 
 ### Non Functional
 
@@ -512,13 +539,14 @@ so that I can efficiently post professional jobs with appropriate oversight and 
 7. Job description generation interface implemented with input fields for job title, key requirements, company context, and custom instructions
 8. AI-generated content review and editing capabilities implemented allowing manual refinement and customization
 9. Dynamic field rendering based on employment type with validation rules and required field enforcement
-10. Job editing capabilities implemented with persistent editability throughout job lifecycle including AI regeneration options
-11. Approval notification system implemented alerting recruiter managers of pending client job requests with email and in-app notifications
-12. LinkedIn auto-posting trigger implemented activating upon job approval (client jobs) or job creation (recruiter jobs)
-13. Employment type-specific field templates created with customizable validation and display logic
-14. Job request data model designed for extensibility, employment type-specific requirements, and approval workflow tracking
-15. Basic job listing and search functionality implemented for job management dashboard with role-based filtering
-16. Job request audit trail implemented tracking all changes, user actions, approval decisions, and AI generation history
+10. Job editing capabilities implemented with persistent editability throughout job lifecycle including AI regeneration options and pipeline stage modification
+11. Pipeline stage configuration implemented during job creation and editing allowing clients to customize default stages (Screening → Shortlist → Client Endorsement → Client Interview → Offer → Offer Accepted) with add, remove, rename, and reorder capabilities as specified in FR5
+12. Approval notification system implemented alerting recruiter managers of pending client job requests with email and in-app notifications
+13. LinkedIn auto-posting trigger implemented activating upon job approval (client jobs) or job creation (recruiter jobs)
+14. Employment type-specific field templates created with customizable validation and display logic
+15. Job request data model designed for extensibility, employment type-specific requirements, approval workflow tracking, and custom pipeline stage configurations
+16. Basic job listing and search functionality implemented for job management dashboard with role-based filtering
+17. Job request audit trail implemented tracking all changes, user actions, approval decisions, AI generation history, and pipeline stage modifications
 
 **MVP Implementation Focus:**
 - **Essential for MVP (Criteria 1-8, 10-12):** Job creation with employment types, role-based approval workflows, AI job description generation (FR1.1), basic editing, LinkedIn auto-posting
@@ -702,6 +730,53 @@ so that all candidate information remains consistent and accessible.
 6. Data conflict resolution implemented handling discrepancies between system data
 7. Sync status monitoring implemented with error detection and recovery procedures
 8. Data archival and retention implemented according to compliance and privacy requirements
+
+### Story 2.6: Client Position Dashboard
+
+As a client or recruiter,
+I want to see all my open job positions with pipeline stage visualization and candidate counts,
+so that I can quickly assess hiring progress and identify positions requiring attention.
+
+#### Acceptance Criteria
+1. Dashboard interface implemented displaying all open job positions in card or table view with employment type indicators
+2. Real-time pipeline stage visualization implemented showing default stages (Screening → Shortlist → Client Endorsement → Client Interview → Offer → Offer Accepted) with customized stages where configured
+3. Candidate count metrics implemented displaying number of candidates per stage for each job position
+4. Employment type filtering implemented allowing view filtering by contract, part-time, full-time, or EOR positions
+5. Pipeline health indicators implemented showing time-in-stage metrics, accept/reject ratios, and bottleneck alerts
+6. Quick access to job detail views implemented via click-through navigation from dashboard job cards
+7. Sorting and search functionality implemented allowing organization by posting date, candidate count, employment type, or job title
+8. Stage-specific candidate counts displayed with visual progress bars showing distribution across pipeline stages
+9. Urgent action indicators implemented highlighting positions with stalled candidates or pending decisions
+10. Dashboard refresh implemented with real-time updates as candidates move through stages
+
+**Technical Dependencies:** Supports FR18 (Client Dashboard Interface) with real-time data aggregation from candidate pipeline tables, stage configuration data, and decision tracking systems.
+
+### Story 2.7: Job Detail & Candidate Management Interface
+
+As a recruiter or hiring manager,
+I want a comprehensive job detail page with split-screen candidate management,
+so that I can efficiently review candidates and make progression decisions without losing context.
+
+#### Acceptance Criteria
+1. Split-screen interface layout implemented with distinct left sidebar (stages/candidates) and right sidebar (candidate details) sections
+2. Short job info header implemented displaying job title, employment type, posting date, active candidate count, and key metrics on main page
+3. Long job info popup/modal implemented with complete job description, requirements, benefits, LinkedIn posting details, and edit job button
+4. Left sidebar pipeline stages list implemented with drag-and-drop stage navigation showing stage names and candidate counts per stage
+5. Candidate list under each stage implemented displaying candidate cards with name, photo, key qualifications, and current status
+6. Stage-specific candidate filtering implemented allowing quick view of candidates in selected pipeline stage
+7. Right sidebar candidate details panel implemented with tabbed sections for resume viewer, application history timeline, assessment results, interview notes, and document verification status
+8. Resume viewer implemented with inline PDF/document display, highlighting of key qualifications, and download capability
+9. Application history timeline implemented showing all candidate movements, decisions, communications, and timestamps
+10. Prominent action buttons implemented in right sidebar: "Move to Next Stage" (green) and "Disqualify" (red) with decision confirmation workflows
+11. Decision confirmation modals implemented requiring reason selection for disqualification decisions with rejection reason categorization
+12. Automatic stage progression implemented moving candidate to next configured stage upon "Move to Next Stage" action with audit trail recording
+13. Bulk candidate selection implemented allowing multi-candidate decision workflows for efficiency
+14. Keyboard shortcuts implemented for power users (Enter to accept, R to reject, Arrow keys for candidate navigation)
+15. Context preservation implemented ensuring job and stage context maintained during candidate review workflow
+
+**Technical Dependencies:** Supports FR19 (Job Detail Page Layout) and integrates with FR6 (Accept/Reject Decision Framework), FR11 (Audit Trails), and Story 2.3 (Decision Framework).
+
+**UI/UX Notes:** Interface follows progressive disclosure principles with essential information visible by default and detailed data accessible through expandable sections. Color coding by employment type (contract=blue, part-time=green, full-time=orange, EOR=purple) applied throughout interface for instant context recognition.
 
 ## Epic 3: Assessment, Interview & Document Verification Systems
 
