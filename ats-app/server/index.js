@@ -302,6 +302,312 @@ app.get('/api/jobs/:id', async (req, res) => {
   }
 });
 
+// ===== APPROVAL WORKFLOW ENDPOINTS =====
+
+// GET /api/approvals - List all pending job approvals
+app.get('/api/approvals', async (req, res) => {
+  console.log('[Backend] Received GET /api/approvals request');
+  try {
+    const { status = 'pending', sortBy = 'created_at', order = 'asc' } = req.query;
+    
+    const approvalsQuery = `
+      SELECT 
+        ja.id as approval_id,
+        ja.status as approval_status,
+        ja.sla_deadline,
+        ja.created_at as submitted_at,
+        ja.feedback_comments,
+        j.id as job_id,
+        j.title,
+        j.slug,
+        j.employment_type,
+        j.department,
+        j.city,
+        j.country,
+        j.remote_flag,
+        j.salary_from,
+        j.salary_to,
+        j.salary_currency,
+        j.created_by_role,
+        j.description,
+        j.requirements,
+        j.created_at as job_created_at,
+        CASE 
+          WHEN ja.sla_deadline < NOW() THEN 'overdue'
+          WHEN ja.sla_deadline < NOW() + INTERVAL '6 hours' THEN 'urgent'
+          ELSE 'normal'
+        END as priority
+      FROM job_approvals ja
+      JOIN jobs j ON ja.job_id = j.id
+      WHERE ja.status = $1
+      ORDER BY 
+        CASE WHEN ja.sla_deadline < NOW() THEN 0 ELSE 1 END,
+        ja.sla_deadline ASC
+    `;
+    
+    const result = await query(approvalsQuery, [status]);
+    
+    console.log(`[Backend] Found ${result.rows.length} ${status} approvals`);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('[Backend] Error fetching approvals:', error);
+    res.status(500).json({ error: 'Failed to fetch approvals', details: error.message });
+  }
+});
+
+// GET /api/approvals/:id - Get single approval with full job details
+app.get('/api/approvals/:id', async (req, res) => {
+  console.log(`[Backend] Received GET /api/approvals/${req.params.id}`);
+  try {
+    const { id } = req.params;
+    
+    const approvalQuery = `
+      SELECT 
+        ja.*,
+        j.*,
+        ja.id as approval_id,
+        ja.status as approval_status,
+        j.id as job_id
+      FROM job_approvals ja
+      JOIN jobs j ON ja.job_id = j.id
+      WHERE ja.id = $1
+    `;
+    
+    const result = await query(approvalQuery, [id]);
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Approval not found' });
+    }
+    
+    // Get approval history
+    const historyQuery = `
+      SELECT * FROM approval_history
+      WHERE approval_id = $1
+      ORDER BY timestamp DESC
+    `;
+    const history = await query(historyQuery, [id]);
+    
+    const approval = {
+      ...result.rows[0],
+      history: history.rows
+    };
+    
+    res.json(approval);
+  } catch (error) {
+    console.error('[Backend] Error fetching approval details:', error);
+    res.status(500).json({ error: 'Failed to fetch approval details', details: error.message });
+  }
+});
+
+// POST /api/approvals/:id/approve - Approve a job
+app.post('/api/approvals/:id/approve', async (req, res) => {
+  console.log(`[Backend] Approving job approval ${req.params.id}`);
+  try {
+    const { id } = req.params;
+    const { approverId = null, comments = '', modifications = null } = req.body;
+    
+    // Start transaction
+    await query('BEGIN');
+    
+    // Update approval record
+    const updateApproval = `
+      UPDATE job_approvals
+      SET 
+        status = 'approved',
+        approver_id = $1,
+        decision_timestamp = NOW(),
+        feedback_comments = $2,
+        modifications_made = $3,
+        updated_at = NOW()
+      WHERE id = $4
+      RETURNING job_id
+    `;
+    
+    const approvalResult = await query(updateApproval, [approverId, comments, JSON.stringify(modifications), id]);
+    
+    if (approvalResult.rows.length === 0) {
+      await query('ROLLBACK');
+      return res.status(404).json({ error: 'Approval not found' });
+    }
+    
+    const jobId = approvalResult.rows[0].job_id;
+    
+    // Update job status to published
+    await query(`
+      UPDATE jobs
+      SET 
+        status = 'published',
+        job_status = 'published',
+        approved_by_user_id = $1,
+        approved_at = NOW(),
+        published_at = NOW(),
+        updated_at = NOW()
+      WHERE id = $2
+    `, [approverId, jobId]);
+    
+    // Log to approval history
+    await query(`
+      INSERT INTO approval_history (approval_id, job_id, action, user_id, details)
+      VALUES ($1, $2, 'approved', $3, $4)
+    `, [id, jobId, approverId, JSON.stringify({ comments, modifications })]);
+    
+    await query('COMMIT');
+    
+    console.log(`[Backend] Job ${jobId} approved successfully`);
+    res.json({ 
+      success: true, 
+      message: 'Job approved and published',
+      jobId 
+    });
+  } catch (error) {
+    await query('ROLLBACK');
+    console.error('[Backend] Error approving job:', error);
+    res.status(500).json({ error: 'Failed to approve job', details: error.message });
+  }
+});
+
+// POST /api/approvals/:id/reject - Reject a job
+app.post('/api/approvals/:id/reject', async (req, res) => {
+  console.log(`[Backend] Rejecting job approval ${req.params.id}`);
+  try {
+    const { id } = req.params;
+    const { approverId = null, comments } = req.body;
+    
+    if (!comments || comments.trim().length === 0) {
+      return res.status(400).json({ error: 'Feedback comments are required for rejection' });
+    }
+    
+    // Start transaction
+    await query('BEGIN');
+    
+    // Update approval record
+    const updateApproval = `
+      UPDATE job_approvals
+      SET 
+        status = 'rejected',
+        approver_id = $1,
+        decision_timestamp = NOW(),
+        feedback_comments = $2,
+        updated_at = NOW()
+      WHERE id = $3
+      RETURNING job_id
+    `;
+    
+    const approvalResult = await query(updateApproval, [approverId, comments, id]);
+    
+    if (approvalResult.rows.length === 0) {
+      await query('ROLLBACK');
+      return res.status(404).json({ error: 'Approval not found' });
+    }
+    
+    const jobId = approvalResult.rows[0].job_id;
+    
+    // Update job status to rejected (keep as draft but mark rejected)
+    await query(`
+      UPDATE jobs
+      SET 
+        status = 'draft',
+        job_status = 'draft',
+        updated_at = NOW()
+      WHERE id = $1
+    `, [jobId]);
+    
+    // Log to approval history
+    await query(`
+      INSERT INTO approval_history (approval_id, job_id, action, user_id, details)
+      VALUES ($1, $2, 'rejected', $3, $4)
+    `, [id, jobId, approverId, JSON.stringify({ comments })]);
+    
+    await query('COMMIT');
+    
+    console.log(`[Backend] Job ${jobId} rejected`);
+    res.json({ 
+      success: true, 
+      message: 'Job rejected with feedback',
+      jobId 
+    });
+  } catch (error) {
+    await query('ROLLBACK');
+    console.error('[Backend] Error rejecting job:', error);
+    res.status(500).json({ error: 'Failed to reject job', details: error.message });
+  }
+});
+
+// POST /api/approvals/bulk-approve - Bulk approve multiple jobs
+app.post('/api/approvals/bulk-approve', async (req, res) => {
+  console.log('[Backend] Bulk approving jobs');
+  try {
+    const { approvalIds, approverId = null, comments = '' } = req.body;
+    
+    if (!Array.isArray(approvalIds) || approvalIds.length === 0) {
+      return res.status(400).json({ error: 'Approval IDs array is required' });
+    }
+    
+    await query('BEGIN');
+    
+    let successCount = 0;
+    const errors = [];
+    
+    for (const approvalId of approvalIds) {
+      try {
+        // Update approval
+        const result = await query(`
+          UPDATE job_approvals
+          SET 
+            status = 'approved',
+            approver_id = $1,
+            decision_timestamp = NOW(),
+            feedback_comments = $2,
+            updated_at = NOW()
+          WHERE id = $3
+          RETURNING job_id
+        `, [approverId, comments, approvalId]);
+        
+        if (result.rows.length > 0) {
+          const jobId = result.rows[0].job_id;
+          
+          // Update job status
+          await query(`
+            UPDATE jobs
+            SET 
+              status = 'published',
+              job_status = 'published',
+              approved_by_user_id = $1,
+              approved_at = NOW(),
+              published_at = NOW(),
+              updated_at = NOW()
+            WHERE id = $2
+          `, [approverId, jobId]);
+          
+          // Log history
+          await query(`
+            INSERT INTO approval_history (approval_id, job_id, action, user_id, details)
+            VALUES ($1, $2, 'bulk_approved', $3, $4)
+          `, [approvalId, jobId, approverId, JSON.stringify({ comments, bulkAction: true })]);
+          
+          successCount++;
+        }
+      } catch (err) {
+        errors.push({ approvalId, error: err.message });
+      }
+    }
+    
+    await query('COMMIT');
+    
+    console.log(`[Backend] Bulk approved ${successCount}/${approvalIds.length} jobs`);
+    res.json({ 
+      success: true,
+      approved: successCount,
+      total: approvalIds.length,
+      errors: errors.length > 0 ? errors : undefined
+    });
+  } catch (error) {
+    await query('ROLLBACK');
+    console.error('[Backend] Error in bulk approval:', error);
+    res.status(500).json({ error: 'Bulk approval failed', details: error.message });
+  }
+});
+
 if (process.env.NODE_ENV === 'production') {
   app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, '../dist/index.html'));
