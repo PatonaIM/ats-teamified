@@ -29,10 +29,10 @@ This repository contains comprehensive technical documentation for a Multi-Emplo
 **Essential Supporting Infrastructure (MVP):**
 - Multi-employment type job management (contract, part-time, full-time, EOR)
 - LinkedIn Jobs API integration with bidirectional synchronization
-- Simple 3-stage candidate pipeline (Screening → Interview → Offer)
+- 6-stage customizable candidate pipeline (Screening → Shortlist → Client Endorsement → Client Interview → Offer → Offer Accepted)
 - Accept/reject decision workflows with audit trails
 - Basic email notifications and in-app alerts
-- Teamified Accounts authentication integration
+- Custom SSO Provider authentication integration
 
 #### Deferred to Phase 2 (Requires Data + Portal)
 - **Advanced AI Automation**: ML-based NLP sentiment analysis, competing offer detection, live interview assistant, automated bias detection, historical question optimization (needs 50-100 hires)
@@ -43,22 +43,30 @@ This repository contains comprehensive technical documentation for a Multi-Emplo
 
 ## Architecture
 The documented system uses Azure-native architecture with:
-- **Database**: Azure SQL Database (Serverless) with multi-tenant support
+- **Backend**: Node.js + NestJS (TypeScript) with microservices architecture
+- **Frontend**: React + Vite + Tailwind CSS + shadcn/ui component library
+- **Database**: Azure Database for PostgreSQL (Flexible Server) with Prisma ORM
 - **Storage**: Azure Blob Storage with lifecycle management
 - **Compute**: Azure Kubernetes Service (AKS) with auto-scaling
 - **AI/ML**: OpenAI GPT-4/Anthropic Claude for LLM, custom ML models for predictions
-- **Authentication**: Teamified Accounts integration via OAuth 2.0/OpenID Connect
+- **Authentication**: Custom SSO Provider integration via OAuth 2.0/OpenID Connect (Passport.js)
 - **Monitoring**: Azure Monitor, Log Analytics, Application Insights
+- **Brand Colors**: Purple (#A16AE8) + Blue (#8096FD)
 
 ## Recent Changes
+- 2025-11-13: **Implementation Guide v2.0 - FINAL APPROVAL ✅**
+  - **Major Stack Update:** Node.js + NestJS backend (from .NET), PostgreSQL (from Azure SQL), Tailwind CSS + shadcn/ui (from Material-UI), Custom SSO provider (from Teamified Accounts)
+  - Updated Purple (#A16AE8) + Blue (#8096FD) brand colors throughout UI specifications
+  - Full-stack TypeScript team structure (7-9 FTE) for better cross-functional collaboration
+  - Updated cost estimates: **$500k-$550k MVP** (12% savings vs .NET), ~$1.19M-$1.24M total project
+  - Architect-reviewed and production-ready for engineering teams
 - 2025-11-13: **Created Comprehensive Implementation Guide (v1.0)**
-  - Detailed technical stack recommendations (React, .NET 8, Azure-native)
+  - Initial technical stack recommendations (React, .NET 8, Azure-native)
   - 3-phase implementation roadmap (MVP 4-6 months, Phase 2 4 months, Phase 3 4 months)
   - Team structure and resource allocation (6-10 person team)
   - DevOps and deployment strategy (GitHub Actions, AKS, blue-green deployment)
   - Security and compliance implementation (OAuth 2.0, GDPR, audit logging)
-  - Cost estimates and budget planning ($250k-$400k MVP, ~$1.3M-$1.5M total)
-  - Risk management and mitigation strategies
+  - Original cost estimates ($250k-$400k MVP, ~$1.3M-$1.5M total)
 - 2025-11-13: Initial repository setup and documentation import
 - 2025-11-13: Added comprehensive Sentiment Analysis specifications to brief.md and prd.md
   - Communication pattern analysis and NLP sentiment scoring
@@ -98,14 +106,15 @@ The documented system uses Azure-native architecture with:
 - **Phase 2**: Live interview assistant, automated bias detection, historical effectiveness tracking (requires 50+ hires per role)
 - **Phase 3**: 70%+ effectiveness accuracy, ML-optimized personalization, continuous improvement
 
-## Architect Review Status: ✅ APPROVED (Production-Ready)
+## Architect Review Status: ✅ APPROVED (Production-Ready) - Implementation Guide v2.0
 
-**Approval Summary:** The revised MVP scope is coherent and achievable, with human-assisted AI features scoped for day-one launch. MVP feature slices now explicitly limit AI capabilities to prompt/templates plus manual review, deferring automation that depends on portal telemetry or large datasets.
+**Final Approval Summary (November 13, 2025):** Implementation Guide v2.0 is internally consistent with the Node.js + NestJS + Prisma + PostgreSQL + Tailwind CSS + Custom SSO architecture and reflects the updated MVP budget ($500k-$550k). All technical stack references, environment setup, authentication, security sections, and cost estimates are aligned. No remaining .NET, Azure SQL, or Teamified Accounts dependencies outside historical changelog. Document is production-ready for engineering teams.
 
-**Recommended Next Steps:**
-1. **Reconfirm KPI Timelines**: Validate that 70% engagement-risk accuracy targets remain attainable with available Phase 2 data volumes
-2. **Document Operational Processes**: Define workflows for human validation of AI outputs and manual recruiter alert procedures
-3. **Define Phase 2 Entry Triggers**: Outline prerequisites for portal/telemetry enablement (e.g., 50 completed hires, stable MVP adoption)
+**Next Actions:**
+1. **Engineering Kickoff**: Publish Implementation Guide v2.0 with engineering leadership for team onboarding
+2. **Environment Setup**: Begin provisioning Azure resources (AKS, PostgreSQL Flexible Server, Blob Storage, Redis)
+3. **Custom SSO Integration**: Implement OAuth 2.0 abstraction layer with Passport.js and local auth fallback
+4. **Validate Roadmap**: Ensure all parallel documentation (PRD, technical briefs) reference the Node.js stack consistently
 
 ## Replit Setup
 Since this is a documentation repository, we've configured:
