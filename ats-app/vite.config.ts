@@ -8,6 +8,7 @@ export default defineConfig({
     host: '0.0.0.0',
     port: 5000,
     strictPort: true,
+    allowedHosts: ['.replit.dev'],
     hmr: {
       clientPort: 5000,
     },
@@ -15,5 +16,6 @@ export default defineConfig({
   preview: {
     host: '0.0.0.0',
     port: 5000,
+    allowedHosts: ['.replit.dev'],
   },
 })
