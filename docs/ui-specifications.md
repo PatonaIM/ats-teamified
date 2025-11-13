@@ -574,9 +574,39 @@ npx shadcn-ui@latest add button card badge table
 └──────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Candidate Card Components
+### External Portal Integration Points
 
-#### Card Structure
+Several pipeline stages involve back-and-forth communication with the **Candidate Portal**:
+
+#### Stages with External Portal Interaction
+
+**1. Assessment Stage** (After Screening)
+- **ATS → Portal**: Recruiter assigns assessment in ATS
+- **Portal Action**: Candidate completes assessment in their portal
+- **Portal → ATS**: Results automatically sync back to ATS
+- **ATS Display**: Assessment scores, completion status, time taken
+
+**2. Interview Scheduling** (Client Interview stage)
+- **ATS → Portal**: Interview invitation sent via Team Connect integration
+- **Portal Action**: Candidate accepts/reschedules interview
+- **Portal → ATS**: Confirmation syncs back with calendar updates
+- **ATS Display**: Interview status, scheduled time, meeting link
+
+**3. Document Requests**
+- **ATS → Portal**: Recruiter requests additional documents
+- **Portal Action**: Candidate uploads documents
+- **Portal → ATS**: Documents sync to ATS blob storage
+- **ATS Display**: Document status, upload timestamp
+
+**4. Offer Acceptance**
+- **ATS → Portal**: Offer letter sent to candidate portal
+- **Portal Action**: Candidate reviews and accepts/rejects
+- **Portal → ATS**: Decision syncs with digital signature
+- **ATS Display**: Offer status, signature timestamp
+
+### Candidate Card Components (with Portal Status)
+
+#### Enhanced Card Structure with External Portal Indicators
 ```tsx
 <Card className="cursor-move hover:shadow-lg transition-shadow" draggable>
   <CardHeader className="p-3">
@@ -593,6 +623,14 @@ npx shadcn-ui@latest add button card badge table
     <div className="flex items-center gap-1 text-yellow-500 text-xs mb-2">
       ⭐⭐⭐⭐⭐ <span className="text-gray-600">(5.0)</span>
     </div>
+    
+    {/* External Portal Status Indicator */}
+    <div className="mb-2 p-2 bg-blue-50 dark:bg-blue-900/20 rounded text-xs">
+      🔄 <span className="text-blue-700 dark:text-blue-300">
+        Assessment pending in candidate portal
+      </span>
+    </div>
+    
     <div className="text-xs text-gray-600 space-y-1">
       <div>📍 San Francisco, CA</div>
       <div>💼 5 years experience</div>
@@ -617,6 +655,25 @@ npx shadcn-ui@latest add button card badge table
 </Card>
 ```
 
+#### Portal Status Indicators (displayed on candidate cards)
+
+**Pending Actions:**
+- 🔄 **Assessment Pending**: Blue background - "Assessment pending in candidate portal"
+- 🔄 **Interview Scheduling**: Blue background - "Awaiting interview confirmation"
+- 🔄 **Document Request**: Blue background - "Additional documents requested"
+- 🔄 **Offer Pending**: Blue background - "Offer sent, awaiting response"
+
+**Completed Actions:**
+- ✅ **Assessment Completed**: Green background - "Assessment completed - Score: 85%"
+- ✅ **Interview Confirmed**: Green background - "Interview scheduled for Nov 15, 10:00 AM"
+- ✅ **Documents Uploaded**: Green background - "3 documents received"
+- ✅ **Offer Accepted**: Green background - "Offer accepted - Start date: Dec 1"
+
+**Overdue/Failed:**
+- ⚠️ **Assessment Overdue**: Yellow background - "Assessment due 2 days ago"
+- ❌ **Interview Declined**: Red background - "Candidate declined interview"
+- ❌ **Offer Rejected**: Red background - "Offer declined by candidate"
+
 #### Engagement Indicators
 - 🟢 **High Engagement**: Responded < 2 hours
 - 🟡 **Medium Engagement**: Responded 2-24 hours
@@ -628,6 +685,179 @@ npx shadcn-ui@latest add button card badge table
 - **Drop Zones**: Columns highlight in purple when hovering
 - **Confirmation**: Modal appears for stage change with decision logging
 - **Auto-save**: Changes save immediately with undo option
+
+---
+
+## 12a. Candidate Profile Page (with External Portal Data)
+
+### Layout Structure
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│  ← Back to Pipeline    Sarah Johnson                    [Edit] [Message] │
+├──────────────────────────────────────────────────────────────────────────┤
+│                                                                           │
+│  ┌─────────────────────────────────────────────────────────────────────┐ │
+│  │ 👤 Sarah Johnson                                  [Full-Time] 🟢    │ │
+│  │                                                                      │ │
+│  │ 📧 sarah.j@email.com    📱 (555) 123-4567    📍 San Francisco, CA  │ │
+│  │ 💼 5 years experience   🎓 BS Computer Science                      │ │
+│  │                                                                      │ │
+│  │ Current Stage: Shortlist                       Engagement: 🟢 95%   │ │
+│  │ Applied: Nov 8, 2025                          Recruiter: John Doe   │ │
+│  │                                                                      │ │
+│  │ [Move to Next Stage] [Schedule Interview] [Request Documents]      │ │
+│  └─────────────────────────────────────────────────────────────────────┘ │
+│                                                                           │
+├──────────────────────────────────────────────────────────────────────────┤
+│                                                                           │
+│  [Overview] [Assessments] [Interviews] [Documents] [Activity]           │
+│                                                                           │
+├──────────────────────────────────────────────────────────────────────────┤
+│                                                                           │
+│  📝 Assessments (from External Portal)                                   │
+│  ┌─────────────────────────────────────────────────────────────────────┐ │
+│  │ ✅ Technical Assessment - JavaScript                                │ │
+│  │    Score: 85/100                                Status: Completed    │ │
+│  │    Completed: Nov 9, 2025 at 2:30 PM           Time: 45 mins        │ │
+│  │                                                                      │ │
+│  │    Performance Breakdown:                                           │ │
+│  │    • Code Quality: ████████████████░░ 90%                           │ │
+│  │    • Problem Solving: ████████████░░░░ 80%                          │ │
+│  │    • Best Practices: ████████████████░ 85%                          │ │
+│  │                                                                      │ │
+│  │    🔗 Synced from Candidate Portal                                  │ │
+│  │    [View Full Report] [Download Results]                            │ │
+│  ├─────────────────────────────────────────────────────────────────────┤ │
+│  │ 🔄 System Design Assessment                                         │ │
+│  │    Status: Pending                             Sent: Nov 10, 2025   │ │
+│  │    Due: Nov 17, 2025                          Reminder: Sent Nov 13 │ │
+│  │                                                                      │ │
+│  │    ⚠️ Assessment assigned via candidate portal - awaiting completion│ │
+│  │    [Send Reminder] [View in Portal ↗]                               │ │
+│  └─────────────────────────────────────────────────────────────────────┘ │
+│                                                                           │
+│  📅 Interviews (Team Connect Integration)                                │
+│  ┌─────────────────────────────────────────────────────────────────────┐ │
+│  │ ✅ Phone Screening                                                   │ │
+│  │    Date: Nov 9, 2025 at 10:00 AM               Duration: 30 mins    │ │
+│  │    Interviewer: John Doe                       Rating: ⭐⭐⭐⭐⭐      │ │
+│  │    Status: Completed                                                │ │
+│  │                                                                      │ │
+│  │    Notes: "Excellent technical background, strong communication..."│ │
+│  │    [View Full Notes] [Download Recording]                           │ │
+│  ├─────────────────────────────────────────────────────────────────────┤ │
+│  │ 🔄 Technical Interview (Virtual)                                    │ │
+│  │    Date: Nov 15, 2025 at 2:00 PM               Duration: 60 mins    │ │
+│  │    Interviewers: Jane Smith, Mike Johnson                           │ │
+│  │    Status: Scheduled ✓                         Meeting: Zoom Link   │ │
+│  │                                                                      │ │
+│  │    🔗 Scheduled via Team Connect - Synced to candidate portal       │ │
+│  │    Candidate Confirmed: ✓ Nov 13, 2025 at 9:15 AM                  │ │
+│  │                                                                      │ │
+│  │    [Join Meeting] [Reschedule] [Send Prep Materials]                │ │
+│  └─────────────────────────────────────────────────────────────────────┘ │
+│                                                                           │
+│  📄 Documents (from Candidate Portal)                                    │
+│  ┌─────────────────────────────────────────────────────────────────────┐ │
+│  │ ✅ Resume - sarah_johnson_resume.pdf                                │ │
+│  │    Uploaded: Nov 8, 2025                       Size: 245 KB         │ │
+│  │    Source: LinkedIn Application                                     │ │
+│  │    [View] [Download]                                                │ │
+│  ├─────────────────────────────────────────────────────────────────────┤ │
+│  │ ✅ Portfolio - portfolio_website.pdf                                │ │
+│  │    Uploaded: Nov 9, 2025                       Size: 1.2 MB         │ │
+│  │    Source: Candidate Portal                                         │ │
+│  │    🔗 Uploaded via portal document request                          │ │
+│  │    [View] [Download]                                                │ │
+│  ├─────────────────────────────────────────────────────────────────────┤ │
+│  │ 🔄 References - Requested                                           │ │
+│  │    Requested: Nov 13, 2025                     Status: Pending      │ │
+│  │    Due: Nov 20, 2025                                                │ │
+│  │                                                                      │ │
+│  │    🔗 Request sent to candidate portal - awaiting upload            │ │
+│  │    [Send Reminder] [View Request]                                   │ │
+│  └─────────────────────────────────────────────────────────────────────┘ │
+│                                                                           │
+│  🎯 Portal Activity Timeline                                             │
+│  ┌─────────────────────────────────────────────────────────────────────┐ │
+│  │ Nov 13, 9:15 AM - 🔔 Interview confirmed in portal                  │ │
+│  │ Nov 10, 3:00 PM - 🔄 System design assessment assigned              │ │
+│  │ Nov 9, 2:30 PM  - ✅ Technical assessment completed (Score: 85%)    │ │
+│  │ Nov 9, 9:00 AM  - 📄 Portfolio uploaded via portal                  │ │
+│  │ Nov 8, 11:30 AM - 🔔 Welcome email sent to portal                   │ │
+│  │ Nov 8, 9:00 AM  - 📧 Application received from LinkedIn             │ │
+│  └─────────────────────────────────────────────────────────────────────┘ │
+│                                                                           │
+└──────────────────────────────────────────────────────────────────────────┘
+```
+
+### External Portal Action Buttons
+
+**In Recruiter's ATS View:**
+```tsx
+{/* Send Assessment */}
+<Button onClick={sendAssessment}>
+  <FileText className="mr-2" />
+  Assign Assessment
+</Button>
+// Opens modal to select assessment from library
+// Automatically sends to candidate portal
+// Creates pending task in portal
+
+{/* Schedule Interview */}
+<Button onClick={scheduleInterview}>
+  <Calendar className="mr-2" />
+  Schedule Interview
+</Button>
+// Opens Team Connect integration
+// Sends calendar invite to candidate portal
+// Candidate can accept/reschedule in their portal
+
+{/* Request Documents */}
+<Button onClick={requestDocuments}>
+  <Upload className="mr-2" />
+  Request Documents
+</Button>
+// Opens document request form
+// Sends notification to candidate portal
+// Candidate uploads in their portal, syncs to ATS
+
+{/* Send Offer */}
+<Button onClick={sendOffer}>
+  <FileSignature className="mr-2" />
+  Send Offer
+</Button>
+// Generates offer letter
+// Sends to candidate portal for e-signature
+// Acceptance syncs back to ATS
+```
+
+### Real-time Sync Indicators
+
+```tsx
+{/* Syncing indicator */}
+<div className="flex items-center gap-2 text-xs text-blue-600">
+  <Loader2 className="h-3 w-3 animate-spin" />
+  Syncing with candidate portal...
+</div>
+
+{/* Last synced */}
+<div className="text-xs text-gray-500">
+  Last synced: 2 minutes ago
+  <Button variant="ghost" size="sm" onClick={manualSync}>
+    <RefreshCw className="h-3 w-3" />
+  </Button>
+</div>
+
+{/* Sync error */}
+<div className="flex items-center gap-2 text-xs text-red-600">
+  <AlertCircle className="h-3 w-3" />
+  Sync failed - Retry?
+  <Button variant="ghost" size="sm" onClick={retrySync}>
+    Retry
+  </Button>
+</div>
+```
 
 ---
 
