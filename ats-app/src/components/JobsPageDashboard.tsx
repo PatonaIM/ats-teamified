@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Search, Plus, Briefcase, MapPin, DollarSign, Users, Calendar, CheckCircle, Clock, XCircle, Pause } from 'lucide-react';
 import JobForm from './JobForm';
 import { getEmploymentTypeColors, getEmploymentTypeLabel } from '../utils/employmentTypes';
+import { apiRequest } from '../utils/api';
 
 window.addEventListener('unhandledrejection', (event) => {
   console.error('Unhandled promise rejection:', event.reason);
@@ -51,18 +52,10 @@ export function JobsPageDashboard() {
       if (statusFilter !== 'all') params.append('status', statusFilter);
       if (searchTerm) params.append('search', searchTerm);
 
-      const url = `http://localhost:3001/api/jobs?${params}`;
-      console.log('Fetching jobs from:', url);
+      const endpoint = `/api/jobs?${params}`;
+      console.log('Fetching jobs from:', endpoint);
       
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 10000);
-      
-      const response = await fetch(url, { signal: controller.signal });
-      clearTimeout(timeoutId);
-      console.log('Response status:', response.status);
-      if (!response.ok) throw new Error(`Failed to fetch jobs (${response.status})`);
-      
-      const data = await response.json();
+      const data = await apiRequest<{ jobs: Job[] }>(endpoint);
       console.log('Jobs received:', data.jobs?.length || 0);
       console.log('First job:', data.jobs?.[0]);
       setJobs(data.jobs || []);
@@ -103,18 +96,12 @@ export function JobsPageDashboard() {
   const handleCreateJob = async (formData: any) => {
     try {
       setIsSubmitting(true);
-      const response = await fetch('http://localhost:3001/api/jobs', {
+      const newJob = await apiRequest<Job>('/api/jobs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)
       });
       
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Failed to create job');
-      }
-      
-      const newJob = await response.json();
       setJobs(prev => [newJob, ...prev]);
       setIsCreateModalOpen(false);
       await fetchJobs();
