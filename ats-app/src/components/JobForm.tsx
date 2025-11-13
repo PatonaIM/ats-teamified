@@ -5,42 +5,50 @@ import { employmentTypeConfigs } from '../utils/employmentTypes';
 
 type EmploymentTypeOrEmpty = EmploymentType | '';
 
+interface PipelineStage {
+  name: string;
+  order: number;
+}
+
 interface JobFormData {
   title: string;
   description: string;
   keySkills: string;
   experienceLevel: string;
-  companyInfo: string;
-  specialRequirements: string;
+  department: string;
+  departmentOther?: string;
   employmentType: EmploymentTypeOrEmpty;
+  
+  city: string;
+  country: string;
+  remoteOk: boolean;
+  salaryMin?: string;
+  salaryMax?: string;
+  salaryCurrency: string;
   
   contractDuration?: string;
   contractValue?: string;
   serviceScope?: string;
   deliverableMilestones?: string;
   paymentSchedule?: string;
-  legalReviewRequired?: boolean;
   
   hourlyRate?: string;
   hoursPerWeek?: string;
   maxBudget?: string;
   costCenter?: string;
-  durationType?: string;
   
   annualSalary?: string;
   benefitsPackage?: string;
-  totalCost?: string;
-  budgetYear?: string;
+  totalCompensation?: string;
   headcountImpact?: string;
-  performanceExpectations?: string;
   
   localSalary?: string;
-  localBenefits?: string;
   eorServiceFee?: string;
   complianceCosts?: string;
-  currency?: string;
   timezone?: string;
   remoteCapabilities?: string;
+  
+  pipelineStages: PipelineStage[];
 }
 
 interface JobFormProps {
@@ -52,14 +60,27 @@ interface JobFormProps {
 }
 
 const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitting = false, initialData }) => {
+  const defaultPipelineStages: PipelineStage[] = [
+    { name: 'Screening', order: 1 },
+    { name: 'Shortlist', order: 2 },
+    { name: 'Client Endorsement', order: 3 },
+    { name: 'Client Interview', order: 4 },
+    { name: 'Offer', order: 5 },
+    { name: 'Offer Accepted', order: 6 }
+  ];
+  
   const getInitialFormData = (): JobFormData => ({
     title: '',
     description: '',
     keySkills: '',
     experienceLevel: '',
-    companyInfo: '',
-    specialRequirements: '',
+    department: '',
     employmentType: '',
+    city: '',
+    country: '',
+    remoteOk: false,
+    salaryCurrency: 'USD',
+    pipelineStages: defaultPipelineStages,
     ...initialData
   });
 
@@ -88,6 +109,10 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitti
     if (!formData.employmentType) newErrors.employmentType = 'Employment type is required';
     if (!formData.keySkills.trim()) newErrors.keySkills = 'Key skills are required';
     if (!formData.experienceLevel.trim()) newErrors.experienceLevel = 'Experience level is required';
+    if (!formData.department.trim()) newErrors.department = 'Department is required';
+    if (formData.department === 'Other' && !formData.departmentOther?.trim()) newErrors.departmentOther = 'Please specify the department';
+    if (!formData.city.trim()) newErrors.city = 'City is required';
+    if (!formData.country.trim()) newErrors.country = 'Country is required';
 
     if (formData.employmentType === 'contract') {
       if (!formData.contractDuration) newErrors.contractDuration = 'Contract duration is required';
@@ -108,7 +133,7 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitti
 
     if (formData.employmentType === 'eor') {
       if (!formData.localSalary) newErrors.localSalary = 'Local salary is required';
-      if (!formData.currency) newErrors.currency = 'Currency is required';
+      if (!formData.salaryCurrency) newErrors.salaryCurrency = 'Currency is required';
       if (!formData.eorServiceFee) newErrors.eorServiceFee = 'EOR service fee is required';
     }
 
@@ -186,15 +211,6 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitti
                 placeholder="e.g., Monthly, upon milestones"
               />
             </div>
-            <div className="flex items-center">
-              <input
-                type="checkbox"
-                checked={formData.legalReviewRequired || false}
-                onChange={(e) => handleChange('legalReviewRequired', e.target.checked)}
-                className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
-              />
-              <label className="ml-2 text-sm font-medium text-gray-700">Legal Review Required</label>
-            </div>
           </div>
         );
 
@@ -249,18 +265,6 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitti
                 />
               </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Duration Type</label>
-              <select
-                value={formData.durationType || ''}
-                onChange={(e) => handleChange('durationType', e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              >
-                <option value="">Select duration type</option>
-                <option value="fixed">Fixed-term</option>
-                <option value="ongoing">Ongoing</option>
-              </select>
-            </div>
           </div>
         );
 
@@ -281,11 +285,11 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitti
                 {errors.annualSalary && <p className="text-red-500 text-sm mt-1">{errors.annualSalary}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Total Cost of Employment</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Total Compensation</label>
                 <input
                   type="text"
-                  value={formData.totalCost || ''}
-                  onChange={(e) => handleChange('totalCost', e.target.value)}
+                  value={formData.totalCompensation || ''}
+                  onChange={(e) => handleChange('totalCompensation', e.target.value)}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                   placeholder="$156,000 (including overhead)"
                 />
@@ -302,36 +306,14 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitti
               />
               {errors.benefitsPackage && <p className="text-red-500 text-sm mt-1">{errors.benefitsPackage}</p>}
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Budget Year Allocation</label>
-                <input
-                  type="text"
-                  value={formData.budgetYear || ''}
-                  onChange={(e) => handleChange('budgetYear', e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="2025"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Department Headcount Impact</label>
-                <input
-                  type="text"
-                  value={formData.headcountImpact || ''}
-                  onChange={(e) => handleChange('headcountImpact', e.target.value)}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  placeholder="+1 Engineering"
-                />
-              </div>
-            </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Performance Expectations</label>
-              <textarea
-                value={formData.performanceExpectations || ''}
-                onChange={(e) => handleChange('performanceExpectations', e.target.value)}
+              <label className="block text-sm font-medium text-gray-700 mb-1">Department Headcount Impact</label>
+              <input
+                type="text"
+                value={formData.headcountImpact || ''}
+                onChange={(e) => handleChange('headcountImpact', e.target.value)}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                rows={2}
-                placeholder="Key performance indicators and goals"
+                placeholder="+1 Engineering"
               />
             </div>
           </div>
@@ -357,23 +339,13 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitti
                 <label className="block text-sm font-medium text-gray-700 mb-1">Currency*</label>
                 <input
                   type="text"
-                  value={formData.currency || ''}
-                  onChange={(e) => handleChange('currency', e.target.value)}
-                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${errors.currency ? 'border-red-500' : 'border-gray-300'}`}
+                  value={formData.salaryCurrency}
+                  onChange={(e) => handleChange('salaryCurrency', e.target.value)}
+                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${errors.salaryCurrency ? 'border-red-500' : 'border-gray-300'}`}
                   placeholder="EUR, GBP, JPY"
                 />
-                {errors.currency && <p className="text-red-500 text-sm mt-1">{errors.currency}</p>}
+                {errors.salaryCurrency && <p className="text-red-500 text-sm mt-1">{errors.salaryCurrency}</p>}
               </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Local Benefits (Country-Specific)</label>
-              <textarea
-                value={formData.localBenefits || ''}
-                onChange={(e) => handleChange('localBenefits', e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                rows={2}
-                placeholder="Health insurance, pension, mandatory benefits"
-              />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -523,28 +495,122 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitti
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Company Information</label>
-              <textarea
-                value={formData.companyInfo}
-                onChange={(e) => handleChange('companyInfo', e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                rows={2}
-                placeholder="Brief overview of the company and team culture"
-              />
+              <label className="block text-sm font-medium text-gray-700 mb-1">Department*</label>
+              <select
+                value={formData.department}
+                onChange={(e) => handleChange('department', e.target.value)}
+                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${errors.department ? 'border-red-500' : 'border-gray-300'}`}
+              >
+                <option value="">Select department</option>
+                <option value="Engineering">Engineering</option>
+                <option value="Sales">Sales</option>
+                <option value="Marketing">Marketing</option>
+                <option value="Finance">Finance</option>
+                <option value="Operations">Operations</option>
+                <option value="HR">Human Resources</option>
+                <option value="Other">Other</option>
+              </select>
+              {errors.department && <p className="text-red-500 text-sm mt-1">{errors.department}</p>}
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Special Requirements</label>
-              <textarea
-                value={formData.specialRequirements}
-                onChange={(e) => handleChange('specialRequirements', e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                rows={2}
-                placeholder="Security clearance, certifications, etc."
-              />
+            {formData.department === 'Other' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Please specify department*</label>
+                <input
+                  type="text"
+                  value={formData.departmentOther || ''}
+                  onChange={(e) => handleChange('departmentOther', e.target.value)}
+                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${errors.departmentOther ? 'border-red-500' : 'border-gray-300'}`}
+                  placeholder="e.g., Customer Success, Legal, Design"
+                />
+                {errors.departmentOther && <p className="text-red-500 text-sm mt-1">{errors.departmentOther}</p>}
+              </div>
+            )}
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">City*</label>
+                <input
+                  type="text"
+                  value={formData.city}
+                  onChange={(e) => handleChange('city', e.target.value)}
+                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${errors.city ? 'border-red-500' : 'border-gray-300'}`}
+                  placeholder="San Francisco"
+                />
+                {errors.city && <p className="text-red-500 text-sm mt-1">{errors.city}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Country*</label>
+                <input
+                  type="text"
+                  value={formData.country}
+                  onChange={(e) => handleChange('country', e.target.value)}
+                  className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${errors.country ? 'border-red-500' : 'border-gray-300'}`}
+                  placeholder="United States"
+                />
+                {errors.country && <p className="text-red-500 text-sm mt-1">{errors.country}</p>}
+              </div>
             </div>
+
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                checked={formData.remoteOk}
+                onChange={(e) => handleChange('remoteOk', e.target.checked)}
+                className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+              />
+              <label className="ml-2 text-sm font-medium text-gray-700">Remote Work Available</label>
+            </div>
+
+            {(formData.employmentType === 'fullTime' || formData.employmentType === 'eor') && (
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Salary Min</label>
+                  <input
+                    type="number"
+                    value={formData.salaryMin || ''}
+                    onChange={(e) => handleChange('salaryMin', e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="80000"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Salary Max</label>
+                  <input
+                    type="number"
+                    value={formData.salaryMax || ''}
+                    onChange={(e) => handleChange('salaryMax', e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="120000"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Currency</label>
+                  <input
+                    type="text"
+                    value={formData.salaryCurrency}
+                    onChange={(e) => handleChange('salaryCurrency', e.target.value)}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    placeholder="USD"
+                  />
+                </div>
+              </div>
+            )}
 
             {renderEmploymentTypeFields()}
+
+            <div className="mt-6 p-4 bg-purple-50 border border-purple-200 rounded-lg">
+              <h4 className="text-sm font-semibold text-purple-900 mb-3">Default Pipeline Stages</h4>
+              <div className="flex flex-wrap gap-2">
+                {formData.pipelineStages.map((stage, idx) => (
+                  <div key={idx} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-purple-300 rounded-lg text-sm">
+                    <span className="text-purple-700 font-medium">{stage.order}</span>
+                    <span className="text-gray-700">{stage.name}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-xs text-purple-600 mt-2">These are the default hiring stages. You can customize them after job creation.</p>
+            </div>
           </div>
 
           <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-gray-200">
