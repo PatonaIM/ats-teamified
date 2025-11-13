@@ -36,7 +36,7 @@ export default function ApprovalsPage() {
   const fetchApprovals = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/approvals?status=pending');
+      const response = await fetch('http://localhost:3001/api/approvals?status=pending');
       const data = await response.json();
       setApprovals(data);
     } catch (error) {
@@ -51,11 +51,11 @@ export default function ApprovalsPage() {
     if (!confirmation) return;
 
     try {
-      const response = await fetch(`/api/approvals/${approvalId}/approve`, {
+      const response = await fetch(`http://localhost:3001/api/approvals/${approvalId}/approve`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          approverId: 'manager-001',
+          approverId: null,
           comments: 'Approved via manager dashboard'
         })
       });
@@ -78,11 +78,11 @@ export default function ApprovalsPage() {
     }
 
     try {
-      const response = await fetch(`/api/approvals/${approvalId}/reject`, {
+      const response = await fetch(`http://localhost:3001/api/approvals/${approvalId}/reject`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          approverId: 'manager-001',
+          approverId: null,
           comments
         })
       });
@@ -107,12 +107,12 @@ export default function ApprovalsPage() {
     if (!confirmation) return;
 
     try {
-      const response = await fetch('/api/approvals/bulk-approve', {
+      const response = await fetch('http://localhost:3001/api/approvals/bulk-approve', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           approvalIds: Array.from(selectedApprovals),
-          approverId: 'manager-001',
+          approverId: null,
           comments: 'Bulk approved via manager dashboard'
         })
       });

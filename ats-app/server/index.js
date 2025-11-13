@@ -302,6 +302,61 @@ app.get('/api/jobs/:id', async (req, res) => {
   }
 });
 
+// GET /api/dashboard/stats - Get dashboard statistics
+app.get('/api/dashboard/stats', async (req, res) => {
+  console.log('[Backend] Received GET /api/dashboard/stats request');
+  try {
+    // Get job statistics
+    const jobStats = await query(`
+      SELECT 
+        COUNT(*) as total_jobs,
+        COUNT(*) FILTER (WHERE status = 'published' OR job_status = 'published') as active_jobs,
+        COUNT(*) FILTER (WHERE status = 'draft' OR job_status = 'draft') as draft_jobs
+      FROM jobs;
+    `);
+    
+    // Get approval statistics
+    const approvalStats = await query(`
+      SELECT 
+        COUNT(*) as pending_approvals,
+        COUNT(*) FILTER (WHERE sla_deadline < NOW()) as overdue_approvals
+      FROM job_approvals
+      WHERE status = 'pending';
+    `);
+    
+    // Get recent jobs
+    const recentJobs = await query(`
+      SELECT 
+        id,
+        title,
+        employment_type,
+        COALESCE(status, job_status) as status,
+        city,
+        country,
+        created_at,
+        0 as candidate_count
+      FROM jobs
+      ORDER BY created_at DESC
+      LIMIT 5;
+    `);
+    
+    const stats = {
+      totalJobs: parseInt(jobStats.rows[0].total_jobs) || 0,
+      activeJobs: parseInt(jobStats.rows[0].active_jobs) || 0,
+      draftJobs: parseInt(jobStats.rows[0].draft_jobs) || 0,
+      pendingApprovals: parseInt(approvalStats.rows[0].pending_approvals) || 0,
+      overdueApprovals: parseInt(approvalStats.rows[0].overdue_approvals) || 0,
+      recentJobs: recentJobs.rows
+    };
+    
+    console.log('[Backend] Dashboard stats:', stats);
+    res.json(stats);
+  } catch (error) {
+    console.error('[Backend] Error fetching dashboard stats:', error);
+    res.status(500).json({ error: 'Failed to fetch dashboard stats', details: error.message });
+  }
+});
+
 // ===== APPROVAL WORKFLOW ENDPOINTS =====
 
 // GET /api/approvals - List all pending job approvals
