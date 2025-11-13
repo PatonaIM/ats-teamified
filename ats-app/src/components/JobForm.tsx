@@ -19,6 +19,7 @@ interface JobFormData {
   departmentOther?: string;
   employmentType: EmploymentTypeOrEmpty;
   createdByRole: 'client' | 'recruiter';
+  saveAsDraft?: boolean;
   
   city: string;
   country: string;

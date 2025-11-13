@@ -54,7 +54,7 @@ async function updateSchema() {
       
       CREATE TABLE job_pipeline_stages (
         id SERIAL PRIMARY KEY,
-        job_id INTEGER NOT NULL,
+        job_id UUID NOT NULL,
         stage_name VARCHAR(100) NOT NULL,
         stage_order INTEGER NOT NULL,
         is_default BOOLEAN DEFAULT false,
@@ -76,11 +76,9 @@ async function updateSchema() {
     const updateExistingQuery = `
       UPDATE jobs 
       SET 
-        department = COALESCE(company_name, 'Engineering'),
-        city = COALESCE(location, 'Remote'),
-        country = 'Global',
-        salary_currency = 'USD',
-        job_status = COALESCE(status, 'active')
+        department = 'Engineering',
+        city = 'Remote',
+        country = 'Global'
       WHERE department IS NULL;
     `;
     

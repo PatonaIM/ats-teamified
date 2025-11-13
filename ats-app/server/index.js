@@ -126,13 +126,14 @@ app.post('/api/jobs', async (req, res) => {
     }
     
     // Determine job status based on role and action
+    // Map to Azure enum values: draft, published, closed, archived
     let jobStatus;
     if (saveAsDraft) {
       jobStatus = 'draft';
     } else if (createdByRole === 'client') {
-      jobStatus = 'pending_approval'; // Client jobs need approval
+      jobStatus = 'draft'; // Client jobs stay draft until approved (use created_by_role to distinguish)
     } else {
-      jobStatus = 'active'; // Recruiter jobs go live immediately
+      jobStatus = 'published'; // Recruiter jobs go live immediately
     }
     
     // Convert camelCase employment type to database format
@@ -158,11 +159,12 @@ app.post('/api/jobs', async (req, res) => {
         experience_level,
         city,
         country,
-        remote_ok,
-        salary_min,
-        salary_max,
+        remote_flag,
+        salary_from,
+        salary_to,
         salary_currency,
         status,
+        source,
         created_by_role,
         contract_duration,
         contract_value,
@@ -184,7 +186,7 @@ app.post('/api/jobs', async (req, res) => {
         remote_capabilities,
         created_at,
         updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
       RETURNING *
     `;
     
@@ -202,6 +204,7 @@ app.post('/api/jobs', async (req, res) => {
       jobData.salaryMax ? parseInt(jobData.salaryMax) : null,
       jobData.salaryCurrency || 'USD',
       jobStatus,
+      'internal_ats', // source: internal ATS system
       createdByRole,
       // Contract fields
       jobData.contractDuration || null,
