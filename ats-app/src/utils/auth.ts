@@ -63,7 +63,6 @@ export async function initiateLogin(): Promise<void> {
     const authUrl = new URL(SSO_CONFIG.authorizationUrl);
     authUrl.searchParams.set('client_id', SSO_CONFIG.clientId);
     authUrl.searchParams.set('redirect_uri', redirectUri);
-    authUrl.searchParams.set('response_type', 'code');
     authUrl.searchParams.set('state', state);
     authUrl.searchParams.set('code_challenge', codeChallenge);
     authUrl.searchParams.set('code_challenge_method', 'S256');
