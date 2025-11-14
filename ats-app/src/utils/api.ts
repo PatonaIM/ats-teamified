@@ -17,18 +17,19 @@ export function getApiBaseUrl(): string {
 
 export async function apiRequest<T = any>(
   endpoint: string,
-  options?: RequestInit
+  options?: RequestInit & { timeout?: number }
 ): Promise<T> {
   const baseUrl = getApiBaseUrl();
   const url = `${baseUrl}${endpoint}`;
+  const timeout = options?.timeout || 10000;
   
-  console.log('[API Request] Starting fetch to:', url);
+  console.log('[API Request] Starting fetch to:', url, 'with timeout:', timeout + 'ms');
   
   const controller = new AbortController();
   const timeoutId = setTimeout(() => {
-    console.log('[API Request] Timeout after 10s, aborting...');
+    console.log(`[API Request] Timeout after ${timeout}ms, aborting...`);
     controller.abort();
-  }, 10000);
+  }, timeout);
   
   try {
     console.log('[API Request] Calling fetch...');

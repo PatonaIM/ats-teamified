@@ -163,6 +163,7 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitti
     setErrors(prev => ({ ...prev, description: '' }));
 
     try {
+      console.log('[JobForm] Calling AI generation API...');
       const response = await apiRequest<{ success: boolean; description: string }>('/api/generate-job-description', {
         method: 'POST',
         headers: {
@@ -174,8 +175,10 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitti
           remoteOk: formData.remoteOk,
           keySkills: formData.keySkills,
           experienceLevel: formData.experienceLevel
-        })
+        }),
+        timeout: 30000
       });
+      console.log('[JobForm] AI generation response received:', response);
 
       if (response.success && response.description) {
         handleChange('description', response.description);
