@@ -4,6 +4,7 @@ import type { EmploymentType } from '../utils/employmentTypes';
 import { employmentTypeConfigs } from '../utils/employmentTypes';
 import { apiRequest } from '../utils/api';
 import PipelineStageEditor from './PipelineStageEditor';
+import { useAuth } from '../contexts/AuthContext';
 
 type EmploymentTypeOrEmpty = EmploymentType | '';
 
@@ -64,6 +65,8 @@ interface JobFormProps {
 }
 
 const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitting = false, initialData }) => {
+  const { user } = useAuth();
+  
   const getDefaultPipelineStages = (): PipelineStage[] => [
     { name: 'Screening', order: 1 },
     { name: 'Shortlist', order: 2 },
@@ -73,6 +76,12 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitti
     { name: 'Offer Accepted', order: 6 }
   ];
   
+  const getUserRole = (): 'client' | 'recruiter' => {
+    if (!user) return 'recruiter';
+    const role = user.role?.toLowerCase() || '';
+    return (role === 'client_admin' || role === 'client_hr') ? 'client' : 'recruiter';
+  };
+  
   const getInitialFormData = (): JobFormData => ({
     title: '',
     description: '',
@@ -80,7 +89,7 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitti
     experienceLevel: '',
     department: '',
     employmentType: '',
-    createdByRole: 'recruiter', // Default to recruiter for MVP
+    createdByRole: getUserRole(),
     city: '',
     country: '',
     remoteOk: false,
@@ -498,20 +507,34 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitti
 
             <h3 className="text-lg font-semibold text-gray-700 mt-6 mb-2">Common Details</h3>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Created By</label>
-              <select
-                value={formData.createdByRole}
-                onChange={(e) => handleChange('createdByRole', e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              >
-                <option value="recruiter">Recruiter (No approval needed)</option>
-                <option value="client">Client (Requires approval)</option>
-              </select>
-              <p className="text-xs text-gray-500 mt-1">
-                {formData.createdByRole === 'client' 
-                  ? 'Client jobs require manager approval before going live' 
-                  : 'Recruiter jobs can be published immediately'}
+            <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Created By</label>
+              <div className="flex items-center gap-3">
+                <div className={`flex items-center justify-center w-10 h-10 rounded-full ${
+                  formData.createdByRole === 'client' 
+                    ? 'bg-blue-100 text-blue-700' 
+                    : 'bg-purple-100 text-purple-700'
+                }`}>
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-gray-900">
+                    {formData.createdByRole === 'client' ? 'Client' : 'Recruiter'}
+                    <span className="ml-2 text-xs font-normal text-gray-600">
+                      ({user?.role || 'Unknown Role'})
+                    </span>
+                  </p>
+                  <p className="text-xs text-gray-600 mt-0.5">
+                    {formData.createdByRole === 'client' 
+                      ? '🔒 Requires manager approval before going live' 
+                      : '✅ Can publish immediately without approval'}
+                  </p>
+                </div>
+              </div>
+              <p className="text-xs text-gray-500 mt-2 italic">
+                Automatically determined from your account role
               </p>
             </div>
 
