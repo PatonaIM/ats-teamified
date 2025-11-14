@@ -6,6 +6,7 @@ import { fileURLToPath } from 'url';
 import { query } from './db.js';
 import OpenAI from 'openai';
 import { postJobToLinkedIn, shouldAutoPostToLinkedIn, syncJobToLinkedIn, getLinkedInSyncStatus, retryLinkedInSync } from './services/linkedin.js';
+import { getCandidates, getCandidateById, createCandidate, updateCandidate, addCandidateDocument, addCandidateCommunication, moveCandidateToStage, deleteCandidate } from './services/candidates.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -852,6 +853,131 @@ app.post('/api/linkedin/retry/:jobId', async (req, res) => {
   } catch (error) {
     console.error('[LinkedIn API] Error retrying sync:', error);
     res.status(500).json({ error: 'Failed to retry sync', details: error.message });
+  }
+});
+
+// Candidate Management API Endpoints
+
+// GET /api/candidates - Get all candidates with optional filtering
+app.get('/api/candidates', async (req, res) => {
+  try {
+    const { jobId, status, source, search } = req.query;
+    const filters = {};
+    
+    if (jobId) filters.jobId = parseInt(jobId);
+    if (status) filters.status = status;
+    if (source) filters.source = source;
+    if (search) filters.search = search;
+    
+    const candidates = await getCandidates(filters);
+    res.json({ candidates, total: candidates.length });
+  } catch (error) {
+    console.error('[Candidates API] Error fetching candidates:', error);
+    res.status(500).json({ error: 'Failed to fetch candidates', details: error.message });
+  }
+});
+
+// GET /api/candidates/:id - Get candidate by ID with full details
+app.get('/api/candidates/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const candidate = await getCandidateById(parseInt(id));
+    
+    if (!candidate) {
+      return res.status(404).json({ error: 'Candidate not found' });
+    }
+    
+    res.json(candidate);
+  } catch (error) {
+    console.error('[Candidates API] Error fetching candidate:', error);
+    res.status(500).json({ error: 'Failed to fetch candidate', details: error.message });
+  }
+});
+
+// POST /api/candidates - Create new candidate
+app.post('/api/candidates', async (req, res) => {
+  try {
+    const candidate = await createCandidate(req.body);
+    res.status(201).json(candidate);
+  } catch (error) {
+    console.error('[Candidates API] Error creating candidate:', error);
+    
+    if (error.message.includes('duplicate key')) {
+      return res.status(400).json({ error: 'Email already exists' });
+    }
+    
+    res.status(500).json({ error: 'Failed to create candidate', details: error.message });
+  }
+});
+
+// PUT /api/candidates/:id - Update candidate
+app.put('/api/candidates/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const candidate = await updateCandidate(parseInt(id), req.body);
+    
+    if (!candidate) {
+      return res.status(404).json({ error: 'Candidate not found' });
+    }
+    
+    res.json(candidate);
+  } catch (error) {
+    console.error('[Candidates API] Error updating candidate:', error);
+    res.status(500).json({ error: 'Failed to update candidate', details: error.message });
+  }
+});
+
+// DELETE /api/candidates/:id - Delete candidate
+app.delete('/api/candidates/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await deleteCandidate(parseInt(id));
+    res.json(result);
+  } catch (error) {
+    console.error('[Candidates API] Error deleting candidate:', error);
+    res.status(500).json({ error: 'Failed to delete candidate', details: error.message });
+  }
+});
+
+// POST /api/candidates/:id/documents - Add document to candidate
+app.post('/api/candidates/:id/documents', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const document = await addCandidateDocument(parseInt(id), req.body);
+    res.status(201).json(document);
+  } catch (error) {
+    console.error('[Candidates API] Error adding document:', error);
+    res.status(500).json({ error: 'Failed to add document', details: error.message });
+  }
+});
+
+// POST /api/candidates/:id/communications - Add communication log
+app.post('/api/candidates/:id/communications', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const communication = await addCandidateCommunication(parseInt(id), req.body);
+    res.status(201).json(communication);
+  } catch (error) {
+    console.error('[Candidates API] Error adding communication:', error);
+    res.status(500).json({ error: 'Failed to add communication', details: error.message });
+  }
+});
+
+// PUT /api/candidates/:id/stage - Move candidate to different pipeline stage
+app.put('/api/candidates/:id/stage', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { stage, userId, notes } = req.body;
+    
+    if (!stage) {
+      return res.status(400).json({ error: 'Stage is required' });
+    }
+    
+    const candidate = await moveCandidateToStage(parseInt(id), stage, userId, notes);
+    res.json(candidate);
+  } catch (error) {
+    console.error('[Candidates API] Error moving candidate:', error);
+    res.status(500).json({ error: 'Failed to move candidate', details: error.message });
   }
 });
 
