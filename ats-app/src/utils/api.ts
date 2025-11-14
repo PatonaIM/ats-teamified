@@ -1,21 +1,18 @@
 export function getApiBaseUrl(): string {
+  console.log('[API Debug] window.location.origin:', typeof window !== 'undefined' ? window.location?.origin : 'undefined');
+  
   if (import.meta.env.VITE_API_BASE_URL) {
+    console.log('[API] Using VITE_API_BASE_URL:', import.meta.env.VITE_API_BASE_URL);
     return import.meta.env.VITE_API_BASE_URL;
   }
   
-  if (typeof window !== 'undefined') {
-    const hostname = window.location.hostname;
-    
-    if (hostname.includes('.replit.dev')) {
-      const protocol = window.location.protocol;
-      const backendHostname = hostname.replace(/-5000-/, '-3001-').replace(/-00-/, '-3001-00-');
-      return `${protocol}//${backendHostname}`;
-    }
-    
-    return '';
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    console.log('[API] Using window.location.origin:', window.location.origin);
+    return window.location.origin;
   }
   
-  return 'http://127.0.0.1:3001';
+  console.log('[API] Using relative paths (fallback)');
+  return '';
 }
 
 export async function apiRequest<T = any>(
@@ -25,10 +22,16 @@ export async function apiRequest<T = any>(
   const baseUrl = getApiBaseUrl();
   const url = `${baseUrl}${endpoint}`;
   
+  console.log('[API Request] Starting fetch to:', url);
+  
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10000);
+  const timeoutId = setTimeout(() => {
+    console.log('[API Request] Timeout after 10s, aborting...');
+    controller.abort();
+  }, 10000);
   
   try {
+    console.log('[API Request] Calling fetch...');
     const response = await fetch(url, {
       ...options,
       signal: controller.signal,
@@ -38,6 +41,7 @@ export async function apiRequest<T = any>(
       },
     });
     
+    console.log('[API Request] Response received:', response.status, response.statusText);
     clearTimeout(timeoutId);
     
     if (!response.ok && response.status !== 304) {
@@ -45,12 +49,17 @@ export async function apiRequest<T = any>(
     }
     
     if (response.status === 204 || response.status === 304 || response.headers.get('content-length') === '0') {
+      console.log('[API Request] Empty response, returning {}');
       return {} as T;
     }
     
-    return await response.json();
+    console.log('[API Request] Parsing JSON...');
+    const data = await response.json();
+    console.log('[API Request] Success! Received data:', Object.keys(data), 'keys');
+    return data;
   } catch (error) {
     clearTimeout(timeoutId);
+    console.error('[API Request] Error:', error);
     throw error;
   }
 }

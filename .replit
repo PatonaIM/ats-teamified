@@ -26,7 +26,7 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd ats-app && npm run dev:all"
+args = "cd ats-app && node server/dev-server.js"
 waitForPort = 5000
 
 [[ports]]
@@ -38,12 +38,16 @@ localPort = 5000
 externalPort = 80
 
 [[ports]]
-localPort = 40889
+localPort = 24678
 externalPort = 3000
 
 [[ports]]
 localPort = 41097
 externalPort = 3003
+
+[[ports]]
+localPort = 44331
+externalPort = 3002
 
 [deployment]
 deploymentTarget = "autoscale"
