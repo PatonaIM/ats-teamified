@@ -5,6 +5,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { query } from './db.js';
 import OpenAI from 'openai';
+import { postJobToLinkedIn, shouldAutoPostToLinkedIn, syncJobToLinkedIn, getLinkedInSyncStatus, retryLinkedInSync } from './services/linkedin.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -21,6 +22,14 @@ if (!process.env.OPENAI_API_KEY) {
   console.error('❌ ERROR: OPENAI_API_KEY environment variable is not set.');
   console.error('   AI job description generation will not work.');
   console.error('   Please add OPENAI_API_KEY to your environment secrets.');
+}
+
+// LinkedIn Integration Feature Flag
+const LINKEDIN_ENABLED = process.env.LINKEDIN_ENABLED === 'true';
+console.log(`[LinkedIn] Integration ${LINKEDIN_ENABLED ? 'ENABLED' : 'DISABLED (mock mode)'}`);
+if (LINKEDIN_ENABLED && (!process.env.LINKEDIN_CLIENT_ID || !process.env.LINKEDIN_CLIENT_SECRET)) {
+  console.warn('⚠️  WARNING: LINKEDIN_ENABLED=true but credentials not configured.');
+  console.warn('   LinkedIn posting will use mock implementation.');
 }
 
 app.use(cors({
@@ -277,6 +286,19 @@ app.post('/api/jobs', async (req, res) => {
       console.log('[Backend] Pipeline stages inserted successfully');
     }
     
+    // Automatic LinkedIn posting based on approval workflow
+    if (shouldAutoPostToLinkedIn(newJob)) {
+      console.log('[LinkedIn] Auto-posting job to LinkedIn:', newJob.title);
+      try {
+        await postJobToLinkedIn(newJob);
+        newJob.linkedin_synced = true;
+      } catch (linkedInError) {
+        console.error('[LinkedIn] Failed to auto-post job:', linkedInError.message);
+      }
+    } else {
+      console.log('[LinkedIn] Job requires approval before LinkedIn posting:', newJob.title);
+    }
+    
     // Return normalized job data
     const normalizedJob = {
       ...newJob,
@@ -290,7 +312,7 @@ app.post('/api/jobs', async (req, res) => {
       candidate_count: 0,
       active_candidates: 0,
       recruiter_name: 'HR Team',
-      linkedin_synced: false
+      linkedin_synced: newJob.linkedin_synced || false
     };
     
     res.status(201).json(normalizedJob);
@@ -750,6 +772,86 @@ Make it professional, engaging, and tailored to the specific role. Use HTML para
       error: 'Failed to generate job description', 
       details: error.message 
     });
+  }
+});
+
+// LinkedIn Integration API Endpoints
+
+// POST /api/linkedin/post/:jobId - Manually post job to LinkedIn
+app.post('/api/linkedin/post/:jobId', async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    console.log('[LinkedIn API] Manual post request for job:', jobId);
+    
+    const jobResult = await query('SELECT * FROM jobs WHERE id = $1', [jobId]);
+    if (jobResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Job not found' });
+    }
+    
+    const job = jobResult.rows[0];
+    const result = await postJobToLinkedIn(job);
+    
+    res.json(result);
+  } catch (error) {
+    console.error('[LinkedIn API] Error posting job:', error);
+    res.status(500).json({ error: 'Failed to post job to LinkedIn', details: error.message });
+  }
+});
+
+// GET /api/linkedin/status/:jobId - Get LinkedIn sync status
+app.get('/api/linkedin/status/:jobId', async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    const status = await getLinkedInSyncStatus(jobId);
+    
+    if (!status) {
+      return res.json({ 
+        synced: false, 
+        message: 'Job not yet posted to LinkedIn' 
+      });
+    }
+    
+    res.json({
+      synced: status.sync_status === 'success',
+      status: status.sync_status,
+      linkedInJobId: status.linkedin_job_id,
+      lastSyncAt: status.last_sync_at,
+      syncError: status.sync_error,
+      retryCount: status.retry_count,
+      autoPosted: status.auto_posted,
+      postedAt: status.posted_at
+    });
+  } catch (error) {
+    console.error('[LinkedIn API] Error getting sync status:', error);
+    res.status(500).json({ error: 'Failed to get sync status', details: error.message });
+  }
+});
+
+// POST /api/linkedin/sync/:jobId - Manually sync job updates
+app.post('/api/linkedin/sync/:jobId', async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    console.log('[LinkedIn API] Manual sync request for job:', jobId);
+    
+    const result = await syncJobToLinkedIn(jobId);
+    res.json(result);
+  } catch (error) {
+    console.error('[LinkedIn API] Error syncing job:', error);
+    res.status(500).json({ error: 'Failed to sync job', details: error.message });
+  }
+});
+
+// POST /api/linkedin/retry/:jobId - Retry failed LinkedIn sync
+app.post('/api/linkedin/retry/:jobId', async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    console.log('[LinkedIn API] Retry sync request for job:', jobId);
+    
+    const result = await retryLinkedInSync(jobId);
+    res.json(result);
+  } catch (error) {
+    console.error('[LinkedIn API] Error retrying sync:', error);
+    res.status(500).json({ error: 'Failed to retry sync', details: error.message });
   }
 });
 
