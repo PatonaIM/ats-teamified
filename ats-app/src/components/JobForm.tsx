@@ -3,6 +3,7 @@ import { X, Sparkles } from 'lucide-react';
 import type { EmploymentType } from '../utils/employmentTypes';
 import { employmentTypeConfigs } from '../utils/employmentTypes';
 import { apiRequest } from '../utils/api';
+import PipelineStageEditor from './PipelineStageEditor';
 
 type EmploymentTypeOrEmpty = EmploymentType | '';
 
@@ -694,16 +695,11 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitti
             {renderEmploymentTypeFields()}
 
             <div className="mt-6 p-4 bg-purple-50 border border-purple-200 rounded-lg">
-              <h4 className="text-sm font-semibold text-purple-900 mb-3">Default Pipeline Stages</h4>
-              <div className="flex flex-wrap gap-2">
-                {formData.pipelineStages.map((stage, idx) => (
-                  <div key={idx} className="flex items-center gap-2 px-3 py-1.5 bg-white border border-purple-300 rounded-lg text-sm">
-                    <span className="text-purple-700 font-medium">{stage.order}</span>
-                    <span className="text-gray-700">{stage.name}</span>
-                  </div>
-                ))}
-              </div>
-              <p className="text-xs text-purple-600 mt-2">These are the default hiring stages. You can customize them after job creation.</p>
+              <PipelineStageEditor
+                stages={formData.pipelineStages}
+                onChange={(stages) => setFormData({ ...formData, pipelineStages: stages })}
+                minStages={3}
+              />
             </div>
           </div>
 
