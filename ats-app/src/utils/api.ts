@@ -25,6 +25,11 @@ export async function apiRequest<T = any>(
   
   console.log('[API Request] Starting fetch to:', url, 'with timeout:', timeout + 'ms');
   
+  // Get access token from sessionStorage (guard for SSR/tests)
+  const accessToken = typeof window !== 'undefined' && typeof sessionStorage !== 'undefined'
+    ? sessionStorage.getItem('auth_access_token')
+    : null;
+  
   const controller = new AbortController();
   const timeoutId = setTimeout(() => {
     console.log(`[API Request] Timeout after ${timeout}ms, aborting...`);
@@ -39,6 +44,7 @@ export async function apiRequest<T = any>(
       headers: {
         ...options?.headers,
         'Cache-Control': 'no-cache',
+        ...(accessToken ? { 'Authorization': `Bearer ${accessToken}` } : {}),
       },
     });
     

@@ -1,8 +1,22 @@
-import { Briefcase, Users, Zap, TrendingUp, CheckCircle, ArrowRight, Sparkles, Clock, Target, BarChart3, Shield, Rocket, Star } from 'lucide-react';
+import { Briefcase, Users, Zap, TrendingUp, CheckCircle, ArrowRight, Sparkles, Clock, Target, BarChart3, Shield, Rocket, Star, LogIn } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 export function LandingPage() {
   const navigate = useNavigate();
+  const { isAuthenticated, isLoading, login } = useAuth();
+
+  const handleLogin = async () => {
+    if (isAuthenticated) {
+      navigate('/dashboard');
+    } else {
+      try {
+        await login();
+      } catch (error) {
+        console.error('Login failed:', error);
+      }
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 via-white to-gray-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
@@ -59,10 +73,12 @@ export function LandingPage() {
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 justify-center animate-slide-up delay-400">
               <button 
-                onClick={() => navigate('/dashboard')}
-                className="group relative px-8 py-4 bg-gradient-to-r from-brand-purple via-purple-500 to-brand-blue text-white rounded-xl font-semibold text-lg shadow-[0_4px_20px_rgba(161,106,232,0.4)] hover:shadow-[0_8px_30px_rgba(161,106,232,0.6)] transition-all duration-300 flex items-center justify-center gap-2 overflow-hidden hover:scale-105 animate-gradient"
+                onClick={handleLogin}
+                disabled={isLoading}
+                className="group relative px-8 py-4 bg-gradient-to-r from-brand-purple via-purple-500 to-brand-blue text-white rounded-xl font-semibold text-lg shadow-[0_4px_20px_rgba(161,106,232,0.4)] hover:shadow-[0_8px_30px_rgba(161,106,232,0.6)] transition-all duration-300 flex items-center justify-center gap-2 overflow-hidden hover:scale-105 animate-gradient disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <span className="relative z-10">Login to Portal</span>
+                <LogIn className="w-5 h-5 relative z-10" />
+                <span className="relative z-10">{isAuthenticated ? 'Go to Dashboard' : 'Login with Teamified'}</span>
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform relative z-10" />
                 <div className="absolute inset-0 bg-gradient-to-r from-purple-600 to-blue-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
               </button>
