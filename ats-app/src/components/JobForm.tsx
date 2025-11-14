@@ -64,7 +64,7 @@ interface JobFormProps {
 }
 
 const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitting = false, initialData }) => {
-  const defaultPipelineStages: PipelineStage[] = [
+  const getDefaultPipelineStages = (): PipelineStage[] => [
     { name: 'Screening', order: 1 },
     { name: 'Shortlist', order: 2 },
     { name: 'Client Endorsement', order: 3 },
@@ -85,7 +85,7 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitti
     country: '',
     remoteOk: false,
     salaryCurrency: 'USD',
-    pipelineStages: defaultPipelineStages,
+    pipelineStages: getDefaultPipelineStages(),
     ...initialData
   });
 
@@ -697,7 +697,7 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitti
             <div className="mt-6 p-4 bg-purple-50 border border-purple-200 rounded-lg">
               <PipelineStageEditor
                 stages={formData.pipelineStages}
-                onChange={(stages) => setFormData({ ...formData, pipelineStages: stages })}
+                onChange={(updatedStages) => setFormData(prev => ({ ...prev, pipelineStages: updatedStages }))}
                 minStages={3}
               />
             </div>
