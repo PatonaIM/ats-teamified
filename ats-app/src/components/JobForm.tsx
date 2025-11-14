@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Sparkles } from 'lucide-react';
 import type { EmploymentType } from '../utils/employmentTypes';
 import { employmentTypeConfigs } from '../utils/employmentTypes';
+import { apiRequest } from '../utils/api';
 
 type EmploymentTypeOrEmpty = EmploymentType | '';
 
@@ -89,6 +90,7 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitti
 
   const [formData, setFormData] = useState<JobFormData>(getInitialFormData());
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
 
   useEffect(() => {
     if (!isOpen) {
@@ -148,6 +150,55 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitti
     e.preventDefault();
     if (validateForm()) {
       onSubmit({ ...formData, saveAsDraft });
+    }
+  };
+
+  const handleGenerateAI = async () => {
+    if (!formData.title?.trim()) {
+      setErrors(prev => ({ ...prev, title: 'Please enter a job title first' }));
+      return;
+    }
+
+    setIsGeneratingAI(true);
+    setErrors(prev => ({ ...prev, description: '' }));
+
+    try {
+      const response = await apiRequest<{ success: boolean; description: string }>('/api/generate-job-description', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: formData.title,
+          city: formData.city,
+          remoteOk: formData.remoteOk,
+          keySkills: formData.keySkills,
+          experienceLevel: formData.experienceLevel
+        })
+      });
+
+      if (response.success && response.description) {
+        handleChange('description', response.description);
+      }
+    } catch (error: unknown) {
+      console.error('Error generating job description:', error);
+      
+      let errorMessage = 'Failed to generate job description. Please try again or write manually.';
+      
+      if (error && typeof error === 'object' && 'message' in error) {
+        const err = error as { message: string; status?: number };
+        if (err.status === 401) {
+          errorMessage = 'API key configuration issue. Please contact system administrator.';
+        } else if (err.status === 400) {
+          errorMessage = 'Invalid request. Please ensure all required fields are filled.';
+        } else if (err.message) {
+          errorMessage = `AI generation failed: ${err.message}`;
+        }
+      }
+      
+      setErrors(prev => ({ ...prev, description: errorMessage }));
+    } finally {
+      setIsGeneratingAI(false);
     }
   };
 
@@ -477,11 +528,21 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitti
                 <label className="block text-sm font-medium text-gray-700">Job Description*</label>
                 <button
                   type="button"
-                  onClick={() => console.log('AI Generate clicked')}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-purple-600 hover:text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg transition-colors"
+                  onClick={handleGenerateAI}
+                  disabled={isGeneratingAI || isSubmitting}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-purple-600 hover:text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Sparkles className="w-4 h-4" />
-                  Generate with AI
+                  {isGeneratingAI ? (
+                    <>
+                      <div className="animate-spin rounded-full h-4 w-4 border-2 border-purple-600 border-t-transparent"></div>
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4" />
+                      Generate with AI
+                    </>
+                  )}
                 </button>
               </div>
               <textarea

@@ -4,12 +4,24 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { query } from './db.js';
+import OpenAI from 'openai';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 5000;
+
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+});
+
+// Validate OpenAI API key on startup
+if (!process.env.OPENAI_API_KEY) {
+  console.error('❌ ERROR: OPENAI_API_KEY environment variable is not set.');
+  console.error('   AI job description generation will not work.');
+  console.error('   Please add OPENAI_API_KEY to your environment secrets.');
+}
 
 app.use(cors({
   origin: true,
@@ -665,6 +677,79 @@ app.post('/api/approvals/bulk-approve', async (req, res) => {
     await query('ROLLBACK');
     console.error('[Backend] Error in bulk approval:', error);
     res.status(500).json({ error: 'Bulk approval failed', details: error.message });
+  }
+});
+
+// AI Job Description Generation
+app.post('/api/generate-job-description', async (req, res) => {
+  console.log('[Backend] Received AI job description generation request');
+  try {
+    const { title, city, remoteOk, keySkills, experienceLevel } = req.body;
+    
+    // Validate required fields
+    if (!title) {
+      return res.status(400).json({ 
+        error: 'Job title is required for AI generation' 
+      });
+    }
+    
+    // Build the prompt for OpenAI
+    const prompt = `Generate a professional and compelling job description for the following position:
+
+Job Title: ${title}
+Location: ${city || 'Not specified'}
+Remote Work: ${remoteOk ? 'Yes, remote work available' : 'On-site position'}
+Required Skills: ${keySkills || 'Not specified'}
+Experience Level: ${experienceLevel || 'Not specified'}
+
+Please write a comprehensive job description that includes:
+1. A brief company overview section (use "We are a dynamic and innovative company" as placeholder)
+2. Role overview and key responsibilities
+3. Required qualifications and skills
+4. Preferred qualifications
+5. What the candidate will be working on
+
+Make it professional, engaging, and tailored to the specific role. Use HTML paragraph tags (<p>) for formatting.`;
+
+    console.log('[Backend] Calling OpenAI API...');
+    
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: "You are a professional HR expert and job description writer. Create compelling, professional job descriptions that attract top talent."
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 800
+    });
+    
+    const generatedDescription = completion.choices[0].message.content;
+    console.log('[Backend] AI job description generated successfully');
+    
+    res.json({ 
+      success: true,
+      description: generatedDescription
+    });
+    
+  } catch (error) {
+    console.error('[Backend] Error generating job description:', error);
+    
+    if (error.code === 'invalid_api_key') {
+      return res.status(401).json({ 
+        error: 'Invalid OpenAI API key. Please check your configuration.' 
+      });
+    }
+    
+    res.status(500).json({ 
+      error: 'Failed to generate job description', 
+      details: error.message 
+    });
   }
 });
 
