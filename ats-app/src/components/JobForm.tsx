@@ -5,6 +5,8 @@ import { employmentTypeConfigs } from '../utils/employmentTypes';
 import { apiRequest } from '../utils/api';
 import PipelineStageEditor from './PipelineStageEditor';
 import { useAuth } from '../contexts/AuthContext';
+import JobDescriptionSelector from './JobDescriptionSelector';
+import RichTextEditor from './RichTextEditor';
 
 type EmploymentTypeOrEmpty = EmploymentType | '';
 
@@ -101,6 +103,10 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitti
   const [formData, setFormData] = useState<JobFormData>(getInitialFormData());
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+  const [showSelector, setShowSelector] = useState(false);
+  const [variations, setVariations] = useState<Array<{ id: string; name: string; tone: string; description: string }>>([]);
+  const [partialFailure, setPartialFailure] = useState(false);
+  const [failedCount, setFailedCount] = useState(0);
 
   useEffect(() => {
     if (!isOpen) {
@@ -173,8 +179,14 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitti
     setErrors(prev => ({ ...prev, description: '' }));
 
     try {
-      console.log('[JobForm] Calling AI generation API...');
-      const response = await apiRequest<{ success: boolean; description: string }>('/api/generate-job-description', {
+      console.log('[JobForm] Calling AI generation API for 3 variations...');
+      const response = await apiRequest<{ 
+        success: boolean; 
+        variations: Array<{ id: string; name: string; tone: string; description: string }>;
+        partialFailure?: boolean;
+        failedCount?: number;
+        message?: string;
+      }>('/api/generate-job-description', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -184,23 +196,29 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitti
           city: formData.city,
           remoteOk: formData.remoteOk,
           keySkills: formData.keySkills,
-          experienceLevel: formData.experienceLevel
+          experienceLevel: formData.experienceLevel,
+          userId: user?.id || 'anonymous'
         }),
-        timeout: 30000
+        timeout: 60000 // 60 seconds for 3 parallel API calls
       });
       console.log('[JobForm] AI generation response received:', response);
 
-      if (response.success && response.description) {
-        handleChange('description', response.description);
+      if (response.success && response.variations && response.variations.length > 0) {
+        setVariations(response.variations);
+        setPartialFailure(response.partialFailure || false);
+        setFailedCount(response.failedCount || 0);
+        setShowSelector(true);
       }
     } catch (error: unknown) {
       console.error('Error generating job description:', error);
       
-      let errorMessage = 'Failed to generate job description. Please try again or write manually.';
+      let errorMessage = 'Failed to generate job descriptions. Please try again or write manually.';
       
       if (error && typeof error === 'object' && 'message' in error) {
         const err = error as { message: string; status?: number };
-        if (err.status === 401) {
+        if (err.status === 429) {
+          errorMessage = 'Please wait 30 seconds before generating again.';
+        } else if (err.status === 401) {
           errorMessage = 'API key configuration issue. Please contact system administrator.';
         } else if (err.status === 400) {
           errorMessage = 'Invalid request. Please ensure all required fields are filled.';
@@ -213,6 +231,11 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitti
     } finally {
       setIsGeneratingAI(false);
     }
+  };
+
+  const handleSelectDescription = (description: string) => {
+    handleChange('description', description);
+    setShowSelector(false);
   };
 
   const renderEmploymentTypeFields = () => {
@@ -562,7 +585,7 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitti
                   {isGeneratingAI ? (
                     <>
                       <div className="animate-spin rounded-full h-4 w-4 border-2 border-purple-600 border-t-transparent"></div>
-                      Generating...
+                      Generating 3 variations...
                     </>
                   ) : (
                     <>
@@ -572,12 +595,11 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitti
                   )}
                 </button>
               </div>
-              <textarea
-                value={formData.description}
-                onChange={(e) => handleChange('description', e.target.value)}
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${errors.description ? 'border-red-500' : 'border-gray-300'}`}
-                rows={4}
+              <RichTextEditor
+                content={formData.description}
+                onChange={(html) => handleChange('description', html)}
                 placeholder="Describe the role, responsibilities, and what the candidate will be working on..."
+                error={errors.description}
               />
               {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description}</p>}
             </div>
@@ -761,6 +783,16 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitti
           </div>
         </form>
       </div>
+
+      {/* Job Description Selector Modal */}
+      <JobDescriptionSelector
+        isOpen={showSelector}
+        onClose={() => setShowSelector(false)}
+        variations={variations}
+        onSelect={handleSelectDescription}
+        partialFailure={partialFailure}
+        failedCount={failedCount}
+      />
     </div>
   );
 };

@@ -7,6 +7,8 @@ import { query } from './db.js';
 import OpenAI from 'openai';
 import { postJobToLinkedIn, shouldAutoPostToLinkedIn, syncJobToLinkedIn, getLinkedInSyncStatus, retryLinkedInSync } from './services/linkedin.js';
 import { getCandidates, getCandidateById, createCandidate, updateCandidate, addCandidateDocument, addCandidateCommunication, moveCandidateToStage, deleteCandidate } from './services/candidates.js';
+import sanitizeHtml from 'sanitize-html';
+import { randomUUID } from 'crypto';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -842,11 +844,42 @@ Format each question category clearly with headers. Make questions specific to t
   }
 });
 
-// AI Job Description Generation
+// Rate limiting map for AI generation (user -> last request timestamp)
+const aiGenerationRateLimit = new Map();
+const RATE_LIMIT_WINDOW = 30000; // 30 seconds
+
+// Cleanup old rate limit entries every 5 minutes to prevent memory leaks
+setInterval(() => {
+  const now = Date.now();
+  const entriesToDelete = [];
+  for (const [userId, timestamp] of aiGenerationRateLimit.entries()) {
+    if (now - timestamp > RATE_LIMIT_WINDOW * 10) { // 5 minutes
+      entriesToDelete.push(userId);
+    }
+  }
+  entriesToDelete.forEach(userId => aiGenerationRateLimit.delete(userId));
+  if (entriesToDelete.length > 0) {
+    console.log(`[Rate Limit Cleanup] Removed ${entriesToDelete.length} expired entries`);
+  }
+}, 300000); // Every 5 minutes
+
+// HTML sanitization configuration
+const sanitizeConfig = {
+  allowedTags: ['h1', 'h2', 'h3', 'h4', 'p', 'ul', 'ol', 'li', 'strong', 'em', 'br', 'div', 'span'],
+  allowedAttributes: {
+    'div': ['class'],
+    'span': ['class'],
+    'p': ['class']
+  },
+  allowedClasses: {}
+};
+
+// AI Job Description Generation - Returns 3 variations with graceful degradation
 app.post('/api/generate-job-description', async (req, res) => {
   console.log('[Backend] Received AI job description generation request');
+  
   try {
-    const { title, city, remoteOk, keySkills, experienceLevel } = req.body;
+    const { title, city, remoteOk, keySkills, experienceLevel, userId = 'anonymous' } = req.body;
     
     // Validate required fields
     if (!title) {
@@ -855,8 +888,45 @@ app.post('/api/generate-job-description', async (req, res) => {
       });
     }
     
-    // Build the prompt for OpenAI
-    const prompt = `Generate a professional and compelling job description for the following position:
+    // Rate limiting check
+    const now = Date.now();
+    const lastRequest = aiGenerationRateLimit.get(userId);
+    if (lastRequest && (now - lastRequest) < RATE_LIMIT_WINDOW) {
+      const remainingTime = Math.ceil((RATE_LIMIT_WINDOW - (now - lastRequest)) / 1000);
+      return res.status(429).json({ 
+        error: `Please wait ${remainingTime} seconds before generating again` 
+      });
+    }
+    aiGenerationRateLimit.set(userId, now);
+    
+    // Define three different styles for variations
+    const variations = [
+      {
+        name: 'Professional & Detailed',
+        tone: 'Formal and comprehensive',
+        style: 'professional and comprehensive, with detailed sections and formal language',
+        temperature: 0.6
+      },
+      {
+        name: 'Concise & Direct',
+        tone: 'Straightforward and clear',
+        style: 'concise and direct, with bullet points and straightforward language',
+        temperature: 0.7
+      },
+      {
+        name: 'Engaging & Creative',
+        tone: 'Inspiring and dynamic',
+        style: 'engaging and creative, with compelling language that excites candidates',
+        temperature: 0.8
+      }
+    ];
+    
+    console.log('[Backend] Generating 3 job description variations in parallel...');
+    
+    // Generate all 3 variations with graceful degradation
+    const promises = variations.map(async (variation) => {
+      try {
+        const prompt = `Generate a ${variation.style} job description in HTML format for the following position:
 
 Job Title: ${title}
 Location: ${city || 'Not specified'}
@@ -864,47 +934,99 @@ Remote Work: ${remoteOk ? 'Yes, remote work available' : 'On-site position'}
 Required Skills: ${keySkills || 'Not specified'}
 Experience Level: ${experienceLevel || 'Not specified'}
 
-Please write a comprehensive job description that includes:
-1. A brief company overview section (use "We are a dynamic and innovative company" as placeholder)
-2. Role overview and key responsibilities
-3. Required qualifications and skills
-4. Preferred qualifications
-5. What the candidate will be working on
+Structure the job description with proper HTML tags:
+- Use <h3> for section headings
+- Use <p> for paragraphs
+- Use <ul> and <li> for lists
+- Use <strong> for emphasis
 
-Make it professional, engaging, and tailored to the specific role. Use HTML paragraph tags (<p>) for formatting.`;
+Include these sections:
+1. Company Overview (use "We are a dynamic and innovative company" as placeholder)
+2. Role Overview
+3. Key Responsibilities
+4. Required Qualifications
+5. Preferred Qualifications
 
-    console.log('[Backend] Calling OpenAI API...');
-    
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        {
-          role: "system",
-          content: "You are a professional HR expert and job description writer. Create compelling, professional job descriptions that attract top talent."
-        },
-        {
-          role: "user",
-          content: prompt
-        }
-      ],
-      temperature: 0.7,
-      max_tokens: 800
+Return ONLY the HTML content, no markdown code blocks or explanations.`;
+
+        const completion = await openai.chat.completions.create({
+          model: "gpt-4o-mini",
+          messages: [
+            {
+              role: "system",
+              content: "You are a professional HR expert and job description writer. Create compelling job descriptions in clean HTML format. Return only HTML, no markdown code blocks."
+            },
+            {
+              role: "user",
+              content: prompt
+            }
+          ],
+          temperature: variation.temperature,
+          max_tokens: 1000,
+          timeout: 25000 // 25 second timeout
+        });
+        
+        let html = completion.choices[0].message.content.trim();
+        
+        // Clean up any markdown code blocks if present
+        html = html.replace(/```html\n?/g, '').replace(/```\n?$/g, '').trim();
+        
+        // Sanitize HTML to prevent XSS
+        const sanitizedHtml = sanitizeHtml(html, sanitizeConfig);
+        
+        return {
+          status: 'fulfilled',
+          value: {
+            id: randomUUID(),
+            name: variation.name,
+            tone: variation.tone,
+            description: sanitizedHtml
+          }
+        };
+      } catch (error) {
+        console.error(`[Backend] Error generating ${variation.name}:`, error.message);
+        return {
+          status: 'rejected',
+          reason: error.message
+        };
+      }
     });
     
-    const generatedDescription = completion.choices[0].message.content;
-    console.log('[Backend] AI job description generated successfully');
+    const results = await Promise.allSettled(promises);
+    
+    // Extract successful variations
+    const successfulVariations = results
+      .filter(r => r.status === 'fulfilled' && r.value.status === 'fulfilled')
+      .map(r => r.value.value);
+    
+    const failedCount = results.length - successfulVariations.length;
+    
+    if (successfulVariations.length === 0) {
+      // All variations failed
+      return res.status(500).json({ 
+        error: 'Failed to generate any job descriptions. Please try again.',
+        details: 'All AI generation attempts failed'
+      });
+    }
+    
+    console.log(`[Backend] Successfully generated ${successfulVariations.length}/3 variations`);
     
     res.json({ 
       success: true,
-      description: generatedDescription
+      variations: successfulVariations,
+      partialFailure: failedCount > 0,
+      failedCount: failedCount,
+      message: failedCount > 0 
+        ? `Generated ${successfulVariations.length} out of 3 variations` 
+        : undefined
     });
     
   } catch (error) {
-    console.error('[Backend] Error generating job description:', error);
+    console.error('[Backend] Error in job description generation:', error);
     
-    if (error.code === 'invalid_api_key') {
+    if (error.code === 'invalid_api_key' || error.code === 'insufficient_quota') {
       return res.status(401).json({ 
-        error: 'Invalid OpenAI API key. Please check your configuration.' 
+        error: 'OpenAI API configuration issue. Please contact administrator.' 
       });
     }
     
