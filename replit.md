@@ -16,15 +16,20 @@ The system employs an Azure-native, microservices-based architecture.
 - **Design Principles:** Responsive design, dark mode support, Inter font family, gradient-heavy design, smooth animations using custom keyframe animations.
 - **Key UI Elements:** Landing page with hero/stats/features/benefits sections, role-based side menu, dashboard with KPI cards and hiring funnel, Jobs List page with filters/search/cards, Candidate Pipeline Kanban board, Candidate Profile page, External Portal Integration elements.
 - **Implementation:** Fully functional landing page, jobs page with Azure PostgreSQL backend integration, and a complete admin portal with a collapsible sidebar navigation (Dashboard, Jobs, Candidates, Analytics, Settings).
-- **Job Creation & Approval Workflow:** Complete implementation with role-based access (Recruiter vs Client), dual-button workflow (Save as Draft + Submit for Approval/Publish Job), dynamic employment-type fields with color-coded borders (Contract: Blue, Part-Time: Green, Full-Time: Orange, EOR: Purple), 6-stage pipeline auto-creation, and full Azure PostgreSQL persistence (32 fields). Status transitions: Client → draft (awaiting approval), Recruiter → published (live immediately), Draft → draft (any role). AI-powered job description generation button added (UI only, awaiting integration).
+- **Job Creation & Approval Workflow:** Complete implementation with role-based access (Recruiter vs Client), dual-button workflow (Save as Draft + Submit for Approval/Publish Job), dynamic employment-type fields with color-coded borders (Contract: Blue, Part-Time: Green, Full-Time: Orange, EOR: Purple), 6-stage pipeline auto-creation, and full Azure PostgreSQL persistence (32 fields). Status transitions: Client → draft (awaiting approval), Recruiter → published (live immediately), Draft → draft (any role). **Fully integrated AI-powered job description generation using OpenAI GPT-4o-mini**, with loading states, comprehensive error handling, and automatic description population.
 
 **Technical Implementations & Feature Specifications:**
 - **Backend Infrastructure (MVP):**
     - Express.js REST API server (Node.js) with Azure PostgreSQL database connection via SSL.
-    - RESTful API endpoints for jobs (GET with filters, GET by ID, POST for creation with approval workflow).
+    - RESTful API endpoints for jobs (GET with filters, GET by ID, POST for creation with approval workflow, POST /api/generate-job-description for AI generation).
     - Database schema includes `jobs` table with 40+ fields (employment_type, status, linkedin_synced, created_by_role, approved_by_user_id, approved_at, auto-generated slug) and `job_pipeline_stages` table for auto-created 6-stage pipelines.
-    - Vite proxy configuration routes `/api` to localhost:3001.
-- **AI-Assisted Tools (MVP Core):** AI Job Description Generation, AI Interview Question Generation, Sentiment Analysis & Candidate Engagement Intelligence, and Analytics Dashboards.
+    - OpenAI integration (v4.77.3) with GPT-4o-mini model for AI job description generation.
+    - API key validation on server startup with fail-fast error messaging.
+- **AI-Assisted Tools (MVP Core):** 
+    - **AI Job Description Generation (✅ Implemented):** Fully functional AI-powered job description generation using OpenAI GPT-4o-mini. Generates comprehensive job descriptions based on title, location, remote status, key skills, and experience level. Includes company overview, role overview, key responsibilities, qualifications, and work description. Frontend integration with loading states, error handling, and automatic textarea population.
+    - AI Interview Question Generation (Planned)
+    - Sentiment Analysis & Candidate Engagement Intelligence (Planned)
+    - Analytics Dashboards (Planned)
 - **Essential Supporting Infrastructure (MVP):** Multi-employment type job management, customizable 6-stage candidate pipeline, accept/reject decision workflows, basic email notifications and in-app alerts, Custom SSO Provider authentication.
 - **Compliance & Security:** GDPR, CCPA, HIPAA, SOX compliance. End-to-end encryption with Azure Key Vault, MFA, audit logging, RBAC, privacy-first AI.
 
