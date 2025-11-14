@@ -6,7 +6,6 @@ import { apiRequest } from '../utils/api';
 import PipelineStageEditor from './PipelineStageEditor';
 import { useAuth } from '../contexts/AuthContext';
 import JobDescriptionSelector from './JobDescriptionSelector';
-import RichTextEditor from './RichTextEditor';
 
 type EmploymentTypeOrEmpty = EmploymentType | '';
 
@@ -595,12 +594,33 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitti
                   )}
                 </button>
               </div>
-              <RichTextEditor
-                content={formData.description}
-                onChange={(html) => handleChange('description', html)}
-                placeholder="Describe the role, responsibilities, and what the candidate will be working on..."
-                error={errors.description}
+              
+              {/* HTML Preview if content exists */}
+              {formData.description && (
+                <div className="mb-2 p-4 border border-gray-200 rounded-lg bg-gray-50 max-h-48 overflow-y-auto">
+                  <div className="text-xs text-gray-500 mb-2 font-medium">Preview:</div>
+                  <div 
+                    className="prose prose-sm max-w-none
+                      [&>h3]:text-base [&>h3]:font-semibold [&>h3]:text-gray-800 [&>h3]:mt-2 [&>h3]:mb-1
+                      [&>p]:text-sm [&>p]:text-gray-700 [&>p]:leading-relaxed [&>p]:mb-2
+                      [&>ul]:text-sm [&>ul]:text-gray-700 [&>ul]:my-1
+                      [&>li]:ml-4 [&>li]:mb-1
+                      [&>strong]:text-gray-900 [&>strong]:font-semibold"
+                    dangerouslySetInnerHTML={{ __html: formData.description }}
+                  />
+                </div>
+              )}
+              
+              <textarea
+                value={formData.description}
+                onChange={(e) => handleChange('description', e.target.value)}
+                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent font-mono text-sm ${errors.description ? 'border-red-500' : 'border-gray-300'}`}
+                rows={8}
+                placeholder="Select an AI-generated description or write your own HTML..."
               />
+              <p className="text-xs text-gray-500 mt-1">
+                HTML tags supported: &lt;h3&gt;, &lt;p&gt;, &lt;ul&gt;, &lt;li&gt;, &lt;strong&gt;, &lt;em&gt;
+              </p>
               {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description}</p>}
             </div>
 
