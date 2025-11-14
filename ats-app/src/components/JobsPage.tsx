@@ -143,6 +143,7 @@ export function JobsPage() {
                 className="px-4 py-3 rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-brand-purple/50 transition-all"
               >
                 <option value="all">All Status</option>
+                <option value="draft">Draft (Awaiting Approval)</option>
                 <option value="active">Active</option>
                 <option value="paused">Paused</option>
                 <option value="filled">Filled</option>
