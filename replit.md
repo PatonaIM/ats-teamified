@@ -21,15 +21,43 @@ The system employs an Azure-native, microservices-based architecture.
 **Technical Implementations & Feature Specifications:**
 - **Backend Infrastructure (MVP):**
     - Express.js REST API server (Node.js) with Azure PostgreSQL database connection via SSL.
-    - RESTful API endpoints for jobs (GET with filters, GET by ID, POST for creation with approval workflow, POST /api/generate-job-description for AI generation).
-    - Database schema includes `jobs` table with 40+ fields (employment_type, status, linkedin_synced, created_by_role, approved_by_user_id, approved_at, auto-generated slug) and `job_pipeline_stages` table for auto-created 6-stage pipelines.
-    - OpenAI integration (v4.77.3) with GPT-4o-mini model for AI job description generation.
+    - RESTful API endpoints for jobs (GET with filters, GET by ID, POST for creation with approval workflow, POST /api/generate-job-description for AI generation, POST /api/generate-interview-questions for AI interview questions).
+    - Database schema includes 7 tables:
+        - `jobs` table (40+ fields: employment_type, status, linkedin_synced, created_by_role, approved_by_user_id, approved_at, auto-generated slug)
+        - `job_pipeline_stages` table (auto-created 6-stage pipelines)
+        - `linkedin_sync_status` table (LinkedIn posting history and retry tracking)
+        - `candidates` table (candidate profiles with job associations)
+        - `candidate_documents` table (resumes, certificates, cover letters)
+        - `candidate_communications` table (email/call/message logs)
+        - `candidate_stage_history` table (pipeline progression audit trail)
+    - OpenAI integration (v4.77.3) with GPT-4o-mini model for AI job description generation and interview question generation.
     - API key validation on server startup with fail-fast error messaging.
 - **AI-Assisted Tools (MVP Core):** 
     - **AI Job Description Generation (✅ Implemented):** Fully functional AI-powered job description generation using OpenAI GPT-4o-mini. Generates comprehensive job descriptions based on title, location, remote status, key skills, and experience level. Includes company overview, role overview, key responsibilities, qualifications, and work description. Frontend integration with loading states, error handling, and automatic textarea population.
-    - AI Interview Question Generation (Planned)
-    - Sentiment Analysis & Candidate Engagement Intelligence (Planned)
-    - Analytics Dashboards (Planned)
+    - **AI Interview Question Generation (✅ Implemented):** Employment type-specific interview question generator using OpenAI GPT-4o-mini. Generates 15-20 categorized questions (technical, behavioral, cultural fit, situational). Returns structured JSON with category breakdown, total question count, and metadata. API: POST /api/generate-interview-questions.
+    - Sentiment Analysis & Candidate Engagement Intelligence (Planned - Phase 2)
+    - Compensation Benchmarking Engine (Planned - Phase 2)
+    - Bias Detection in Interview Questions (Planned - Phase 2)
+    - Analytics Dashboards (Planned - Phase 2)
+- **LinkedIn Integration (✅ MVP Foundation):**
+    - **Feature-Flag Architecture:** LINKEDIN_ENABLED environment variable (default: disabled/mock mode)
+    - **Employment Type-Specific Formatting:** Automatic job formatting for contract, part-time, full-time, EOR postings
+    - **Automatic Posting Workflow:** Recruiter jobs post immediately, Client jobs post after approval
+    - **Sync Status Tracking:** linkedin_sync_status table (job_id, status, posted_at, linkedin_job_id, error_message, retry_count, last_retry_at)
+    - **Retry Logic:** Exponential backoff (1s, 2s, 4s, 8s, 16s) with circuit breaker
+    - **API Endpoints:** POST /api/linkedin/post/:jobId, GET /api/linkedin/status/:jobId, POST /api/linkedin/sync/:jobId, POST /api/linkedin/retry/:jobId
+    - **Frontend UI:** LinkedIn sync badge on Jobs page when linkedin_synced=true
+    - **Phase 2 Deferred:** LinkedIn performance metrics (views, clicks, applicants)
+- **Candidate Profile Management (✅ MVP Complete):**
+    - **Database Schema:** 4 tables (candidates, candidate_documents, candidate_communications, candidate_stage_history)
+    - **Candidates Table:** job_id FK, first_name, last_name, email (UNIQUE per job), phone, current_stage, source (linkedin/direct/referral/portal), resume_url, status (active/rejected/hired/withdrawn), external_portal_id
+    - **Documents Table:** document_type, file_name, blob_url (Azure Blob Storage ready), file_size
+    - **Communications Table:** communication_type (email/call/message), subject, content, sent_by_user_id, sent_at
+    - **Stage History Table:** Audit trail with previous_stage, new_stage, changed_by_user_id, notes, changed_at
+    - **Complete REST API:** GET /api/candidates (filters: jobId, status, source, search), GET /api/candidates/:id (includes documents, communications, stageHistory), POST /api/candidates, PUT /api/candidates/:id (camelCase/snake_case normalized), DELETE /api/candidates/:id, POST /api/candidates/:id/documents, POST /api/candidates/:id/communications, PUT /api/candidates/:id/stage (logs history)
+    - **Email Constraint:** UNIQUE(job_id, email) allows same candidate across multiple jobs
+    - **Field Normalization:** Both create and update operations accept camelCase input, converted to snake_case for database
+    - **Phase 2 Deferred:** Frontend UI for candidate profiles, Kanban pipeline board
 - **Essential Supporting Infrastructure (MVP):** Multi-employment type job management, customizable 6-stage candidate pipeline, accept/reject decision workflows, basic email notifications and in-app alerts.
 - **Authentication & Authorization (✅ Implemented):**
     - **OAuth 2.0 with PKCE:** Complete implementation using Teamified Accounts SSO provider (teamified-accounts.replit.app). Public client (no client_secret) with PKCE flow for enhanced security.
