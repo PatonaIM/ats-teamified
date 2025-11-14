@@ -30,7 +30,13 @@ The system employs an Azure-native, microservices-based architecture.
     - AI Interview Question Generation (Planned)
     - Sentiment Analysis & Candidate Engagement Intelligence (Planned)
     - Analytics Dashboards (Planned)
-- **Essential Supporting Infrastructure (MVP):** Multi-employment type job management, customizable 6-stage candidate pipeline, accept/reject decision workflows, basic email notifications and in-app alerts, Custom SSO Provider authentication.
+- **Essential Supporting Infrastructure (MVP):** Multi-employment type job management, customizable 6-stage candidate pipeline, accept/reject decision workflows, basic email notifications and in-app alerts.
+- **Authentication & Authorization (✅ Implemented):**
+    - **OAuth 2.0 with PKCE:** Complete implementation using Teamified Accounts SSO provider (teamified-accounts.replit.app). Public client (no client_secret) with PKCE flow for enhanced security.
+    - **PKCE Implementation:** Cryptographically secure random generation (96-byte verifier, SHA-256 challenge, 32-byte state), sessionStorage-based parameter management, RFC 7636 compliant.
+    - **OAuth Flow:** Authorization URL → code exchange → token validation → session persistence. Includes CSRF protection via state parameter, automatic Bearer token injection in API requests, and resilient error handling.
+    - **Session Management:** SessionStorage-based token storage (NOT localStorage), automatic validation on app initialization, tolerates transient validation failures, SSR/test-safe implementation.
+    - **UI Integration:** "Login with Teamified" button on landing page, user profile display in navigation, logout functionality, loading states, and comprehensive error messages.
 - **Compliance & Security:** GDPR, CCPA, HIPAA, SOX compliance. End-to-end encryption with Azure Key Vault, MFA, audit logging, RBAC, privacy-first AI.
 
 **System Design Choices:**
@@ -39,7 +45,7 @@ The system employs an Azure-native, microservices-based architecture.
 - **Storage:** Azure Blob Storage with lifecycle management.
 - **Compute:** Azure Kubernetes Service (AKS) with auto-scaling (future).
 - **AI/ML:** OpenAI GPT-4/Anthropic Claude for LLM capabilities, custom ML models.
-- **Authentication:** Custom SSO Provider via OAuth 2.0/OpenID Connect (Passport.js).
+- **Authentication:** Teamified Accounts SSO via OAuth 2.0 with PKCE (public client, sessionStorage-based).
 - **Monitoring:** Azure Monitor, Log Analytics, Application Insights.
 
 ## External Dependencies
@@ -51,4 +57,4 @@ The system employs an Azure-native, microservices-based architecture.
     - Azure Kubernetes Service (AKS)
     - Azure Key Vault
     - Azure Monitor, Log Analytics, Application Insights
-- **Custom SSO Provider:** For authentication via OAuth 2.0/OpenID Connect.
+- **Teamified Accounts SSO:** OAuth 2.0 provider with PKCE for secure authentication (teamified-accounts.replit.app).
