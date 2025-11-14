@@ -155,8 +155,8 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitti
     switch (formData.employmentType) {
       case 'contract':
         return (
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-700 mt-6 mb-2">Contract Details</h3>
+          <div className="space-y-4 p-4 border-2 border-blue-300 bg-blue-50/30 rounded-lg">
+            <h3 className="text-lg font-semibold text-blue-700 mt-2 mb-2">Contract Details</h3>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -219,8 +219,8 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitti
 
       case 'partTime':
         return (
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-700 mt-6 mb-2">Part-Time Details</h3>
+          <div className="space-y-4 p-4 border-2 border-green-300 bg-green-50/30 rounded-lg">
+            <h3 className="text-lg font-semibold text-green-700 mt-2 mb-2">Part-Time Details</h3>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Hourly Rate*</label>
@@ -273,8 +273,8 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitti
 
       case 'fullTime':
         return (
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-700 mt-6 mb-2">Full-Time Details</h3>
+          <div className="space-y-4 p-4 border-2 border-orange-300 bg-orange-50/30 rounded-lg">
+            <h3 className="text-lg font-semibold text-orange-700 mt-2 mb-2">Full-Time Details</h3>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Annual Salary*</label>
@@ -324,8 +324,8 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitti
 
       case 'eor':
         return (
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-700 mt-6 mb-2">EOR (Employer of Record) Details</h3>
+          <div className="space-y-4 p-4 border-2 border-purple-300 bg-purple-50/30 rounded-lg">
+            <h3 className="text-lg font-semibold text-purple-700 mt-2 mb-2">EOR (Employer of Record) Details</h3>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Local Salary*</label>
