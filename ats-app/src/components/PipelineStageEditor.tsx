@@ -174,7 +174,11 @@ export default function PipelineStageEditor({ stages, onChange, minStages = 5 }:
   const [error, setError] = useState('');
 
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
