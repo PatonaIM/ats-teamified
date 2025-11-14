@@ -703,6 +703,145 @@ app.post('/api/approvals/bulk-approve', async (req, res) => {
   }
 });
 
+// AI Interview Question Generation
+app.post('/api/generate-interview-questions', async (req, res) => {
+  console.log('[Backend] Received AI interview question generation request');
+  try {
+    const { jobTitle, employmentType, experienceLevel, keySkills, department } = req.body;
+    
+    if (!jobTitle) {
+      return res.status(400).json({ 
+        error: 'Job title is required for interview question generation' 
+      });
+    }
+    
+    const employmentTypeContext = {
+      contract: 'Focus on project delivery, self-management, and deliverable-oriented questions',
+      partTime: 'Focus on time management, prioritization, and efficiency',
+      fullTime: 'Focus on long-term growth, team collaboration, and company culture fit',
+      eor: 'Focus on remote work capabilities, cross-cultural communication, and independence'
+    };
+
+    const prompt = `Generate a comprehensive set of interview questions for the following position:
+
+Job Title: ${jobTitle}
+Employment Type: ${employmentType || 'Full-Time'}
+Department: ${department || 'Not specified'}
+Experience Level: ${experienceLevel || 'Mid-level'}
+Key Skills Required: ${keySkills || 'Not specified'}
+
+${employmentTypeContext[employmentType] || employmentTypeContext.fullTime}
+
+Please generate 15-20 interview questions across these categories:
+
+1. Technical/Role-Specific Questions (5-7 questions):
+   - Assess core technical skills and job-specific competencies
+   - Include both theoretical and practical scenario-based questions
+   - Match the experience level appropriately
+
+2. Behavioral Questions (5-7 questions):
+   - Use STAR method (Situation, Task, Action, Result)
+   - Focus on past experiences and problem-solving
+   - Assess soft skills like communication, teamwork, leadership
+
+3. Cultural Fit & Motivation (3-4 questions):
+   - Understand candidate values and work style
+   - Assess alignment with company culture
+   - Gauge long-term commitment and career goals
+
+4. Situational/Problem-Solving (2-3 questions):
+   - Present hypothetical scenarios related to the role
+   - Assess critical thinking and decision-making
+
+Format each question category clearly with headers. Make questions specific to the role and employment type.`;
+
+    console.log('[Backend] Calling OpenAI API for interview questions...');
+    
+    const completion = await openai.chat.completions.create({
+      model: "gpt-4o-mini",
+      messages: [
+        {
+          role: "system",
+          content: "You are an expert HR professional and interview specialist. Generate thoughtful, role-specific interview questions that help assess candidate fit comprehensively. Questions should be clear, relevant, and aligned with modern hiring best practices."
+        },
+        {
+          role: "user",
+          content: prompt
+        }
+      ],
+      temperature: 0.7,
+      max_tokens: 1500
+    });
+    
+    const generatedText = completion.choices[0].message.content;
+    console.log('[Backend] AI interview questions generated successfully');
+    
+    // Parse the generated text into structured categories
+    const categories = {
+      technical: [],
+      behavioral: [],
+      culturalFit: [],
+      situational: []
+    };
+    
+    const lines = generatedText.split('\n').filter(line => line.trim());
+    let currentCategory = null;
+    
+    for (const line of lines) {
+      const trimmed = line.trim();
+      
+      // Detect category headers
+      if (trimmed.toLowerCase().includes('technical') || trimmed.toLowerCase().includes('role-specific')) {
+        currentCategory = 'technical';
+      } else if (trimmed.toLowerCase().includes('behavioral')) {
+        currentCategory = 'behavioral';
+      } else if (trimmed.toLowerCase().includes('cultural') || trimmed.toLowerCase().includes('motivation')) {
+        currentCategory = 'culturalFit';
+      } else if (trimmed.toLowerCase().includes('situational') || trimmed.toLowerCase().includes('problem')) {
+        currentCategory = 'situational';
+      } else if (currentCategory && trimmed.match(/^\d+[\.)]/)) {
+        // Extract question (remove number prefix)
+        const question = trimmed.replace(/^\d+[\.)]/, '').trim();
+        if (question) {
+          categories[currentCategory].push(question);
+        }
+      }
+    }
+    
+    res.json({ 
+      success: true,
+      questions: {
+        technical: categories.technical,
+        behavioral: categories.behavioral,
+        culturalFit: categories.culturalFit,
+        situational: categories.situational,
+        raw: generatedText
+      },
+      metadata: {
+        jobTitle,
+        employmentType,
+        experienceLevel,
+        totalQuestions: categories.technical.length + categories.behavioral.length + categories.culturalFit.length + categories.situational.length,
+        generatedAt: new Date().toISOString()
+      }
+    });
+    
+  } catch (error) {
+    console.error('[Backend] Error generating interview questions:', error);
+    
+    if (error.code === 'invalid_api_key') {
+      return res.status(401).json({ 
+        error: 'Invalid OpenAI API key. Please check your configuration.' 
+      });
+    }
+    
+    res.status(500).json({ 
+      error: 'Failed to generate interview questions', 
+      details: error.message 
+    });
+  }
+});
+
 // AI Job Description Generation
 app.post('/api/generate-job-description', async (req, res) => {
   console.log('[Backend] Received AI job description generation request');
