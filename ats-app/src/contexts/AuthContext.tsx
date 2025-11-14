@@ -19,6 +19,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: () => Promise<void>;
+  loginDemo: () => void;
   logout: () => void;
   refreshUser: () => Promise<void>;
 }
@@ -82,11 +83,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   /**
+   * Login with demo account (no SSO required)
+   */
+  const loginDemo = () => {
+    const demoUser: UserProfile = {
+      id: 'demo-user-123',
+      email: 'demo@ats-platform.com',
+      name: 'Demo User',
+      role: 'recruiter',
+      avatar: undefined,
+    };
+    
+    setUser(demoUser);
+    storeUserProfile(demoUser);
+    sessionStorage.setItem('demo_mode', 'true');
+    console.log('[AuthContext] Demo mode activated');
+  };
+
+  /**
    * Logout user and clear session
    */
   const logout = () => {
     setUser(null);
     logoutUser();
+    sessionStorage.removeItem('demo_mode');
   };
 
   /**
@@ -115,6 +135,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isAuthenticated: !!user,
     isLoading,
     login,
+    loginDemo,
     logout,
     refreshUser,
   };
