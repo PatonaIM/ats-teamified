@@ -34,16 +34,11 @@ interface SortableStageItemProps {
   onRemove: () => void;
   onRename: (newName: string) => void;
   canRemove: boolean;
-  isDefault: boolean;
+  isFixedPosition: boolean;
 }
 
-const DEFAULT_STAGES = [
-  'Screening',
-  'Shortlist',
-  'Client Endorsement',
-  'Offer',
-  'Offer Accepted'
-];
+const FIXED_TOP_STAGES = ['Screening', 'Shortlist', 'Client Endorsement'];
+const FIXED_BOTTOM_STAGES = ['Offer', 'Offer Accepted'];
 
 const SUGGESTED_STAGES = [
   'Assessment',
@@ -52,7 +47,7 @@ const SUGGESTED_STAGES = [
   'Interview 2'
 ];
 
-function SortableStageItem({ stage, index, onRemove, onRename, canRemove, isDefault }: SortableStageItemProps) {
+function SortableStageItem({ stage, index, onRemove, onRename, canRemove, isFixedPosition }: SortableStageItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState(stage.name);
 
@@ -63,7 +58,10 @@ function SortableStageItem({ stage, index, onRemove, onRename, canRemove, isDefa
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: `stage-${index}` });
+  } = useSortable({ 
+    id: `stage-${index}`,
+    disabled: isFixedPosition,
+  });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -90,34 +88,44 @@ function SortableStageItem({ stage, index, onRemove, onRename, canRemove, isDefa
     }
   };
 
+  const isTopFixed = index < FIXED_TOP_STAGES.length;
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       className={`flex items-center gap-2 p-3 bg-white border rounded-lg transition-colors ${
-        isDefault 
+        isFixedPosition 
           ? 'border-purple-300 bg-purple-50/30' 
           : 'border-purple-200 hover:border-purple-400'
       }`}
     >
-      <button
-        type="button"
-        className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-purple-600 transition-colors"
-        {...attributes}
-        {...listeners}
-      >
-        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
-        </svg>
-      </button>
+      {isFixedPosition ? (
+        <div className="text-gray-400" title="Fixed position - cannot be moved">
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          </svg>
+        </div>
+      ) : (
+        <button
+          type="button"
+          className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-purple-600 transition-colors"
+          {...attributes}
+          {...listeners}
+        >
+          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+          </svg>
+        </button>
+      )}
 
       <div className={`flex items-center justify-center w-8 h-8 font-semibold rounded-full text-sm ${
-        isDefault ? 'bg-purple-200 text-purple-800' : 'bg-purple-100 text-purple-700'
+        isFixedPosition ? 'bg-purple-200 text-purple-800' : 'bg-purple-100 text-purple-700'
       }`}>
         {stage.order}
       </div>
 
-      {isEditing && !isDefault ? (
+      {isEditing && !isFixedPosition ? (
         <input
           type="text"
           value={editValue}
@@ -130,27 +138,25 @@ function SortableStageItem({ stage, index, onRemove, onRename, canRemove, isDefa
       ) : (
         <button
           type="button"
-          onClick={() => !isDefault && setIsEditing(true)}
+          onClick={() => !isFixedPosition && setIsEditing(true)}
           className={`flex-1 text-left px-2 py-1 transition-colors ${
-            isDefault 
+            isFixedPosition 
               ? 'text-gray-800 font-medium cursor-default' 
               : 'text-gray-700 hover:text-purple-700'
           }`}
-          disabled={isDefault}
+          disabled={isFixedPosition}
         >
           {stage.name}
-          {isDefault && (
-            <span className="ml-2 text-xs text-purple-600 font-normal">(Required)</span>
+          {isFixedPosition && (
+            <span className="ml-2 text-xs text-purple-600 font-normal">
+              {isTopFixed ? '(Fixed Top)' : '(Fixed Bottom)'}
+            </span>
           )}
         </button>
       )}
 
-      {isDefault ? (
-        <div className="text-gray-400" title="Required stage - cannot be removed">
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-          </svg>
-        </div>
+      {isFixedPosition ? (
+        <div className="w-5 h-5"></div>
       ) : canRemove ? (
         <button
           type="button"
@@ -169,7 +175,7 @@ function SortableStageItem({ stage, index, onRemove, onRename, canRemove, isDefa
   );
 }
 
-export default function PipelineStageEditor({ stages, onChange, minStages = 5 }: PipelineStageEditorProps) {
+export default function PipelineStageEditor({ stages, onChange }: PipelineStageEditorProps) {
   const [newStageName, setNewStageName] = useState('');
   const [error, setError] = useState('');
 
@@ -184,10 +190,9 @@ export default function PipelineStageEditor({ stages, onChange, minStages = 5 }:
     })
   );
 
-  const isDefaultStage = (stageName: string): boolean => {
-    return DEFAULT_STAGES.some(
-      defaultStage => defaultStage.toLowerCase() === stageName.toLowerCase()
-    );
+  const isFixedStage = (index: number): boolean => {
+    return index < FIXED_TOP_STAGES.length || 
+           index >= stages.length - FIXED_BOTTOM_STAGES.length;
   };
 
   const getAvailableSuggestions = (): string[] => {
@@ -205,44 +210,62 @@ export default function PipelineStageEditor({ stages, onChange, minStages = 5 }:
       const oldIndex = stages.findIndex((_, idx) => `stage-${idx}` === active.id);
       const newIndex = stages.findIndex((_, idx) => `stage-${idx}` === over.id);
 
-      const reorderedStages = arrayMove(stages, oldIndex, newIndex);
-      const updatedStages = reorderedStages.map((stage, idx) => ({
+      const firstMovableIndex = FIXED_TOP_STAGES.length;
+      const lastMovableIndex = stages.length - FIXED_BOTTOM_STAGES.length - 1;
+
+      if (newIndex < firstMovableIndex || newIndex > lastMovableIndex) {
+        setError('Stages can only be reordered within the middle section');
+        setTimeout(() => setError(''), 3000);
+        return;
+      }
+
+      const topFixed = stages.slice(0, FIXED_TOP_STAGES.length);
+      const bottomFixed = stages.slice(-FIXED_BOTTOM_STAGES.length);
+      const middleStages = stages.slice(FIXED_TOP_STAGES.length, -FIXED_BOTTOM_STAGES.length);
+
+      const adjustedOldIndex = oldIndex - FIXED_TOP_STAGES.length;
+      const adjustedNewIndex = newIndex - FIXED_TOP_STAGES.length;
+
+      const reorderedMiddle = arrayMove(middleStages, adjustedOldIndex, adjustedNewIndex);
+
+      const finalStages = [...topFixed, ...reorderedMiddle, ...bottomFixed];
+      const updatedStages = finalStages.map((stage, idx) => ({
         ...stage,
         order: idx + 1,
       }));
+      
       onChange(updatedStages);
     }
   };
 
   const handleRemoveStage = (index: number) => {
-    const stage = stages[index];
-    
-    if (isDefaultStage(stage.name)) {
-      setError('Required stages cannot be removed');
+    if (isFixedStage(index)) {
+      setError('Fixed stages cannot be removed');
       setTimeout(() => setError(''), 3000);
       return;
     }
 
-    const removableStagesCount = stages.filter(s => !isDefaultStage(s.name)).length;
-    
-    if (removableStagesCount <= 0 && stages.length <= minStages) {
-      setError(`Minimum ${minStages} stages required`);
-      setTimeout(() => setError(''), 3000);
-      return;
-    }
+    const topFixed = stages.slice(0, FIXED_TOP_STAGES.length);
+    const bottomFixed = stages.slice(-FIXED_BOTTOM_STAGES.length);
+    const middleStages = stages.slice(FIXED_TOP_STAGES.length, -FIXED_BOTTOM_STAGES.length);
 
-    const updatedStages = stages
-      .filter((_, idx) => idx !== index)
-      .map((stage, idx) => ({ ...stage, order: idx + 1 }));
+    const adjustedIndex = index - FIXED_TOP_STAGES.length;
+    const updatedMiddle = middleStages.filter((_, idx) => idx !== adjustedIndex);
+
+    const finalStages = [...topFixed, ...updatedMiddle, ...bottomFixed];
+    const updatedStages = finalStages.map((stage, idx) => ({
+      ...stage,
+      order: idx + 1,
+    }));
+    
     onChange(updatedStages);
   };
 
   const handleRenameStage = (index: number, newName: string) => {
     const trimmedName = newName.trim();
-    const currentStage = stages[index];
     
-    if (isDefaultStage(currentStage.name)) {
-      setError('Required stages cannot be renamed');
+    if (isFixedStage(index)) {
+      setError('Fixed stages cannot be renamed');
       setTimeout(() => setError(''), 3000);
       return;
     }
@@ -288,12 +311,24 @@ export default function PipelineStageEditor({ stages, onChange, minStages = 5 }:
       return;
     }
 
+    const topFixed = stages.slice(0, FIXED_TOP_STAGES.length);
+    const bottomFixed = stages.slice(-FIXED_BOTTOM_STAGES.length);
+    const middleStages = stages.slice(FIXED_TOP_STAGES.length, -FIXED_BOTTOM_STAGES.length);
+
     const newStage: PipelineStage = {
       name: trimmedName,
-      order: stages.length + 1,
+      order: 0,
     };
 
-    onChange([...stages, newStage]);
+    const updatedMiddle = [...middleStages, newStage];
+    const finalStages = [...topFixed, ...updatedMiddle, ...bottomFixed];
+    
+    const updatedStages = finalStages.map((stage, idx) => ({
+      ...stage,
+      order: idx + 1,
+    }));
+
+    onChange(updatedStages);
     setNewStageName('');
     setError('');
   };
@@ -306,13 +341,14 @@ export default function PipelineStageEditor({ stages, onChange, minStages = 5 }:
   };
 
   const availableSuggestions = getAvailableSuggestions();
+  const middleStagesCount = stages.length - FIXED_TOP_STAGES.length - FIXED_BOTTOM_STAGES.length;
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h4 className="text-sm font-semibold text-gray-900">Pipeline Stages</h4>
         <span className="text-xs text-gray-500">
-          {stages.length} stages • {DEFAULT_STAGES.length} required
+          {stages.length} stages • {middleStagesCount} custom
         </span>
       </div>
 
@@ -339,8 +375,8 @@ export default function PipelineStageEditor({ stages, onChange, minStages = 5 }:
                 index={index}
                 onRemove={() => handleRemoveStage(index)}
                 onRename={(newName) => handleRenameStage(index, newName)}
-                canRemove={!isDefaultStage(stage.name)}
-                isDefault={isDefaultStage(stage.name)}
+                canRemove={!isFixedStage(index)}
+                isFixedPosition={isFixedStage(index)}
               />
             ))}
           </div>
@@ -349,7 +385,7 @@ export default function PipelineStageEditor({ stages, onChange, minStages = 5 }:
 
       {availableSuggestions.length > 0 && (
         <div className="space-y-2">
-          <p className="text-xs font-medium text-gray-600">💡 Suggested Stages:</p>
+          <p className="text-xs font-medium text-gray-600">💡 Suggested Stages (Added to Middle):</p>
           <div className="flex flex-wrap gap-2">
             {availableSuggestions.map((suggestion) => (
               <button
@@ -382,17 +418,16 @@ export default function PipelineStageEditor({ stages, onChange, minStages = 5 }:
           onClick={() => handleAddStage()}
           className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors text-sm font-medium"
         >
-          + Add Stage
+          + Add to Middle
         </button>
       </div>
 
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-xs text-gray-600 space-y-1">
-        <p className="font-medium text-blue-900">📋 Pipeline Setup Guide:</p>
+        <p className="font-medium text-blue-900">📋 Pipeline Structure:</p>
         <ul className="list-disc list-inside space-y-0.5 text-blue-800">
-          <li>5 required stages cannot be removed or renamed</li>
-          <li>Drag stages to reorder them</li>
-          <li>Click custom stage names to rename</li>
-          <li>Add suggested stages with one click or create your own</li>
+          <li><strong>Top 3 Fixed:</strong> Screening → Shortlist → Client Endorsement</li>
+          <li><strong>Middle Section:</strong> Add and drag custom stages here</li>
+          <li><strong>Bottom 2 Fixed:</strong> Offer → Offer Accepted</li>
         </ul>
       </div>
     </div>
