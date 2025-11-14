@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, Sparkles } from 'lucide-react';
 import type { EmploymentType } from '../utils/employmentTypes';
 import { employmentTypeConfigs } from '../utils/employmentTypes';
 
@@ -473,7 +473,17 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitti
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Job Description*</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="block text-sm font-medium text-gray-700">Job Description*</label>
+                <button
+                  type="button"
+                  onClick={() => console.log('AI Generate clicked')}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-purple-600 hover:text-purple-700 bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg transition-colors"
+                >
+                  <Sparkles className="w-4 h-4" />
+                  Generate with AI
+                </button>
+              </div>
               <textarea
                 value={formData.description}
                 onChange={(e) => handleChange('description', e.target.value)}
