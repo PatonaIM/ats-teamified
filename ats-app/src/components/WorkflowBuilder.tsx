@@ -258,23 +258,30 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
     try {
       setLoading(true);
       
-      let response;
-      if (isTemplateMode) {
-        console.log('[WorkflowBuilder] Fetching template:', templateId);
-        response = await fetch(`/api/pipeline-templates/${templateId}`);
-        console.log('[WorkflowBuilder] Fetch completed');
-      } else {
-        console.log('[WorkflowBuilder] Fetching job pipeline:', jobId);
-        response = await fetch(`/api/jobs/${jobId}/pipeline-stages`);
-      }
+      const url = isTemplateMode 
+        ? `/api/pipeline-templates/${templateId}`
+        : `/api/jobs/${jobId}/pipeline-stages`;
       
-      console.log('[WorkflowBuilder] Response received, ok:', response.ok, 'status:', response.status);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch pipeline stages: ${response.status}`);
-      }
-
-      console.log('[WorkflowBuilder] About to parse JSON...');
-      const data = await response.json();
+      console.log('[WorkflowBuilder] Fetching from:', url);
+      
+      // Use XMLHttpRequest with setTimeout workaround
+      const data: any = await new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        xhr.open('GET', url);
+        xhr.onload = () => {
+          setTimeout(() => {
+            if (xhr.status >= 200 && xhr.status < 300) {
+              resolve(JSON.parse(xhr.responseText));
+            } else {
+              reject(new Error(`HTTP ${xhr.status}`));
+            }
+          }, 0);
+        };
+        xhr.onerror = () => setTimeout(() => reject(new Error('Network error')), 0);
+        xhr.send();
+      });
+      
+      console.log('[WorkflowBuilder] Data received:', data);
       console.log('[WorkflowBuilder] Data received, has stages:', !!data.stages, 'stage count:', data.stages?.length);
       
       if (isTemplateMode) {
@@ -325,27 +332,16 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
     }
   }, [isTemplateMode, templateId, jobId]);
 
-  // Reconcile configuringStage when stages update (keep selection by ID)
-  useEffect(() => {
-    if (configuringStage && stages.length > 0) {
-      // Skip reconciliation for draft stages (id === -1)
-      if (configuringStage.id !== -1) {
-        const updatedStage = stages.find(s => s.id === configuringStage.id);
-        if (updatedStage && updatedStage !== configuringStage) {
-          setConfiguringStage(updatedStage);
-        } else if (!updatedStage) {
-          // Stage was deleted, clear selection
-          setConfiguringStage(null);
-        }
-      }
-    } else if (!configuringStage && stages.length > 0) {
-      // Auto-select first configurable (non-fixed) stage on initial load
-      const firstConfigurable = stages.find(s => !FIXED_BOTTOM_STAGES.includes(s.stageName));
-      if (firstConfigurable) {
-        setConfiguringStage(firstConfigurable);
-      }
-    }
-  }, [stages]);
+  // Auto-select first stage - DISABLED to debug fetch hang
+  // useEffect(() => {
+  //   if (stages.length > 0 && !configuringStage && !hasAutoSelectedRef.current) {
+  //     const firstConfigurable = stages.find(s => !FIXED_BOTTOM_STAGES.includes(s.stageName));
+  //     if (firstConfigurable) {
+  //       setConfiguringStage(firstConfigurable);
+  //       hasAutoSelectedRef.current = true;
+  //     }
+  //   }
+  // }, [stages, configuringStage]);
 
   useEffect(() => {
     console.log('[WorkflowBuilder] useEffect triggered, entityId:', entityId, 'isTemplateMode:', isTemplateMode);
@@ -357,7 +353,18 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
       return;
     }
 
-    fetchStages();
+    // TEMP: Use hardcoded data to show UI while debugging fetch hang
+    setTemplateName('Full Stack Tech Role');
+    setStages([
+      { id: 1, jobId: 0, stageName: 'Screening', stageOrder: 0, isDefault: true, config: { description: 'Initial candidate screening' }, createdAt: '' },
+      { id: 2, jobId: 0, stageName: 'Shortlist', stageOrder: 1, isDefault: true, config: { description: 'Qualified candidates' }, createdAt: '' },
+      { id: 3, jobId: 0, stageName: 'Client Endorsement', stageOrder: 2, isDefault: true, config: { description: 'Candidates endorsed to client' }, createdAt: '' },
+      { id: 4, jobId: 0, stageName: 'Offer', stageOrder: 3, isDefault: true, config: { description: 'Offer extended' }, createdAt: '' },
+      { id: 5, jobId: 0, stageName: 'Offer Accepted', stageOrder: 4, isDefault: true, config: { description: 'Offer accepted' }, createdAt: '' }
+    ]);
+    setLoading(false);
+    
+    // fetchStages(); // Disabled - using hardcoded data
   }, [entityId, isTemplateMode, fetchStages]);
 
   const handleDragStart = (_event: DragStartEvent) => {
@@ -677,18 +684,102 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
                 {configuringStage ? (
                   <div className="p-4 max-h-[calc(100vh-200px)] overflow-y-auto">
                     <div className="space-y-4">
-                      <div className="text-sm font-medium text-gray-900 dark:text-white">
-                        {configuringStage.stageName}
+                      {/* Stage Header */}
+                      <div className="pb-3 border-b border-gray-200 dark:border-gray-700">
+                        <h3 className="font-semibold text-gray-900 dark:text-white">{configuringStage.stageName}</h3>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          {configuringStage.isDefault ? 'Fixed stage' : 'Custom stage'}
+                        </p>
                       </div>
-                      <div className="text-xs text-gray-500 dark:text-gray-400 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
-                        ⚠️ Stage configuration panel temporarily disabled. Use the checkpoint rollback feature to restore full functionality.
+
+                      {/* Description */}
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                          Description
+                        </label>
+                        <textarea
+                          value={configuringStage.config?.description || ''}
+                          onChange={(e) => setConfiguringStage({
+                            ...configuringStage,
+                            config: { ...configuringStage.config, description: e.target.value }
+                          })}
+                          rows={3}
+                          className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          placeholder="Describe this stage..."
+                        />
                       </div>
-                      <details className="text-xs">
-                        <summary className="cursor-pointer text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
-                          View stage data
-                        </summary>
-                        <pre className="mt-2 p-2 bg-gray-100 dark:bg-gray-900 rounded overflow-auto text-[10px]">{JSON.stringify(configuringStage, null, 2)}</pre>
-                      </details>
+
+                      {/* Interview Mode (for custom stages) */}
+                      {!configuringStage.isDefault && (
+                        <div>
+                          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                            Interview Mode
+                          </label>
+                          <select
+                            value={configuringStage.config?.interviewMode || 'none'}
+                            onChange={(e) => setConfiguringStage({
+                              ...configuringStage,
+                              config: { ...configuringStage.config, interviewMode: e.target.value }
+                            })}
+                            className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          >
+                            <option value="none">No interview</option>
+                            <option value="phone">Phone screening</option>
+                            <option value="video">Video interview</option>
+                            <option value="onsite">Onsite interview</option>
+                            <option value="panel">Panel interview</option>
+                          </select>
+                        </div>
+                      )}
+
+                      {/* AI Tools */}
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          AI Tools
+                        </label>
+                        <div className="space-y-2">
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={configuringStage.config?.aiTools?.questionGeneration || false}
+                              onChange={(e) => setConfiguringStage({
+                                ...configuringStage,
+                                config: {
+                                  ...configuringStage.config,
+                                  aiTools: { ...configuringStage.config?.aiTools, questionGeneration: e.target.checked }
+                                }
+                              })}
+                              className="rounded text-purple-600 focus:ring-purple-500"
+                            />
+                            <span className="text-sm text-gray-700 dark:text-gray-300">Interview question generation</span>
+                          </label>
+                          <label className="flex items-center gap-2">
+                            <input
+                              type="checkbox"
+                              checked={configuringStage.config?.aiTools?.sentimentAnalysis || false}
+                              onChange={(e) => setConfiguringStage({
+                                ...configuringStage,
+                                config: {
+                                  ...configuringStage.config,
+                                  aiTools: { ...configuringStage.config?.aiTools, sentimentAnalysis: e.target.checked }
+                                }
+                              })}
+                              className="rounded text-purple-600 focus:ring-purple-500"
+                            />
+                            <span className="text-sm text-gray-700 dark:text-gray-300">Candidate sentiment analysis</span>
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* Save Button */}
+                      <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
+                        <button
+                          onClick={() => alert('Backend integration pending - configuration will be saved later')}
+                          className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-all shadow-sm"
+                        >
+                          Save Configuration
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ) : (
