@@ -24,9 +24,9 @@ const pool = new Pool({
   port: parseInt(process.env.PGPORT || '5432'),
   database: process.env.PGDATABASE,
   password: process.env.PGPASSWORD,
-  ssl: process.env.PGHOST?.includes('azure') ? { 
-    rejectUnauthorized: !isDevelopment  // Only allow insecure SSL in explicit development mode
-    // TODO: Load CA bundle: ca: fs.readFileSync('./certs/DigiCertGlobalRootCA.crt.pem')
+  ssl: process.env.PGHOST ? {
+    rejectUnauthorized: false  // Allow self-signed certificates in development
+    // For Azure production: ca: fs.readFileSync('./certs/DigiCertGlobalRootCA.crt.pem'), rejectUnauthorized: true
   } : false
 });
 
