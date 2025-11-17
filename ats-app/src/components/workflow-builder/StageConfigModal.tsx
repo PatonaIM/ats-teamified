@@ -726,6 +726,132 @@ export function StageConfigModal({ stage, onClose, onSave }: StageConfigModalPro
                 </div>
               )}
 
+              {/* Skills Test Specific Settings */}
+              {config.assessmentType === 'skills' && (
+                <div className="bg-indigo-50 dark:bg-indigo-900/20 p-4 rounded-lg space-y-4 border border-indigo-200 dark:border-indigo-800">
+                  <h4 className="text-sm font-semibold text-indigo-900 dark:text-indigo-200 flex items-center gap-2">
+                    <span>⚡</span>
+                    Skills Test Details
+                  </h4>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Test Format
+                    </label>
+                    <select
+                      value={config.skillsTestFormat || 'multiple-choice'}
+                      onChange={(e) => updateConfig('skillsTestFormat', e.target.value)}
+                      className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                    >
+                      <option value="multiple-choice">Multiple Choice</option>
+                      <option value="practical">Practical Demonstration</option>
+                      <option value="simulation">Simulation/Scenario</option>
+                      <option value="portfolio-review">Portfolio Review</option>
+                      <option value="mixed">Mixed Format</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Skills Being Tested
+                    </label>
+                    <div className="space-y-2">
+                      {['Communication', 'Microsoft Office', 'Data Analysis', 'Project Management', 'Customer Service', 'Technical Writing'].map((skill) => (
+                        <div key={skill} className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={config.skillsToTest?.[skill] || false}
+                            onChange={(e) => updateConfig('skillsToTest', { 
+                              ...config.skillsToTest, 
+                              [skill]: e.target.checked 
+                            })}
+                            className="w-4 h-4 text-indigo-600 rounded"
+                          />
+                          <span className="text-sm text-gray-700 dark:text-gray-300">{skill}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Additional Skills (comma-separated)
+                    </label>
+                    <input
+                      type="text"
+                      value={config.customSkills || ''}
+                      onChange={(e) => updateConfig('customSkills', e.target.value)}
+                      placeholder="e.g., Excel VBA, SQL, Design Thinking"
+                      className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Number of Questions
+                    </label>
+                    <input
+                      type="number"
+                      min="5"
+                      max="100"
+                      value={config.skillsQuestionCount || 20}
+                      onChange={(e) => updateConfig('skillsQuestionCount', parseInt(e.target.value))}
+                      className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Proctoring
+                    </label>
+                    <select
+                      value={config.skillsProctoring || 'none'}
+                      onChange={(e) => updateConfig('skillsProctoring', e.target.value)}
+                      className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                    >
+                      <option value="none">No Proctoring</option>
+                      <option value="browser-lockdown">Browser Lockdown</option>
+                      <option value="webcam">Webcam Monitoring</option>
+                      <option value="live-proctor">Live Proctor</option>
+                      <option value="ai-proctor">AI Proctoring</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Allow Retakes
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={config.allowRetakes || false}
+                        onChange={(e) => updateConfig('allowRetakes', e.target.checked)}
+                        className="w-4 h-4 text-indigo-600 rounded"
+                      />
+                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                        Allow candidates to retake the test if they fail
+                      </span>
+                    </div>
+                  </div>
+
+                  {config.allowRetakes && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                        Maximum Retakes
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="5"
+                        value={config.maxRetakes || 2}
+                        onChange={(e) => updateConfig('maxRetakes', parseInt(e.target.value))}
+                        className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Assessment Duration (minutes)
