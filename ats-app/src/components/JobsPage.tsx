@@ -50,6 +50,12 @@ const statusLabels: Record<string, string> = {
   closed: 'Closed'
 };
 
+// Normalize backend status to frontend status
+const normalizeStatus = (status: string): string => {
+  if (status === 'published') return 'active';
+  return status;
+};
+
 export function JobsPage() {
   const { user } = useAuth();
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -81,7 +87,14 @@ export function JobsPage() {
       if (!response.ok) throw new Error('Failed to fetch jobs');
       
       const data = await response.json();
-      setJobs(data.jobs);
+      
+      // Normalize status from backend (published → active)
+      const normalizedJobs = (data.jobs || []).map((job: Job) => ({
+        ...job,
+        status: normalizeStatus(job.status)
+      }));
+      
+      setJobs(normalizedJobs);
       setError(null);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to fetch jobs');

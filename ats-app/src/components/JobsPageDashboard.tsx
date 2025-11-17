@@ -44,6 +44,12 @@ const statusLabels: Record<string, string> = {
   closed: 'Closed'
 };
 
+// Normalize backend status to frontend status
+const normalizeStatus = (status: string): string => {
+  if (status === 'published') return 'active';
+  return status;
+};
+
 export function JobsPageDashboard() {
   const { user } = useAuth();
   const [jobs, setJobs] = useState<Job[]>([]);
@@ -75,7 +81,14 @@ export function JobsPageDashboard() {
       const data = await apiRequest<{ jobs: Job[] }>(endpoint);
       console.log('Jobs received:', data.jobs?.length || 0);
       console.log('First job:', data.jobs?.[0]);
-      setJobs(data.jobs || []);
+      
+      // Normalize status from backend (published → active)
+      const normalizedJobs = (data.jobs || []).map(job => ({
+        ...job,
+        status: normalizeStatus(job.status)
+      }));
+      
+      setJobs(normalizedJobs);
       setError(null);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to fetch jobs';
