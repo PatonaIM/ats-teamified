@@ -86,3 +86,6 @@ The system employs an Azure-native, microservices-based architecture.
     - Azure Key Vault
     - Azure Monitor, Log Analytics, Application Insights
 - **Teamified Accounts SSO:** OAuth 2.0 provider with PKCE for secure authentication (teamified-accounts.replit.app).
+
+## Documentation
+- **Database Schema Analysis**: Comprehensive database documentation available at `docs/DATABASE_SCHEMA_ANALYSIS.md`. Includes complete table definitions, relationships, API patterns, ERD diagrams, data flows, indexing strategies, and migration history for all 9 production tables (jobs, candidates, job_pipeline_stages, candidate_documents, candidate_communications, candidate_stage_history, job_approvals, approval_history, linkedin_sync_status).
