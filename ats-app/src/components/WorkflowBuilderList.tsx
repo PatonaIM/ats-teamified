@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Plus, Edit, Trash2, Loader2, CheckCircle, AlertCircle, X } from 'lucide-react';
-import { WorkflowBuilder } from './WorkflowBuilder';
+import { useNavigate } from 'react-router-dom';
+import { Plus, Edit, Trash2, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
 
 interface Template {
   id: number;
@@ -12,6 +12,7 @@ interface Template {
 }
 
 export function WorkflowBuilderList() {
+  const navigate = useNavigate();
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -19,7 +20,6 @@ export function WorkflowBuilderList() {
   const [newTemplateName, setNewTemplateName] = useState('');
   const [newTemplateDescription, setNewTemplateDescription] = useState('');
   const [creating, setCreating] = useState(false);
-  const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(null);
 
   useEffect(() => {
     fetchTemplates();
@@ -81,8 +81,8 @@ export function WorkflowBuilderList() {
       // Refresh list
       await fetchTemplates();
       
-      // Select the new template to edit it inline
-      setSelectedTemplateId(created.id);
+      // Navigate to edit the new template
+      navigate(`/dashboard/pipeline-templates/${created.id}/edit`);
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Failed to create template');
     } finally {
@@ -141,7 +141,7 @@ export function WorkflowBuilderList() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
-      <div className={selectedTemplateId ? "max-w-full mx-auto" : "max-w-6xl mx-auto"}>
+      <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="mb-8 flex items-center justify-between">
           <div>
@@ -161,11 +161,8 @@ export function WorkflowBuilderList() {
           </button>
         </div>
 
-        {/* Split Layout: Templates List + Workflow Builder */}
-        <div className={selectedTemplateId ? "grid grid-cols-1 xl:grid-cols-2 gap-8" : "grid gap-4"}>
-          
-          {/* Templates List */}
-          <div className={selectedTemplateId ? "space-y-4 max-h-[calc(100vh-200px)] overflow-y-auto pr-4" : "grid gap-4"}>
+        {/* Templates List */}
+        <div className="grid gap-4">
           {templates.map((template) => (
             <div
               key={template.id}
@@ -198,7 +195,7 @@ export function WorkflowBuilderList() {
 
                 <div className="flex gap-2">
                   <button
-                    onClick={() => setSelectedTemplateId(template.id)}
+                    onClick={() => navigate(`/dashboard/pipeline-templates/${template.id}/edit`)}
                     className="px-4 py-2 bg-white dark:bg-gray-800 text-purple-700 dark:text-purple-300 border-2 border-purple-500 rounded-lg font-semibold hover:bg-purple-50 dark:hover:bg-purple-900/20 hover:shadow-lg transition-all duration-200 flex items-center gap-2"
                   >
                     <Edit className="w-4 h-4" />
@@ -231,26 +228,6 @@ export function WorkflowBuilderList() {
                 <Plus className="w-5 h-5" />
                 Create Template
               </button>
-            </div>
-          )}
-          </div>
-
-          {/* Workflow Builder (right panel) */}
-          {selectedTemplateId && (
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 max-h-[calc(100vh-200px)] overflow-y-auto">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                  Edit Template
-                </h2>
-                <button
-                  onClick={() => setSelectedTemplateId(null)}
-                  className="p-2 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-                  title="Close editor"
-                >
-                  <X className="w-5 h-5" />
-                </button>
-              </div>
-              <WorkflowBuilder templateId={selectedTemplateId} hideBackButton={true} />
             </div>
           )}
         </div>
