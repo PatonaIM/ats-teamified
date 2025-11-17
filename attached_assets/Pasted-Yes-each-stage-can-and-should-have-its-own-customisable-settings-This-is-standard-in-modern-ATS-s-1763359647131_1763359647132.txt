@@ -1,0 +1,166 @@
+Yes — each stage can and should have its own customisable settings.
+This is standard in modern ATS systems (Greenhouse, Lever, Ashby, Workday), and it gives maximum flexibility to the client.
+
+Below is a clean, structured list of what each stage can customise.
+
+✅ What Each Stage Can Have (Customisable Per Stage)
+1. Stage Name & Type
+
+Stage Name (editable)
+
+Stage Type (e.g., AI Interview, TMF Interview, Client Interview, Assessment, Offer, Approval)
+
+2. Actions / Tasks Required
+
+Each stage can define what must happen:
+
+Schedule interview
+
+Trigger AI interview automatically
+
+Send coding challenge
+
+Collect documents
+
+Complete budget approval
+
+Conduct panel interview
+
+Internal review required
+
+Add feedback notes
+
+3. Interview Configuration (if it is an interview stage)
+
+Interview mode:
+
+AI (Video / Text / Coding)
+
+TMF human interview
+
+Client interview
+
+Duration / Slots
+
+Interviewers list
+
+Video platform (Zoom/Teams)
+
+Candidate instructions
+
+Interview scorecard / evaluation form
+
+4. Automations
+
+Every stage can have automation rules:
+
+Auto-send invite on entering stage
+
+Auto-move if score above X
+
+Auto-disqualify if below threshold
+
+Auto-notify candidate
+
+Auto-remind interviewer
+
+Auto-sync results to HRIS
+
+Auto-generate assessment invite
+
+5. Visibility Rules
+
+Visible to Client only
+
+Visible to TMF internal only
+
+Visible to Candidate (yes/no)
+
+Hide AI scoring from client (optional)
+
+6. Required Inputs
+
+Stage can define what needs to be completed before moving forward:
+
+Mandatory feedback
+
+Scorecard submission
+
+Budget approval document uploaded
+
+Salary matrix confirmation
+
+Interview notes
+
+Manager approval (if required)
+
+7. Disqualification Rules
+
+Custom logic per stage:
+
+If AI score < 60 → auto reject
+
+If coding challenge not completed in 48 hrs → reject
+
+If interviewer rejects → auto disqualify
+
+If document missing → block progression
+
+8. SLA Settings
+
+Each stage can define:
+
+Target time to complete
+
+Reminders to client/interviewers
+
+Escalation workflow
+
+9. Notifications
+
+Configurable per stage:
+
+Email/SMS templates
+
+Push notification to candidate
+
+Alert to TMF recruiter
+
+Calendar invite sent automatically
+
+10. Integrations (Optional)
+
+Some stages need integrations:
+
+AI engine (video/coding)
+
+Assessment provider (e.g., HackerRank, Criteria)
+
+TeamConnect interview scheduling
+
+Client’s internal interview tool
+
+HRIS sync
+
+Each stage can enable/disable these integrations.
+
+⭐ Summary
+
+Yes — each stage becomes a mini-configuration block with:
+
+▶ Stage Info
+▶ Interview / Assessment Settings
+▶ Automations
+▶ Approvals & Validation
+▶ Notifications
+▶ Integrations
+
+This makes your ATS workflow builder enterprise-grade, like Greenhouse and Workday.
+
+If you want, I can now also create:
+
+✅ Stage schema (database tables)
+✅ JSON structure for stage configurations
+✅ UI wireframe for stage settings panel
+
+Just tell me: "Create stage DB schema" or "Show UI wireframe".
