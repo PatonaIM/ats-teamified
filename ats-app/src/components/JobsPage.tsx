@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Search, Plus, Briefcase, MapPin, DollarSign, Users, Calendar, CheckCircle, Clock, XCircle, Pause, AlertCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Search, Plus, Briefcase, MapPin, DollarSign, Users, Calendar, CheckCircle, Clock, XCircle, Pause, AlertCircle, Settings } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { useWorkflowBuilder } from '../hooks/useWorkflowBuilder';
 
 interface Job {
   id: number;
@@ -58,6 +60,8 @@ const normalizeStatus = (status: string): string => {
 
 export function JobsPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const { enabled: workflowBuilderEnabled } = useWorkflowBuilder();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -370,9 +374,21 @@ export function JobsPage() {
                       </div>
                     </div>
 
-                    <button className="px-5 py-2.5 bg-gradient-to-r from-brand-purple to-brand-blue text-white rounded-lg font-semibold opacity-0 group-hover:opacity-100 transition-all duration-300 hover:shadow-lg whitespace-nowrap">
-                      View Details
-                    </button>
+                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300">
+                      <button className="px-5 py-2.5 bg-gradient-to-r from-brand-purple to-brand-blue text-white rounded-lg font-semibold hover:shadow-lg whitespace-nowrap">
+                        View Details
+                      </button>
+                      {workflowBuilderEnabled && (
+                        <button
+                          onClick={() => navigate(`/jobs/${job.id}/workflow-builder`)}
+                          className="px-4 py-2.5 bg-white dark:bg-gray-800 text-purple-700 dark:text-purple-300 border-2 border-purple-500 rounded-lg font-semibold hover:bg-purple-50 dark:hover:bg-purple-900/20 hover:shadow-lg whitespace-nowrap flex items-center gap-2"
+                          title="Customize hiring workflow"
+                        >
+                          <Settings className="w-4 h-4" />
+                          Customize Workflow
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               );

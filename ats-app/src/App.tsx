@@ -3,6 +3,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { Navigation } from './components/Navigation';
 import { LandingPage } from './components/LandingPage';
 import { JobsPage } from './components/JobsPage';
+import { WorkflowBuilder } from './components/WorkflowBuilder';
 import { DashboardLayout } from './components/DashboardLayout';
 import { DashboardHome } from './components/DashboardHome';
 import { JobsPageDashboard } from './components/JobsPageDashboard';
@@ -18,6 +19,9 @@ function App() {
           {/* Public Routes */}
           <Route path="/" element={<><Navigation /><LandingPage /></>} />
           <Route path="/jobs" element={<><Navigation /><JobsPage /></>} />
+          
+          {/* Workflow Builder Route */}
+          <Route path="/jobs/:jobId/workflow-builder" element={<WorkflowBuilder />} />
           
           {/* OAuth Callback Route */}
           <Route path="/auth/callback" element={<AuthCallback />} />
