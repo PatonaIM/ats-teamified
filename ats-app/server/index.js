@@ -39,7 +39,7 @@ app.use(cors({
   origin: true,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control']
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control', 'X-API-Key']
 }));
 app.use(express.json());
 
@@ -1239,6 +1239,269 @@ app.put('/api/candidates/:id/stage', async (req, res) => {
   } catch (error) {
     console.error('[Candidates API] Error moving candidate:', error);
     res.status(500).json({ error: 'Failed to move candidate', details: error.message });
+  }
+});
+
+// ===== EXTERNAL CANDIDATE PORTAL API ENDPOINTS =====
+
+// Middleware for API key validation (optional - can be enabled via env var)
+const validatePortalApiKey = (req, res, next) => {
+  const expectedApiKey = process.env.PORTAL_API_KEY;
+  
+  // Skip validation if no API key is configured (development mode)
+  if (!expectedApiKey) {
+    console.log('[Portal API] No API key configured - skipping validation (DEV MODE)');
+    return next();
+  }
+  
+  const providedKey = req.headers['x-api-key'] || req.query.apiKey;
+  
+  if (!providedKey) {
+    return res.status(401).json({ error: 'API key required', message: 'Provide X-API-Key header or apiKey query parameter' });
+  }
+  
+  if (providedKey !== expectedApiKey) {
+    console.warn('[Portal API] Invalid API key attempt:', providedKey.substring(0, 8) + '...');
+    return res.status(403).json({ error: 'Invalid API key' });
+  }
+  
+  next();
+};
+
+// POST /api/portal/candidates - Submit candidate from external portal
+app.post('/api/portal/candidates', validatePortalApiKey, async (req, res) => {
+  try {
+    console.log('[Portal API] Received candidate submission:', req.body);
+    
+    const candidateData = {
+      ...req.body,
+      source: 'portal', // Always mark as portal source
+      currentStage: 'Screening' // Always start at Screening
+    };
+    
+    const candidate = await createCandidate(candidateData);
+    
+    console.log('[Portal API] Candidate created successfully:', candidate.id);
+    res.status(201).json({
+      success: true,
+      candidate: {
+        id: candidate.id,
+        firstName: candidate.first_name,
+        lastName: candidate.last_name,
+        email: candidate.email,
+        currentStage: candidate.current_stage,
+        status: candidate.status,
+        createdAt: candidate.created_at
+      },
+      message: 'Candidate submitted successfully to Screening stage'
+    });
+  } catch (error) {
+    console.error('[Portal API] Error creating candidate:', error);
+    
+    if (error.message.includes('duplicate key')) {
+      return res.status(400).json({ 
+        error: 'Duplicate email', 
+        message: 'Candidate with this email already applied to this job' 
+      });
+    }
+    
+    res.status(500).json({ error: 'Failed to submit candidate', details: error.message });
+  }
+});
+
+// PUT /api/portal/candidates/:id/advance - Advance candidate to next stage (Screening → Shortlist)
+app.put('/api/portal/candidates/:id/advance', validatePortalApiKey, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { notes, portalUserId } = req.body;
+    
+    console.log('[Portal API] Advancing candidate:', id);
+    
+    // Get current stage
+    const candidateResult = await query('SELECT current_stage FROM candidates WHERE id = $1', [parseInt(id)]);
+    
+    if (candidateResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Candidate not found' });
+    }
+    
+    const currentStage = candidateResult.rows[0].current_stage;
+    let newStage;
+    
+    // Determine next stage based on current stage
+    if (currentStage === 'Screening') {
+      newStage = 'Shortlist';
+    } else if (currentStage === 'Shortlist') {
+      newStage = 'Client Endorsement';
+    } else {
+      return res.status(400).json({ 
+        error: 'Invalid stage transition', 
+        message: `Cannot advance from ${currentStage}. Portal can only advance from Screening or Shortlist.` 
+      });
+    }
+    
+    const candidate = await moveCandidateToStage(
+      parseInt(id), 
+      newStage, 
+      portalUserId || 'portal-system', 
+      notes || `Advanced from ${currentStage} via external portal`
+    );
+    
+    console.log('[Portal API] Candidate advanced:', currentStage, '→', newStage);
+    res.json({
+      success: true,
+      candidate: {
+        id: candidate.id,
+        firstName: candidate.first_name,
+        lastName: candidate.last_name,
+        email: candidate.email,
+        previousStage: currentStage,
+        currentStage: newStage,
+        updatedAt: candidate.updated_at
+      },
+      message: `Candidate advanced from ${currentStage} to ${newStage}`
+    });
+  } catch (error) {
+    console.error('[Portal API] Error advancing candidate:', error);
+    res.status(500).json({ error: 'Failed to advance candidate', details: error.message });
+  }
+});
+
+// GET /api/portal/jobs/:jobId/candidates - Get candidates for a job (optionally filtered by stage)
+app.get('/api/portal/jobs/:jobId/candidates', validatePortalApiKey, async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    const { stage, status } = req.query;
+    
+    console.log('[Portal API] Fetching candidates for job:', jobId, { stage, status });
+    
+    const filters = {
+      jobId,
+      ...(status && { status })
+    };
+    
+    // Get candidates using existing service
+    const candidates = await getCandidates(filters);
+    
+    // Filter by stage if specified (getCandidates doesn't support stage filter)
+    let filteredCandidates = candidates;
+    if (stage) {
+      filteredCandidates = candidates.filter(c => c.current_stage === stage);
+    }
+    
+    res.json({
+      success: true,
+      jobId,
+      totalCount: filteredCandidates.length,
+      filters: { stage, status },
+      candidates: filteredCandidates.map(c => ({
+        id: c.id,
+        firstName: c.first_name,
+        lastName: c.last_name,
+        email: c.email,
+        phone: c.phone,
+        currentStage: c.current_stage,
+        source: c.source,
+        status: c.status,
+        resumeUrl: c.resume_url,
+        createdAt: c.created_at,
+        updatedAt: c.updated_at
+      }))
+    });
+  } catch (error) {
+    console.error('[Portal API] Error fetching candidates:', error);
+    res.status(500).json({ error: 'Failed to fetch candidates', details: error.message });
+  }
+});
+
+// GET /api/portal/candidates/:id - Get candidate details by ID
+app.get('/api/portal/candidates/:id', validatePortalApiKey, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    console.log('[Portal API] Fetching candidate details:', id);
+    
+    const candidate = await getCandidateById(parseInt(id));
+    
+    if (!candidate) {
+      return res.status(404).json({ error: 'Candidate not found' });
+    }
+    
+    res.json({
+      success: true,
+      candidate: {
+        id: candidate.id,
+        firstName: candidate.first_name,
+        lastName: candidate.last_name,
+        email: candidate.email,
+        phone: candidate.phone,
+        currentStage: candidate.current_stage,
+        source: candidate.source,
+        status: candidate.status,
+        resumeUrl: candidate.resume_url,
+        externalPortalId: candidate.external_portal_id,
+        jobTitle: candidate.job_title,
+        employmentType: candidate.employment_type,
+        createdAt: candidate.created_at,
+        updatedAt: candidate.updated_at,
+        documents: candidate.documents || [],
+        communications: candidate.communications || [],
+        stageHistory: candidate.stageHistory?.map(h => ({
+          id: h.id,
+          previousStage: h.previous_stage,
+          newStage: h.new_stage,
+          changedBy: h.changed_by_user_id,
+          notes: h.notes,
+          changedAt: h.changed_at
+        })) || []
+      }
+    });
+  } catch (error) {
+    console.error('[Portal API] Error fetching candidate:', error);
+    res.status(500).json({ error: 'Failed to fetch candidate', details: error.message });
+  }
+});
+
+// PUT /api/portal/candidates/:id - Update candidate information
+app.put('/api/portal/candidates/:id', validatePortalApiKey, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    console.log('[Portal API] Updating candidate:', id, req.body);
+    
+    // Prevent external portal from changing certain fields
+    const allowedUpdates = {
+      ...(req.body.phone && { phone: req.body.phone }),
+      ...(req.body.resumeUrl && { resumeUrl: req.body.resumeUrl }),
+      ...(req.body.externalPortalId && { externalPortalId: req.body.externalPortalId })
+    };
+    
+    if (Object.keys(allowedUpdates).length === 0) {
+      return res.status(400).json({ error: 'No valid fields to update', allowedFields: ['phone', 'resumeUrl', 'externalPortalId'] });
+    }
+    
+    const candidate = await updateCandidate(parseInt(id), allowedUpdates);
+    
+    if (!candidate) {
+      return res.status(404).json({ error: 'Candidate not found' });
+    }
+    
+    res.json({
+      success: true,
+      candidate: {
+        id: candidate.id,
+        firstName: candidate.first_name,
+        lastName: candidate.last_name,
+        email: candidate.email,
+        phone: candidate.phone,
+        resumeUrl: candidate.resume_url,
+        externalPortalId: candidate.external_portal_id,
+        updatedAt: candidate.updated_at
+      },
+      message: 'Candidate updated successfully'
+    });
+  } catch (error) {
+    console.error('[Portal API] Error updating candidate:', error);
+    res.status(500).json({ error: 'Failed to update candidate', details: error.message });
   }
 });
 
