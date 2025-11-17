@@ -195,6 +195,14 @@ export function WorkflowBuilderList() {
 
                 <div className="flex gap-2">
                   <button
+                    onClick={() => navigate(`/dashboard/jobs?templateId=${template.id}`)}
+                    className="px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg font-semibold hover:shadow-lg transition-all duration-200 flex items-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Add Job Request
+                  </button>
+                  
+                  <button
                     onClick={() => navigate(`/dashboard/pipeline-templates/${template.id}/edit`)}
                     className="px-4 py-2 bg-white dark:bg-gray-800 text-purple-700 dark:text-purple-300 border-2 border-purple-500 rounded-lg font-semibold hover:bg-purple-50 dark:hover:bg-purple-900/20 hover:shadow-lg transition-all duration-200 flex items-center gap-2"
                   >

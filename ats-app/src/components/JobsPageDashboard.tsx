@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { Search, Plus, Briefcase, MapPin, DollarSign, Users, Calendar, CheckCircle, Clock, XCircle, Pause, AlertCircle } from 'lucide-react';
 import JobForm from './JobForm';
 import { getEmploymentTypeColors, getEmploymentTypeLabel } from '../utils/employmentTypes';
@@ -52,6 +53,8 @@ const normalizeStatus = (status: string): string => {
 
 export function JobsPageDashboard() {
   const { user } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -60,6 +63,19 @@ export function JobsPageDashboard() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(null);
+  
+  // Check for templateId in URL query params
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const templateId = params.get('templateId');
+    if (templateId) {
+      setSelectedTemplateId(parseInt(templateId));
+      setIsCreateModalOpen(true);
+      // Remove the query param from URL
+      navigate('/dashboard/jobs', { replace: true });
+    }
+  }, [location.search, navigate]);
   
   // Check if user is a client
   const isClient = user?.role === 'client_admin' || user?.role === 'client_hr';
@@ -398,9 +414,13 @@ export function JobsPageDashboard() {
 
       <JobForm 
         isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
+        onClose={() => {
+          setIsCreateModalOpen(false);
+          setSelectedTemplateId(null);
+        }}
         onSubmit={handleCreateJob}
         isSubmitting={isSubmitting}
+        templateId={selectedTemplateId}
       />
     </div>
   );

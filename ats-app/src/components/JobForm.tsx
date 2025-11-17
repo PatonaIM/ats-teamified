@@ -63,9 +63,10 @@ interface JobFormProps {
   onSubmit: (data: JobFormData) => void;
   isSubmitting?: boolean;
   initialData?: Partial<JobFormData>;
+  templateId?: number | null;
 }
 
-const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitting = false, initialData }) => {
+const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitting = false, initialData, templateId }) => {
   const { user } = useAuth();
   
   const getDefaultPipelineStages = (): PipelineStage[] => [
@@ -113,6 +114,31 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitti
       setErrors({});
     }
   }, [isOpen]);
+  
+  // Fetch template stages when templateId is provided
+  useEffect(() => {
+    const fetchTemplateStages = async () => {
+      if (!templateId || !isOpen) return;
+      
+      try {
+        const response = await fetch(`/api/pipeline-templates/${templateId}`);
+        if (!response.ok) throw new Error('Failed to fetch template');
+        
+        const data = await response.json();
+        const templateStages = data.stages.map((stage: any, index: number) => ({
+          name: stage.stage_name,
+          order: index + 1
+        }));
+        
+        setFormData(prev => ({ ...prev, pipelineStages: templateStages }));
+      } catch (error) {
+        console.error('Error fetching template stages:', error);
+        // Keep default stages if fetch fails
+      }
+    };
+    
+    fetchTemplateStages();
+  }, [templateId, isOpen]);
 
   const handleChange = (field: keyof JobFormData, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
