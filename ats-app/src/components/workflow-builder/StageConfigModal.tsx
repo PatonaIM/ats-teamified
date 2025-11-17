@@ -74,6 +74,21 @@ export function StageConfigModal({ stage, onClose, onSave }: StageConfigModalPro
             
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Interview Type
+              </label>
+              <select
+                value={config.interviewType || 'human'}
+                onChange={(e) => updateConfig('interviewType', e.target.value)}
+                className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+              >
+                <option value="human">Human Interview</option>
+                <option value="ai">AI Interview</option>
+                <option value="hybrid">Hybrid (AI + Human)</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 Interview Mode
               </label>
               <select
@@ -87,6 +102,21 @@ export function StageConfigModal({ stage, onClose, onSave }: StageConfigModalPro
                 <option value="onsite">On-site Interview</option>
                 <option value="panel">Panel Interview</option>
               </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Interview Duration (minutes)
+              </label>
+              <input
+                type="number"
+                min="15"
+                max="480"
+                step="15"
+                value={config.interviewDuration || 60}
+                onChange={(e) => updateConfig('interviewDuration', parseInt(e.target.value))}
+                className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+              />
             </div>
 
             <div>
@@ -114,6 +144,60 @@ export function StageConfigModal({ stage, onClose, onSave }: StageConfigModalPro
                 value={config.evaluationCriteria || ''}
                 onChange={(e) => updateConfig('evaluationCriteria', e.target.value)}
                 placeholder="Enter evaluation criteria (e.g., Technical skills, Communication, Cultural fit)"
+                rows={3}
+                className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+              Assessment Configuration
+            </h3>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Assessment Type
+              </label>
+              <select
+                value={config.assessmentType || 'none'}
+                onChange={(e) => updateConfig('assessmentType', e.target.value)}
+                className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+              >
+                <option value="none">No Assessment</option>
+                <option value="technical">Technical Assessment</option>
+                <option value="coding">Coding Challenge</option>
+                <option value="case-study">Case Study</option>
+                <option value="presentation">Presentation</option>
+                <option value="personality">Personality Test</option>
+                <option value="skills">Skills Test</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Assessment Duration (minutes)
+              </label>
+              <input
+                type="number"
+                min="15"
+                max="480"
+                step="15"
+                value={config.assessmentDuration || 120}
+                onChange={(e) => updateConfig('assessmentDuration', parseInt(e.target.value))}
+                className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Assessment Instructions
+              </label>
+              <textarea
+                value={config.assessmentInstructions || ''}
+                onChange={(e) => updateConfig('assessmentInstructions', e.target.value)}
+                placeholder="Enter instructions for the assessment..."
                 rows={3}
                 className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
               />
