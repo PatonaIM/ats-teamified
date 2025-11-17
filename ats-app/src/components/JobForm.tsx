@@ -569,30 +569,6 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitti
 
         <form onSubmit={(e) => handleSubmit(e, false)} className="p-6 max-h-[calc(100vh-200px)] overflow-y-auto">
           <div className="space-y-6">
-            {/* Pipeline Template Selector */}
-            <div className="bg-purple-50 p-4 rounded-lg border-2 border-purple-200">
-              <label htmlFor="template" className="block text-sm font-medium text-gray-700 mb-2">
-                Pipeline Template
-              </label>
-              <select
-                id="template"
-                value={selectedTemplateId || ''}
-                onChange={(e) => handleTemplateChange(e.target.value)}
-                disabled={loadingTemplates}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              >
-                {templates.map((template) => (
-                  <option key={template.id} value={template.id}>
-                    {template.name} {template.is_default ? '(Default)' : ''}
-                  </option>
-                ))}
-              </select>
-              <p className="mt-2 text-xs text-gray-600">
-                {selectedTemplateId && templates.find(t => t.id === selectedTemplateId)?.description || 
-                  'Select a pipeline template to use for this job\'s hiring workflow'}
-              </p>
-            </div>
-
             {/* Job Title - Top Priority Field */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Job Title*</label>
@@ -844,7 +820,33 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitti
 
             {renderEmploymentTypeFields()}
 
-            <div className="mt-6 p-4 bg-purple-50 border border-purple-200 rounded-lg">
+            <div className="mt-6 p-4 bg-purple-50 border-2 border-purple-300 rounded-lg">
+              <h3 className="text-lg font-semibold text-purple-900 mb-4">Hiring Pipeline Configuration</h3>
+              
+              {/* Pipeline Template Selector */}
+              <div className="mb-6 bg-white p-4 rounded-lg border border-purple-200">
+                <label htmlFor="template" className="block text-sm font-medium text-gray-700 mb-2">
+                  Pipeline Template
+                </label>
+                <select
+                  id="template"
+                  value={selectedTemplateId || ''}
+                  onChange={(e) => handleTemplateChange(e.target.value)}
+                  disabled={loadingTemplates}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                >
+                  {templates.map((template) => (
+                    <option key={template.id} value={template.id}>
+                      {template.name} {template.is_default ? '(Default)' : ''}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-2 text-xs text-gray-600">
+                  {selectedTemplateId && templates.find(t => t.id === selectedTemplateId)?.description || 
+                    'Select a pipeline template to use for this job\'s hiring workflow'}
+                </p>
+              </div>
+
               <PipelineStageEditor
                 stages={formData.pipelineStages}
                 onChange={(updatedStages) => setFormData(prev => ({ ...prev, pipelineStages: updatedStages }))}
