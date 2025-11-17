@@ -61,13 +61,16 @@ const normalizeStatus = (status: string): string => {
 export function JobsPage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { enabled: workflowBuilderEnabled } = useWorkflowBuilder();
+  const { enabled: workflowBuilderEnabled, loading: workflowBuilderLoading } = useWorkflowBuilder();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [employmentTypeFilter, setEmploymentTypeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  
+  console.log('[JobsPage] Workflow Builder enabled:', workflowBuilderEnabled);
+  console.log('[JobsPage] Workflow Builder loading:', workflowBuilderLoading);
   
   // Check if user is a client
   const isClient = user?.role === 'client_admin' || user?.role === 'client_hr';
