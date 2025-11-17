@@ -10,8 +10,10 @@ import {
   ChevronRight,
   UserCircle,
   LogOut,
-  CheckCircle2
+  CheckCircle2,
+  Workflow
 } from 'lucide-react';
+import { useWorkflowBuilder } from '../hooks/useWorkflowBuilder';
 
 const menuItems = [
   { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -29,6 +31,7 @@ interface SidebarProps {
 export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
+  const { enabled: workflowBuilderEnabled } = useWorkflowBuilder();
 
   const isActive = (path: string) => {
     if (path === '/dashboard') {
@@ -84,6 +87,24 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 </li>
               );
             })}
+            
+            {/* Workflow Builder Menu Item (Feature-Flagged) */}
+            {workflowBuilderEnabled && (
+              <li>
+                <Link
+                  to="/dashboard/workflow-builder"
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
+                    isActive('/dashboard/workflow-builder')
+                      ? 'bg-purple-600 text-white'
+                      : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+                  title={collapsed ? 'Pipeline Configuration' : ''}
+                >
+                  <Workflow className="w-5 h-5 flex-shrink-0" />
+                  {!collapsed && <span>Pipeline Configuration</span>}
+                </Link>
+              </li>
+            )}
           </ul>
         </nav>
 
