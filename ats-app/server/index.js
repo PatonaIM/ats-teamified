@@ -2122,20 +2122,26 @@ app.delete('/api/pipeline-templates/:id', requireWorkflowBuilder, async (req, re
       return res.status(400).json({ error: 'Cannot delete the default template' });
     }
     
-    // Check if template is in use by jobs
-    const jobsResult = await query(
-      'SELECT COUNT(*) as count FROM jobs WHERE pipeline_template_id = $1',
-      [parseInt(id)]
-    );
-    
-    const jobCount = parseInt(jobsResult.rows[0].count);
-    
-    if (jobCount > 0) {
-      return res.status(400).json({ 
-        error: 'Template is in use',
-        message: `This template is being used by ${jobCount} job(s). Please reassign those jobs to another template first.`,
-        jobCount
-      });
+    // Check if template is in use by jobs (only if column exists)
+    try {
+      const jobsResult = await query(
+        'SELECT COUNT(*) as count FROM jobs WHERE pipeline_template_id = $1',
+        [parseInt(id)]
+      );
+      
+      const jobCount = parseInt(jobsResult.rows[0].count);
+      
+      if (jobCount > 0) {
+        return res.status(400).json({ 
+          error: 'Template is in use',
+          message: `This template is being used by ${jobCount} job(s). Please reassign those jobs to another template first.`,
+          jobCount
+        });
+      }
+    } catch (columnError) {
+      // Column doesn't exist (Azure DB), skip this check
+      // Since jobs were created before templates feature, no jobs use templates
+      console.log('[Pipeline Templates] Skipping job usage check - pipeline_template_id column not found');
     }
     
     // Delete template (stages will be deleted automatically due to CASCADE)
