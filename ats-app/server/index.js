@@ -35,6 +35,21 @@ if (LINKEDIN_ENABLED && (!process.env.LINKEDIN_CLIENT_ID || !process.env.LINKEDI
   console.warn('   LinkedIn posting will use mock implementation.');
 }
 
+// Workflow Builder Feature Flag
+const WORKFLOW_BUILDER_ENABLED = process.env.WORKFLOW_BUILDER_ENABLED === 'true';
+console.log(`[Workflow Builder] Feature ${WORKFLOW_BUILDER_ENABLED ? 'ENABLED ✅' : 'DISABLED 🔒 (add WORKFLOW_BUILDER_ENABLED=true to Replit Secrets to enable)'}`);
+
+// Feature Flag Middleware
+const requireWorkflowBuilder = (req, res, next) => {
+  if (!WORKFLOW_BUILDER_ENABLED) {
+    return res.status(403).json({ 
+      error: 'Feature not enabled',
+      message: 'Workflow Builder is currently disabled. Please contact your administrator.'
+    });
+  }
+  next();
+};
+
 app.use(cors({
   origin: true,
   credentials: true,
@@ -1554,6 +1569,238 @@ app.put('/api/portal/candidates/:id', validatePortalApiKey, async (req, res) => 
     console.error('[Portal API] Error updating candidate:', error);
     res.status(500).json({ error: 'Failed to update candidate', details: error.message });
   }
+});
+
+// ===== WORKFLOW BUILDER API ENDPOINTS (Feature-Flagged) =====
+
+// GET /api/jobs/:jobId/pipeline-stages - Get all pipeline stages with configurations
+app.get('/api/jobs/:jobId/pipeline-stages', requireWorkflowBuilder, async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    
+    console.log('[Workflow Builder] Fetching pipeline stages for job:', jobId);
+    
+    const result = await query(
+      `SELECT 
+        id, 
+        job_id, 
+        stage_name, 
+        stage_order, 
+        is_default,
+        stage_config,
+        created_at
+      FROM job_pipeline_stages 
+      WHERE job_id = $1 
+      ORDER BY stage_order ASC`,
+      [parseInt(jobId)]
+    );
+    
+    res.json({
+      success: true,
+      jobId: parseInt(jobId),
+      stages: result.rows.map(stage => ({
+        id: stage.id,
+        jobId: stage.job_id,
+        stageName: stage.stage_name,
+        stageOrder: stage.stage_order,
+        isDefault: stage.is_default,
+        config: stage.stage_config || {},
+        createdAt: stage.created_at
+      }))
+    });
+  } catch (error) {
+    console.error('[Workflow Builder] Error fetching pipeline stages:', error);
+    res.status(500).json({ error: 'Failed to fetch pipeline stages', details: error.message });
+  }
+});
+
+// POST /api/jobs/:jobId/pipeline-stages - Create new custom pipeline stage
+app.post('/api/jobs/:jobId/pipeline-stages', requireWorkflowBuilder, async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    const { stageName, stageOrder, config } = req.body;
+    
+    if (!stageName || stageOrder === undefined) {
+      return res.status(400).json({ error: 'stageName and stageOrder are required' });
+    }
+    
+    console.log('[Workflow Builder] Creating new stage:', { jobId, stageName, stageOrder });
+    
+    const result = await query(
+      `INSERT INTO job_pipeline_stages (job_id, stage_name, stage_order, is_default, stage_config)
+       VALUES ($1, $2, $3, $4, $5)
+       RETURNING id, job_id, stage_name, stage_order, is_default, stage_config, created_at`,
+      [parseInt(jobId), stageName, stageOrder, false, JSON.stringify(config || {})]
+    );
+    
+    const newStage = result.rows[0];
+    
+    res.status(201).json({
+      success: true,
+      stage: {
+        id: newStage.id,
+        jobId: newStage.job_id,
+        stageName: newStage.stage_name,
+        stageOrder: newStage.stage_order,
+        isDefault: newStage.is_default,
+        config: newStage.stage_config || {},
+        createdAt: newStage.created_at
+      }
+    });
+  } catch (error) {
+    console.error('[Workflow Builder] Error creating stage:', error);
+    res.status(500).json({ error: 'Failed to create stage', details: error.message });
+  }
+});
+
+// PUT /api/jobs/:jobId/pipeline-stages/:stageId/config - Update stage configuration
+app.put('/api/jobs/:jobId/pipeline-stages/:stageId/config', requireWorkflowBuilder, async (req, res) => {
+  try {
+    const { jobId, stageId } = req.params;
+    const { config } = req.body;
+    
+    if (!config || typeof config !== 'object') {
+      return res.status(400).json({ error: 'config object is required' });
+    }
+    
+    console.log('[Workflow Builder] Updating stage config:', { jobId, stageId, config });
+    
+    const result = await query(
+      `UPDATE job_pipeline_stages 
+       SET stage_config = $1
+       WHERE id = $2 AND job_id = $3
+       RETURNING id, job_id, stage_name, stage_order, is_default, stage_config, created_at`,
+      [JSON.stringify(config), parseInt(stageId), parseInt(jobId)]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Stage not found' });
+    }
+    
+    const updatedStage = result.rows[0];
+    
+    res.json({
+      success: true,
+      stage: {
+        id: updatedStage.id,
+        jobId: updatedStage.job_id,
+        stageName: updatedStage.stage_name,
+        stageOrder: updatedStage.stage_order,
+        isDefault: updatedStage.is_default,
+        config: updatedStage.stage_config || {},
+        createdAt: updatedStage.created_at
+      }
+    });
+  } catch (error) {
+    console.error('[Workflow Builder] Error updating stage config:', error);
+    res.status(500).json({ error: 'Failed to update stage config', details: error.message });
+  }
+});
+
+// GET /api/jobs/:jobId/pipeline-stages/:stageId/candidate-count - Check if stage has candidates
+app.get('/api/jobs/:jobId/pipeline-stages/:stageId/candidate-count', requireWorkflowBuilder, async (req, res) => {
+  try {
+    const { jobId, stageId } = req.params;
+    
+    const stageResult = await query(
+      'SELECT stage_name FROM job_pipeline_stages WHERE id = $1 AND job_id = $2',
+      [parseInt(stageId), parseInt(jobId)]
+    );
+    
+    if (stageResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Stage not found' });
+    }
+    
+    const stageName = stageResult.rows[0].stage_name;
+    
+    const countResult = await query(
+      'SELECT COUNT(*) as count FROM candidates WHERE job_id = $1 AND current_stage = $2',
+      [parseInt(jobId), stageName]
+    );
+    
+    const candidateCount = parseInt(countResult.rows[0].count);
+    const canDelete = candidateCount === 0;
+    
+    console.log('[Workflow Builder] Stage candidate count:', { jobId, stageId, stageName, candidateCount, canDelete });
+    
+    res.json({
+      success: true,
+      jobId: parseInt(jobId),
+      stageId: parseInt(stageId),
+      stageName,
+      candidateCount,
+      canDelete,
+      message: canDelete 
+        ? 'Stage can be safely deleted'
+        : `Cannot delete stage: ${candidateCount} candidate(s) currently in this stage`
+    });
+  } catch (error) {
+    console.error('[Workflow Builder] Error checking candidate count:', error);
+    res.status(500).json({ error: 'Failed to check candidate count', details: error.message });
+  }
+});
+
+// DELETE /api/jobs/:jobId/pipeline-stages/:stageId - Delete stage (only if no candidates)
+app.delete('/api/jobs/:jobId/pipeline-stages/:stageId', requireWorkflowBuilder, async (req, res) => {
+  try {
+    const { jobId, stageId } = req.params;
+    
+    const stageResult = await query(
+      'SELECT stage_name, is_default FROM job_pipeline_stages WHERE id = $1 AND job_id = $2',
+      [parseInt(stageId), parseInt(jobId)]
+    );
+    
+    if (stageResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Stage not found' });
+    }
+    
+    const { stage_name, is_default } = stageResult.rows[0];
+    
+    if (is_default) {
+      return res.status(403).json({ 
+        error: 'Cannot delete default stage',
+        message: 'Default stages (Screening, Shortlist, Client Endorsement, Offer, Offer Accepted) cannot be deleted'
+      });
+    }
+    
+    const countResult = await query(
+      'SELECT COUNT(*) as count FROM candidates WHERE job_id = $1 AND current_stage = $2',
+      [parseInt(jobId), stage_name]
+    );
+    
+    const candidateCount = parseInt(countResult.rows[0].count);
+    
+    if (candidateCount > 0) {
+      return res.status(400).json({ 
+        error: 'Cannot delete stage with candidates',
+        message: `Stage has ${candidateCount} candidate(s). Please move or remove them first.`,
+        candidateCount
+      });
+    }
+    
+    await query(
+      'DELETE FROM job_pipeline_stages WHERE id = $1 AND job_id = $2',
+      [parseInt(stageId), parseInt(jobId)]
+    );
+    
+    console.log('[Workflow Builder] Stage deleted:', { jobId, stageId, stageName: stage_name });
+    
+    res.json({
+      success: true,
+      message: `Stage "${stage_name}" deleted successfully`
+    });
+  } catch (error) {
+    console.error('[Workflow Builder] Error deleting stage:', error);
+    res.status(500).json({ error: 'Failed to delete stage', details: error.message });
+  }
+});
+
+// GET /api/feature-flags - Public endpoint to check enabled features (no auth required)
+app.get('/api/feature-flags', (req, res) => {
+  res.json({
+    workflowBuilder: WORKFLOW_BUILDER_ENABLED,
+    linkedin: LINKEDIN_ENABLED
+  });
 });
 
 if (process.env.NODE_ENV === 'production') {
