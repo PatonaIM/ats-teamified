@@ -1271,13 +1271,32 @@ CREATE INDEX idx_workflow_templates_type ON workflow_templates(employment_type);
 
 #### **Extended: `job_pipeline_stages` Table**
 
-Add configuration column:
+Add configuration column to store per-stage settings:
 
 ```sql
 ALTER TABLE job_pipeline_stages 
 ADD COLUMN stage_config JSONB;
 
--- Example stage_config value:
+CREATE INDEX idx_pipeline_stage_config ON job_pipeline_stages USING GIN (stage_config);
+```
+
+**Updated Table Structure**:
+```sql
+CREATE TABLE job_pipeline_stages (
+  id SERIAL PRIMARY KEY,
+  job_id INTEGER NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
+  stage_name VARCHAR(100) NOT NULL,
+  stage_order INTEGER NOT NULL,
+  is_default BOOLEAN DEFAULT false,
+  stage_config JSONB,                          -- ⭐ NEW: Per-stage configuration
+  created_at TIMESTAMP DEFAULT NOW(),
+  updated_at TIMESTAMP DEFAULT NOW(),
+  UNIQUE(job_id, stage_order)
+);
+```
+
+**Example `stage_config` value**:
+```json
 {
   "stageType": "ai_interview",
   "interviewConfig": {...},
@@ -1290,6 +1309,647 @@ ADD COLUMN stage_config JSONB;
   "integrations": {...}
 }
 ```
+
+---
+
+### Per-Stage User Configuration
+
+**⭐ KEY CONCEPT: Each Stage Has Independent Configuration**
+
+Every stage in a job's pipeline can have its own unique settings configured by the user. The `stage_config` JSONB column stores stage-specific configurations, allowing maximum flexibility.
+
+#### How It Works
+
+```
+Job: Senior Backend Engineer
+├─ Stage 1: Screening
+│  └─ Config: { stageType: "custom_action", automations: [...] }
+│
+├─ Stage 2: Shortlist  
+│  └─ Config: { stageType: "custom_action", slaSettings: {...} }
+│
+├─ Stage 3: Client Endorsement
+│  └─ Config: { stageType: "approval", requiredInputs: [...] }
+│
+├─ Stage 4: AI Video Interview ⭐ User-configured
+│  └─ Config: {
+│       stageType: "ai_interview",
+│       interviewConfig: { mode: "ai_video", duration: 30 },
+│       automations: [{ trigger: "score_below", threshold: 60, action: "auto_disqualify" }],
+│       notifications: [...]
+│     }
+│
+├─ Stage 5: Coding Challenge ⭐ User-configured
+│  └─ Config: {
+│       stageType: "assessment",
+│       integrations: { assessmentProvider: { provider: "hackerrank", testId: "..." } },
+│       disqualificationRules: [{ condition: "assessment_incomplete", timeLimit: 48 }],
+│       slaSettings: { targetCompletionTime: 48 }
+│     }
+│
+├─ Stage 6: Technical Interview ⭐ User-configured
+│  └─ Config: {
+│       stageType: "client_interview",
+│       interviewConfig: { mode: "human_client", duration: 60, platform: "zoom" },
+│       requiredInputs: [{ field: "scorecard", mandatory: true }],
+│       visibility: { visibleToClient: true, visibleToCandidate: false }
+│     }
+│
+├─ Stage 7: Offer
+│  └─ Config: { stageType: "offer", requiredInputs: [...] }
+│
+└─ Stage 8: Offer Accepted
+   └─ Config: { stageType: "offer", automations: [{ trigger: "on_enter_stage", action: "sync_to_hris" }] }
+```
+
+#### User Configuration UI
+
+**Stage Configuration Panel**:
+```
+┌────────────────────────────────────────────────────────────┐
+│  Configure Stage: "AI Video Interview"                    │
+├────────────────────────────────────────────────────────────┤
+│                                                            │
+│  Stage Type: [AI Interview ▼]                             │
+│                                                            │
+│  ┌─ Interview Settings ─────────────────────────────────┐ │
+│  │  Mode: [AI Video ▼]                                  │ │
+│  │  Duration: [30] minutes                              │ │
+│  │  Candidate Instructions: [________________]          │ │
+│  └──────────────────────────────────────────────────────┘ │
+│                                                            │
+│  ┌─ Automations ────────────────────────────────────────┐ │
+│  │  ☑ Auto-advance if score > 75                        │ │
+│  │  ☑ Auto-reject if score < 50                         │ │
+│  │  ☑ Send email on stage entry                        │ │
+│  │  + Add Automation Rule                               │ │
+│  └──────────────────────────────────────────────────────┘ │
+│                                                            │
+│  ┌─ Visibility Rules ───────────────────────────────────┐ │
+│  │  ☑ Visible to Client                                 │ │
+│  │  ☑ Visible to TMF                                    │ │
+│  │  ☐ Visible to Candidate                              │ │
+│  │  ☑ Hide AI scores from client                        │ │
+│  └──────────────────────────────────────────────────────┘ │
+│                                                            │
+│  ┌─ SLA Settings ───────────────────────────────────────┐ │
+│  │  Target Completion: [48] hours                       │ │
+│  │  Reminder at: [36] hours                             │ │
+│  │  Escalate to: [TMF Manager ▼]                        │ │
+│  └──────────────────────────────────────────────────────┘ │
+│                                                            │
+│  ┌─ Notifications ──────────────────────────────────────┐ │
+│  │  On entry: Send email to candidate                   │ │
+│  │  On completion: Notify recruiter                     │ │
+│  │  + Add Notification                                  │ │
+│  └──────────────────────────────────────────────────────┘ │
+│                                                            │
+│  ┌─ Integrations ───────────────────────────────────────┐ │
+│  │  AI Provider: [OpenAI GPT-4 ▼]                       │ │
+│  │  Evaluation Criteria: [Communication, Cultural Fit]  │ │
+│  └──────────────────────────────────────────────────────┘ │
+│                                                            │
+│  [Cancel]  [Save Stage Configuration]                     │
+└────────────────────────────────────────────────────────────┘
+```
+
+#### Database Storage & Query Examples
+
+**1. INSERT: Create Stage with Configuration**
+
+```sql
+INSERT INTO job_pipeline_stages (
+  job_id, 
+  stage_name, 
+  stage_order, 
+  is_default, 
+  stage_config
+) VALUES (
+  123,
+  'AI Video Interview',
+  4,
+  false,
+  '{
+    "stageType": "ai_interview",
+    "interviewConfig": {
+      "mode": "ai_video",
+      "duration": 30,
+      "candidateInstructions": "Complete within 48 hours"
+    },
+    "automations": [
+      {
+        "trigger": "score_below",
+        "threshold": 60,
+        "action": "auto_disqualify"
+      }
+    ],
+    "visibility": {
+      "visibleToClient": true,
+      "visibleToTMF": true,
+      "visibleToCandidate": false
+    },
+    "slaSettings": {
+      "targetCompletionTime": 48
+    }
+  }'::jsonb
+);
+```
+
+**2. UPDATE: Modify Stage Configuration**
+
+```sql
+-- Update entire config
+UPDATE job_pipeline_stages
+SET stage_config = '{
+  "stageType": "ai_interview",
+  "interviewConfig": {
+    "mode": "ai_video",
+    "duration": 45
+  },
+  "automations": [
+    {
+      "trigger": "score_below",
+      "threshold": 70,
+      "action": "auto_disqualify"
+    }
+  ]
+}'::jsonb,
+updated_at = NOW()
+WHERE id = 504;
+
+-- Update specific field within JSONB (change duration only)
+UPDATE job_pipeline_stages
+SET stage_config = jsonb_set(
+  stage_config,
+  '{interviewConfig,duration}',
+  '60'::jsonb
+),
+updated_at = NOW()
+WHERE id = 504;
+
+-- Add new automation rule to existing array
+UPDATE job_pipeline_stages
+SET stage_config = jsonb_set(
+  stage_config,
+  '{automations}',
+  stage_config->'automations' || '[{"trigger":"time_in_stage","duration":48,"action":"send_reminder"}]'::jsonb
+),
+updated_at = NOW()
+WHERE id = 504;
+```
+
+**3. SELECT: Query All Stages with Configurations**
+
+```sql
+SELECT 
+  id,
+  stage_name,
+  stage_order,
+  stage_config
+FROM job_pipeline_stages
+WHERE job_id = 123
+ORDER BY stage_order;
+```
+
+**Result**:
+```
+| id  | stage_name           | stage_order | stage_config                                    |
+|-----|----------------------|-------------|-------------------------------------------------|
+| 501 | Screening            | 1           | {"stageType": "custom_action", ...}             |
+| 502 | Shortlist            | 2           | {"stageType": "custom_action", ...}             |
+| 503 | Client Endorsement   | 3           | {"stageType": "approval", ...}                  |
+| 504 | AI Video Interview   | 4           | {"stageType": "ai_interview", "interviewConf... |
+| 505 | Coding Challenge     | 5           | {"stageType": "assessment", "integrations": ... |
+| 506 | Technical Interview  | 6           | {"stageType": "client_interview", "intervie...  |
+| 507 | Offer                | 7           | {"stageType": "offer", ...}                     |
+| 508 | Offer Accepted       | 8           | {"stageType": "offer", ...}                     |
+```
+
+**4. SELECT: Query Specific Configuration Fields (JSONB Operators)**
+
+```sql
+-- Get stages with AI interviews
+SELECT id, stage_name, stage_config->>'stageType' AS stage_type
+FROM job_pipeline_stages
+WHERE job_id = 123
+  AND stage_config->>'stageType' = 'ai_interview';
+
+-- Get stages with auto-disqualification rules
+SELECT id, stage_name, stage_config->'automations' AS automations
+FROM job_pipeline_stages
+WHERE job_id = 123
+  AND stage_config @> '{"automations": [{"action": "auto_disqualify"}]}'::jsonb;
+
+-- Get interview duration for a specific stage
+SELECT 
+  stage_name,
+  stage_config->'interviewConfig'->>'duration' AS duration_minutes,
+  stage_config->'interviewConfig'->>'mode' AS interview_mode
+FROM job_pipeline_stages
+WHERE id = 504;
+
+-- Find all stages with SLA settings under 24 hours
+SELECT id, stage_name, stage_config->'slaSettings'->>'targetCompletionTime' AS sla_hours
+FROM job_pipeline_stages
+WHERE job_id = 123
+  AND (stage_config->'slaSettings'->>'targetCompletionTime')::int < 24;
+```
+
+**5. SELECT: Get Stages with Specific Integrations**
+
+```sql
+-- Find stages using HackerRank
+SELECT 
+  id, 
+  stage_name,
+  stage_config->'integrations'->'assessmentProvider'->>'provider' AS provider
+FROM job_pipeline_stages
+WHERE job_id = 123
+  AND stage_config->'integrations'->'assessmentProvider'->>'provider' = 'hackerrank';
+
+-- Find stages with AI engine enabled
+SELECT id, stage_name
+FROM job_pipeline_stages
+WHERE job_id = 123
+  AND stage_config->'integrations'->'aiEngine'->>'enabled' = 'true';
+```
+
+#### API: Update Stage Configuration
+
+**Endpoint**: `PUT /api/jobs/:jobId/pipeline-stages/:stageId/config`
+
+**Description**: Update the configuration for a specific stage in a job's pipeline. Supports full config replacement or partial updates.
+
+**Request Headers**:
+```
+Content-Type: application/json
+Authorization: Bearer {access_token}
+```
+
+**Request Body**:
+```json
+{
+  "stageConfig": {
+    "stageType": "ai_interview",
+    "interviewConfig": {
+      "mode": "ai_video",
+      "duration": 30,
+      "candidateInstructions": "Please complete the AI interview within 48 hours."
+    },
+    "automations": [
+      {
+        "trigger": "score_above",
+        "threshold": 75,
+        "action": "auto_advance"
+      },
+      {
+        "trigger": "score_below",
+        "threshold": 50,
+        "action": "auto_disqualify",
+        "reason": "Did not meet minimum requirements"
+      }
+    ],
+    "visibility": {
+      "visibleToClient": true,
+      "visibleToTMF": true,
+      "visibleToCandidate": false,
+      "hideAIScores": false
+    },
+    "slaSettings": {
+      "targetCompletionTime": 48,
+      "reminderSchedule": [
+        { "at": 36, "recipient": "candidate", "message": "Complete AI interview" }
+      ]
+    },
+    "notifications": [
+      {
+        "trigger": "on_enter_stage",
+        "recipients": ["candidate"],
+        "channel": "email",
+        "template": "ai-interview-invitation"
+      }
+    ],
+    "integrations": {
+      "aiEngine": {
+        "enabled": true,
+        "provider": "openai",
+        "model": "gpt-4o",
+        "evaluationCriteria": ["communication", "cultural_fit"]
+      }
+    }
+  }
+}
+```
+
+**Success Response** (200 OK):
+```json
+{
+  "success": true,
+  "stageId": 504,
+  "stageName": "AI Video Interview",
+  "jobId": 123,
+  "stageConfig": {
+    "stageType": "ai_interview",
+    "interviewConfig": { "mode": "ai_video", "duration": 30 },
+    "automations": [...],
+    "visibility": {...},
+    "slaSettings": {...}
+  },
+  "message": "Stage configuration updated successfully",
+  "updatedAt": "2025-11-17T14:30:00Z"
+}
+```
+
+**Error Response - Stage Not Found** (404 Not Found):
+```json
+{
+  "success": false,
+  "error": "Stage not found",
+  "message": "Stage with ID 504 does not exist in job 123"
+}
+```
+
+**Error Response - Invalid Configuration** (400 Bad Request):
+```json
+{
+  "success": false,
+  "error": "Validation failed",
+  "message": "Invalid stage configuration",
+  "validationErrors": [
+    {
+      "field": "interviewConfig.duration",
+      "message": "Duration must be between 1 and 180 minutes",
+      "value": 200
+    },
+    {
+      "field": "automations[0].threshold",
+      "message": "Threshold must be between 0 and 100",
+      "value": 150
+    }
+  ]
+}
+```
+
+**Error Response - Fixed Stage Cannot Be Modified** (403 Forbidden):
+```json
+{
+  "success": false,
+  "error": "Cannot modify fixed stage",
+  "message": "Stage 'Screening' is a fixed stage and its type cannot be changed",
+  "stageName": "Screening",
+  "isFixed": true
+}
+```
+
+**Error Response - Unauthorized** (401 Unauthorized):
+```json
+{
+  "success": false,
+  "error": "Unauthorized",
+  "message": "Valid authentication required"
+}
+```
+
+**Example cURL Request**:
+```bash
+curl -X PUT https://ats.example.com/api/jobs/123/pipeline-stages/504/config \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer your_access_token" \
+  -d '{
+    "stageConfig": {
+      "stageType": "ai_interview",
+      "interviewConfig": {
+        "mode": "ai_video",
+        "duration": 30
+      },
+      "automations": [
+        {
+          "trigger": "score_below",
+          "threshold": 60,
+          "action": "auto_disqualify"
+        }
+      ]
+    }
+  }'
+```
+
+**Validation Rules**:
+- `stageType`: Must be one of the valid stage types (ai_interview, tmf_interview, client_interview, assessment, approval, offer, custom_action)
+- `interviewConfig.duration`: Must be between 1-180 minutes
+- `automations[].threshold`: Must be between 0-100
+- `slaSettings.targetCompletionTime`: Must be positive integer (hours)
+- `integrations`: Provider must be supported (openai, anthropic, hackerrank, etc.)
+- Fixed stages (Screening, Shortlist, Client Endorsement, Offer, Offer Accepted) cannot change stageType
+
+#### Benefits of Per-Stage Configuration
+
+✅ **Maximum Flexibility**: Each stage can behave completely differently
+✅ **Job-Specific Workflows**: Customize stages based on role requirements
+✅ **Independent Control**: Change one stage without affecting others
+✅ **Granular Automation**: Different rules for different stages
+✅ **Stage-Level Integration**: Connect different tools per stage (e.g., HackerRank for coding, Zoom for interviews)
+✅ **Compliance**: Enforce approvals only where needed
+✅ **User Empowerment**: Clients configure their exact hiring process
+
+#### Cross-Job Flexibility: Same Stage Name, Different Configurations
+
+**⭐ KEY DEMONSTRATION: Independent Per-Job Stage Configuration**
+
+This example shows how two different jobs can have stages with the **same name** but **completely different configurations**, demonstrating the flexibility of per-stage configuration.
+
+---
+
+**Scenario**: Two jobs both have a "Technical Interview" stage, but configured differently
+
+**Job #1: Senior Backend Engineer** (job_id = 100)
+- Focus: Deep technical assessment
+- Duration: 90 minutes
+- Conducted by: Tech Lead
+- Required: Technical scorecard + Live coding exercise
+
+**Job #2: Junior Frontend Developer** (job_id = 200)
+- Focus: Basic skills verification
+- Duration: 45 minutes
+- Conducted by: Senior Developer
+- Required: Portfolio review + Simple coding challenge
+
+---
+
+**Database Records: Side-by-Side Comparison**
+
+```sql
+-- Job 100: Senior Backend Engineer
+SELECT id, job_id, stage_name, stage_order, stage_config 
+FROM job_pipeline_stages 
+WHERE job_id = 100 AND stage_name = 'Technical Interview';
+```
+
+**Result**:
+```
+| id  | job_id | stage_name          | stage_order | stage_config                           |
+|-----|--------|---------------------|-------------|----------------------------------------|
+| 805 | 100    | Technical Interview | 5           | {                                      |
+|     |        |                     |             |   "stageType": "client_interview",     |
+|     |        |                     |             |   "interviewConfig": {                 |
+|     |        |                     |             |     "mode": "human_client",            |
+|     |        |                     |             |     "duration": 90,                    |
+|     |        |                     |             |     "platform": "zoom",                |
+|     |        |                     |             |     "interviewers": [                  |
+|     |        |                     |             |       {                                |
+|     |        |                     |             |         "userId": "tech-lead-456",     |
+|     |        |                     |             |         "role": "tech_lead",           |
+|     |        |                     |             |         "name": "Alice Johnson"        |
+|     |        |                     |             |       }                                |
+|     |        |                     |             |     ],                                 |
+|     |        |                     |             |     "recordingEnabled": true,          |
+|     |        |                     |             |     "candidateInstructions": "Be prep.."|
+|     |        |                     |             |   },                                   |
+|     |        |                     |             |   "requiredInputs": [                  |
+|     |        |                     |             |     {                                  |
+|     |        |                     |             |       "field": "technical_scorecard",  |
+|     |        |                     |             |       "mandatory": true,               |
+|     |        |                     |             |       "template": "senior-backend-v2"  |
+|     |        |                     |             |     },                                 |
+|     |        |                     |             |     {                                  |
+|     |        |                     |             |       "field": "live_coding_exercise", |
+|     |        |                     |             |       "mandatory": true,               |
+|     |        |                     |             |       "minDuration": 30                |
+|     |        |                     |             |     }                                  |
+|     |        |                     |             |   ],                                   |
+|     |        |                     |             |   "slaSettings": {                     |
+|     |        |                     |             |     "targetCompletionTime": 24         |
+|     |        |                     |             |   },                                   |
+|     |        |                     |             |   "visibility": {                      |
+|     |        |                     |             |     "visibleToClient": true,           |
+|     |        |                     |             |     "visibleToCandidate": false        |
+|     |        |                     |             |   }                                    |
+|     |        |                     |             | }                                      |
+```
+
+```sql
+-- Job 200: Junior Frontend Developer
+SELECT id, job_id, stage_name, stage_order, stage_config 
+FROM job_pipeline_stages 
+WHERE job_id = 200 AND stage_name = 'Technical Interview';
+```
+
+**Result**:
+```
+| id  | job_id | stage_name          | stage_order | stage_config                           |
+|-----|--------|---------------------|-------------|----------------------------------------|
+| 912 | 200    | Technical Interview | 4           | {                                      |
+|     |        |                     |             |   "stageType": "client_interview",     |
+|     |        |                     |             |   "interviewConfig": {                 |
+|     |        |                     |             |     "mode": "human_client",            |
+|     |        |                     |             |     "duration": 45,                    |
+|     |        |                     |             |     "platform": "google_meet",         |
+|     |        |                     |             |     "interviewers": [                  |
+|     |        |                     |             |       {                                |
+|     |        |                     |             |         "userId": "senior-dev-789",    |
+|     |        |                     |             |         "role": "senior_developer",    |
+|     |        |                     |             |         "name": "Bob Smith"            |
+|     |        |                     |             |       }                                |
+|     |        |                     |             |     ],                                 |
+|     |        |                     |             |     "recordingEnabled": false,         |
+|     |        |                     |             |     "candidateInstructions": "Show us.."|
+|     |        |                     |             |   },                                   |
+|     |        |                     |             |   "requiredInputs": [                  |
+|     |        |                     |             |     {                                  |
+|     |        |                     |             |       "field": "portfolio_review",     |
+|     |        |                     |             |       "mandatory": true                |
+|     |        |                     |             |     },                                 |
+|     |        |                     |             |     {                                  |
+|     |        |                     |             |       "field": "simple_coding_test",   |
+|     |        |                     |             |       "mandatory": true,               |
+|     |        |                     |             |       "difficulty": "easy"             |
+|     |        |                     |             |     }                                  |
+|     |        |                     |             |   ],                                   |
+|     |        |                     |             |   "slaSettings": {                     |
+|     |        |                     |             |     "targetCompletionTime": 48         |
+|     |        |                     |             |   },                                   |
+|     |        |                     |             |   "visibility": {                      |
+|     |        |                     |             |     "visibleToClient": true,           |
+|     |        |                     |             |     "visibleToCandidate": true         |
+|     |        |                     |             |   }                                    |
+|     |        |                     |             | }                                      |
+```
+
+---
+
+**Key Differences Highlighted**:
+
+| Configuration Aspect     | Job #100 (Senior Backend)              | Job #200 (Junior Frontend)            |
+|--------------------------|----------------------------------------|---------------------------------------|
+| **Duration**             | 90 minutes                             | 45 minutes                            |
+| **Platform**             | Zoom                                   | Google Meet                           |
+| **Interviewer**          | Tech Lead (Alice Johnson)              | Senior Developer (Bob Smith)          |
+| **Recording**            | Enabled                                | Disabled                              |
+| **Required Inputs**      | Technical scorecard + Live coding      | Portfolio review + Simple test        |
+| **Scorecard Template**   | "senior-backend-v2"                    | N/A                                   |
+| **SLA**                  | 24 hours                               | 48 hours                              |
+| **Candidate Visibility** | Hidden from candidate                  | Visible to candidate                  |
+
+---
+
+**Query to Compare Across Jobs**:
+
+```sql
+-- Get all "Technical Interview" stages across different jobs
+SELECT 
+  jps.job_id,
+  j.title AS job_title,
+  jps.stage_name,
+  jps.stage_config->'interviewConfig'->>'duration' AS duration_minutes,
+  jps.stage_config->'interviewConfig'->>'platform' AS platform,
+  jps.stage_config->'slaSettings'->>'targetCompletionTime' AS sla_hours,
+  jps.stage_config->'visibility'->>'visibleToCandidate' AS candidate_visible
+FROM job_pipeline_stages jps
+JOIN jobs j ON jps.job_id = j.id
+WHERE jps.stage_name = 'Technical Interview'
+ORDER BY jps.job_id;
+```
+
+**Result**:
+```
+| job_id | job_title                | duration_minutes | platform    | sla_hours | candidate_visible |
+|--------|--------------------------|------------------|-------------|-----------|-------------------|
+| 100    | Senior Backend Engineer  | 90               | zoom        | 24        | false             |
+| 200    | Junior Frontend Developer| 45               | google_meet | 48        | true              |
+| 305    | DevOps Engineer          | 60               | teams       | 36        | false             |
+| 412    | UI/UX Designer           | 30               | zoom        | 72        | true              |
+```
+
+---
+
+**What This Demonstrates**:
+
+✅ **Same Stage Name, Different Behavior**: "Technical Interview" stage behaves completely differently based on job requirements
+
+✅ **Job-Specific Customization**: Each job can configure stages to match role complexity (90 min for Senior, 45 min for Junior)
+
+✅ **Independent Configuration**: Changing Job #100's interview config doesn't affect Job #200
+
+✅ **Flexibility at Scale**: System supports unlimited jobs with custom configurations per stage
+
+✅ **JSONB Power**: PostgreSQL JSONB enables flexible querying and filtering across stage configurations
+
+---
+
+**Real-World Impact**:
+
+When a candidate applies to **Job #100** (Senior Backend Engineer):
+- Enters "Technical Interview" stage → Gets 90-minute Zoom interview with Tech Lead
+- System requires technical scorecard + live coding exercise before advancing
+- Candidate doesn't see interview details (hidden)
+- SLA: Must complete within 24 hours
+
+When a candidate applies to **Job #200** (Junior Frontend Developer):
+- Enters "Technical Interview" stage → Gets 45-minute Google Meet with Senior Dev
+- System requires portfolio review + simple coding test
+- Candidate can see interview details (transparent)
+- SLA: Must complete within 48 hours
+
+**Same stage name, completely different experience.**
 
 ---
 
