@@ -19,6 +19,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { StageConfigModal } from './workflow-builder/StageConfigModal';
 
 interface PipelineStage {
   id: number;
@@ -229,8 +230,6 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
   const [error, setError] = useState<string | null>(null);
   const [isConfigModalOpen, setIsConfigModalOpen] = useState<boolean>(false);
   const [configuringStage, setConfiguringStage] = useState<PipelineStage | null>(null);
-  const [configStageName, setConfigStageName] = useState<string>('');
-  const [configStageDescription, setConfigStageDescription] = useState<string>('');
   const [candidateCounts, setCandidateCounts] = useState<Record<number, number>>({});
   
   const isTemplateMode = !!templateId;
@@ -427,8 +426,6 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
   };
 
   const handleAddStageFromTemplate = async (template: StageTemplate) => {
-    setConfigStageName(template.name);
-    setConfigStageDescription(template.description);
     setConfiguringStage({
       id: -1,
       jobId: 0,
@@ -441,94 +438,69 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
     setIsConfigModalOpen(true);
   };
 
-  const handleSaveStageConfig = async () => {
-    if (!configStageName.trim()) {
-      return;
-    }
-
-    try {
-      const firstBottomStageIndex = stages.findIndex(s => 
-        FIXED_BOTTOM_STAGES.includes(s.stageName)
-      );
-      
-      const newOrder = firstBottomStageIndex !== -1 ? firstBottomStageIndex : stages.length;
-
-      const url = isTemplateMode
-        ? `/api/pipeline-templates/${templateId}/stages`
-        : `/api/jobs/${jobId}/pipeline-stages`;
-
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          stage_name: configStageName.trim(),
-          stage_order: newOrder,
-          stage_type: 'custom',
-          stage_config: {
-            description: configStageDescription.trim()
-          }
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to add stage');
-      }
-
-      setIsConfigModalOpen(false);
-      setConfiguringStage(null);
-      setConfigStageName('');
-      setConfigStageDescription('');
-      await fetchStages();
-    } catch (err: any) {
-      console.error('[Workflow Builder] Error adding stage:', err);
-      setError(err.message);
-    }
-  };
-
   const handleConfigureStage = (stage: PipelineStage) => {
     setConfiguringStage(stage);
-    setConfigStageName(stage.stageName);
-    setConfigStageDescription(stage.config?.description || '');
     setIsConfigModalOpen(true);
   };
 
-  const handleUpdateStageConfig = async () => {
-    if (!configuringStage || !configStageName.trim()) {
+  const handleUpdateStageConfig = async (config: Record<string, any>) => {
+    if (!configuringStage) {
       return;
     }
 
     try {
-      const updatedConfig = {
-        ...configuringStage.config,
-        description: configStageDescription.trim()
-      };
+      if (configuringStage.id === -1) {
+        // Adding a new stage
+        const firstBottomStageIndex = stages.findIndex(s => 
+          FIXED_BOTTOM_STAGES.includes(s.stageName)
+        );
+        const newOrder = firstBottomStageIndex !== -1 ? firstBottomStageIndex : stages.length;
 
-      const url = isTemplateMode
-        ? `/api/pipeline-templates/${templateId}/stages/${configuringStage.id}`
-        : `/api/jobs/${jobId}/pipeline-stages/${configuringStage.id}`;
+        const url = isTemplateMode
+          ? `/api/pipeline-templates/${templateId}/stages`
+          : `/api/jobs/${jobId}/pipeline-stages`;
 
-      const response = await fetch(url, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          stage_name: configStageName.trim(),
-          stage_config: updatedConfig
-        })
-      });
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            stage_name: configuringStage.stageName,
+            stage_order: newOrder,
+            stage_type: 'custom',
+            stage_config: config
+          })
+        });
 
-      if (!response.ok) {
-        throw new Error('Failed to update stage');
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to add stage');
+        }
+      } else {
+        // Updating existing stage
+        const url = isTemplateMode
+          ? `/api/pipeline-templates/${templateId}/stages/${configuringStage.id}`
+          : `/api/jobs/${jobId}/pipeline-stages/${configuringStage.id}`;
+
+        const response = await fetch(url, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            stage_config: config
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to update stage');
+        }
       }
 
       setIsConfigModalOpen(false);
       setConfiguringStage(null);
-      setConfigStageName('');
-      setConfigStageDescription('');
       await fetchStages();
     } catch (err: any) {
-      console.error('[Workflow Builder] Error updating stage:', err);
+      console.error('[Workflow Builder] Error saving stage:', err);
       setError(err.message);
+      throw err;
     }
   };
 
@@ -694,61 +666,15 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
       </DndContext>
 
       {/* Configuration Modal */}
-      {isConfigModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full p-6">
-            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
-              {configuringStage && configuringStage.id !== -1 ? 'Configure Stage' : 'Add Stage'}
-            </h3>
-            
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Stage Name
-              </label>
-              <input
-                type="text"
-                value={configStageName}
-                onChange={(e) => setConfigStageName(e.target.value)}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                placeholder="e.g., Technical Interview"
-                autoFocus
-              />
-            </div>
-
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Description
-              </label>
-              <textarea
-                value={configStageDescription}
-                onChange={(e) => setConfigStageDescription(e.target.value)}
-                rows={3}
-                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
-                placeholder="Brief description of this stage..."
-              />
-            </div>
-
-            <div className="flex gap-3 justify-end">
-              <button
-                onClick={() => {
-                  setIsConfigModalOpen(false);
-                  setConfiguringStage(null);
-                  setConfigStageName('');
-                  setConfigStageDescription('');
-                }}
-                className="px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={configuringStage && configuringStage.id !== -1 ? handleUpdateStageConfig : handleSaveStageConfig}
-                className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-              >
-                {configuringStage && configuringStage.id !== -1 ? 'Save Changes' : 'Add Stage'}
-              </button>
-            </div>
-          </div>
-        </div>
+      {isConfigModalOpen && configuringStage && (
+        <StageConfigModal
+          stage={configuringStage}
+          onClose={() => {
+            setIsConfigModalOpen(false);
+            setConfiguringStage(null);
+          }}
+          onSave={handleUpdateStageConfig}
+        />
       )}
     </div>
   );
