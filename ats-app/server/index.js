@@ -1309,7 +1309,7 @@ app.post('/api/portal/candidates', validatePortalApiKey, async (req, res) => {
   }
 });
 
-// PUT /api/portal/candidates/:id/advance - Advance candidate to next stage (Screening → Shortlist)
+// PUT /api/portal/candidates/:id/advance - Advance candidate to next stage (dynamic based on job pipeline)
 app.put('/api/portal/candidates/:id/advance', validatePortalApiKey, async (req, res) => {
   try {
     const { id } = req.params;
@@ -1317,36 +1317,84 @@ app.put('/api/portal/candidates/:id/advance', validatePortalApiKey, async (req, 
     
     console.log('[Portal API] Advancing candidate:', id);
     
-    // Get current stage
-    const candidateResult = await query('SELECT current_stage FROM candidates WHERE id = $1', [parseInt(id)]);
+    // Get candidate's current stage and job_id
+    const candidateResult = await query(
+      'SELECT current_stage, job_id, first_name, last_name FROM candidates WHERE id = $1',
+      [parseInt(id)]
+    );
     
     if (candidateResult.rows.length === 0) {
       return res.status(404).json({ error: 'Candidate not found' });
     }
     
-    const currentStage = candidateResult.rows[0].current_stage;
-    let newStage;
+    const { current_stage, job_id } = candidateResult.rows[0];
     
-    // Determine next stage based on current stage
-    if (currentStage === 'Screening') {
-      newStage = 'Shortlist';
-    } else if (currentStage === 'Shortlist') {
-      newStage = 'Client Endorsement';
-    } else {
-      return res.status(400).json({ 
-        error: 'Invalid stage transition', 
-        message: `Cannot advance from ${currentStage}. Portal can only advance from Screening or Shortlist.` 
+    // Get job's complete pipeline configuration
+    const pipelineResult = await query(
+      'SELECT stage_name, stage_order FROM job_pipeline_stages WHERE job_id = $1 ORDER BY stage_order ASC',
+      [job_id]
+    );
+    
+    if (pipelineResult.rows.length === 0) {
+      return res.status(500).json({ 
+        error: 'Job pipeline not configured',
+        message: 'This job does not have a configured pipeline. Please contact system administrator.'
       });
     }
     
+    const pipeline = pipelineResult.rows;
+    
+    // Find current stage in pipeline
+    const currentStageIndex = pipeline.findIndex(stage => stage.stage_name === current_stage);
+    
+    if (currentStageIndex === -1) {
+      return res.status(400).json({ 
+        error: 'Invalid current stage',
+        message: `Current stage "${current_stage}" not found in job pipeline`
+      });
+    }
+    
+    // Portal stage boundaries (fixed positions, not names)
+    const PORTAL_STAGES = ['Screening', 'Shortlist', 'Client Endorsement'];
+    
+    // Validate current stage is within portal ownership
+    if (!PORTAL_STAGES.includes(current_stage)) {
+      return res.status(400).json({ 
+        error: 'Invalid stage transition', 
+        message: `Portal cannot advance candidates from "${current_stage}". Portal can only manage: ${PORTAL_STAGES.join(', ')}`
+      });
+    }
+    
+    // Check if already at final portal stage (Client Endorsement)
+    if (current_stage === 'Client Endorsement') {
+      return res.status(400).json({ 
+        error: 'Handoff point reached', 
+        message: 'Candidate is at Client Endorsement (handoff to Internal ATS). Portal cannot advance beyond this stage.'
+      });
+    }
+    
+    // Check if at last stage in pipeline
+    if (currentStageIndex === pipeline.length - 1) {
+      return res.status(400).json({ 
+        error: 'Already at final stage',
+        message: 'Candidate is already at the final stage in the pipeline'
+      });
+    }
+    
+    // Get next stage from pipeline
+    const newStage = pipeline[currentStageIndex + 1].stage_name;
+    
+    // Move candidate to next stage
     const candidate = await moveCandidateToStage(
       parseInt(id), 
       newStage, 
       portalUserId || 'portal-system', 
-      notes || `Advanced from ${currentStage} via external portal`
+      notes || `Advanced from ${current_stage} via external portal`
     );
     
-    console.log('[Portal API] Candidate advanced:', currentStage, '→', newStage);
+    const isHandoffPoint = newStage === 'Client Endorsement';
+    
+    console.log('[Portal API] Candidate advanced:', current_stage, '→', newStage, isHandoffPoint ? '(HANDOFF)' : '');
     res.json({
       success: true,
       candidate: {
@@ -1354,11 +1402,14 @@ app.put('/api/portal/candidates/:id/advance', validatePortalApiKey, async (req, 
         firstName: candidate.first_name,
         lastName: candidate.last_name,
         email: candidate.email,
-        previousStage: currentStage,
+        previousStage: current_stage,
         currentStage: newStage,
         updatedAt: candidate.updated_at
       },
-      message: `Candidate advanced from ${currentStage} to ${newStage}`
+      isHandoffPoint,
+      message: isHandoffPoint 
+        ? `Candidate endorsed for client review (handoff to Internal ATS)`
+        : `Candidate advanced from ${current_stage} to ${newStage}`
     });
   } catch (error) {
     console.error('[Portal API] Error advancing candidate:', error);
