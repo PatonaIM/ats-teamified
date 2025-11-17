@@ -60,8 +60,9 @@ export function WorkflowBuilder() {
       const data = await response.json();
       
       if (isTemplateMode) {
-        // Transform template stages to match PipelineStage interface
-        const templateStages = data.stages.map((stage: any) => ({
+        // Template API returns full template object with nested stages
+        const stagesList = data.stages || [];
+        const templateStages = stagesList.map((stage: any) => ({
           id: stage.id,
           jobId: 0, // Not applicable for templates
           stageName: stage.stage_name,
@@ -72,6 +73,7 @@ export function WorkflowBuilder() {
         }));
         setStages(templateStages);
       } else {
+        // Job API returns {stages: [...]}
         setStages(data.stages);
         await fetchCandidateCounts(data.stages);
       }
