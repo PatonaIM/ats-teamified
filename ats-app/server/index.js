@@ -1963,6 +1963,441 @@ app.delete('/api/jobs/:jobId/pipeline-stages/:stageId', requireWorkflowBuilder, 
   }
 });
 
+// ===========================
+// PIPELINE TEMPLATE API ENDPOINTS
+// ===========================
+
+// GET /api/pipeline-templates - List all pipeline templates
+app.get('/api/pipeline-templates', requireWorkflowBuilder, async (req, res) => {
+  try {
+    console.log('[Pipeline Templates] Fetching all templates');
+    
+    const templatesResult = await query(
+      `SELECT id, name, description, is_default, created_at, updated_at 
+       FROM pipeline_templates 
+       ORDER BY is_default DESC, name ASC`
+    );
+    
+    res.json({ templates: templatesResult.rows });
+  } catch (error) {
+    console.error('[Pipeline Templates] Error fetching templates:', error);
+    res.status(500).json({ error: 'Failed to fetch templates', details: error.message });
+  }
+});
+
+// GET /api/pipeline-templates/:id - Get a single template with stages
+app.get('/api/pipeline-templates/:id', requireWorkflowBuilder, async (req, res) => {
+  try {
+    const { id } = req.params;
+    console.log('[Pipeline Templates] Fetching template:', id);
+    
+    const templateResult = await query(
+      'SELECT id, name, description, is_default, created_at, updated_at FROM pipeline_templates WHERE id = $1',
+      [parseInt(id)]
+    );
+    
+    if (templateResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Template not found' });
+    }
+    
+    const stagesResult = await query(
+      'SELECT id, stage_name, stage_order, stage_type, stage_config FROM pipeline_template_stages WHERE template_id = $1 ORDER BY stage_order ASC',
+      [parseInt(id)]
+    );
+    
+    const template = {
+      ...templateResult.rows[0],
+      stages: stagesResult.rows
+    };
+    
+    res.json(template);
+  } catch (error) {
+    console.error('[Pipeline Templates] Error fetching template:', error);
+    res.status(500).json({ error: 'Failed to fetch template', details: error.message });
+  }
+});
+
+// POST /api/pipeline-templates - Create a new template
+app.post('/api/pipeline-templates', requireWorkflowBuilder, async (req, res) => {
+  try {
+    const { name, description, stages } = req.body;
+    
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Template name is required' });
+    }
+    
+    if (!stages || !Array.isArray(stages) || stages.length === 0) {
+      return res.status(400).json({ error: 'Template must have at least one stage' });
+    }
+    
+    console.log('[Pipeline Templates] Creating new template:', name);
+    
+    // Create template
+    const templateResult = await query(
+      'INSERT INTO pipeline_templates (name, description) VALUES ($1, $2) RETURNING id, name, description, is_default, created_at',
+      [name.trim(), description || null]
+    );
+    
+    const template = templateResult.rows[0];
+    
+    // Create stages
+    for (let i = 0; i < stages.length; i++) {
+      const stage = stages[i];
+      await query(
+        'INSERT INTO pipeline_template_stages (template_id, stage_name, stage_order, stage_type, stage_config) VALUES ($1, $2, $3, $4, $5)',
+        [template.id, stage.name, i, stage.type || 'custom', stage.config || {}]
+      );
+    }
+    
+    // Fetch complete template with stages
+    const stagesResult = await query(
+      'SELECT id, stage_name, stage_order, stage_type, stage_config FROM pipeline_template_stages WHERE template_id = $1 ORDER BY stage_order ASC',
+      [template.id]
+    );
+    
+    res.json({
+      ...template,
+      stages: stagesResult.rows
+    });
+  } catch (error) {
+    console.error('[Pipeline Templates] Error creating template:', error);
+    
+    if (error.code === '23505') { // Unique constraint violation
+      return res.status(409).json({ error: 'A template with this name already exists' });
+    }
+    
+    res.status(500).json({ error: 'Failed to create template', details: error.message });
+  }
+});
+
+// PUT /api/pipeline-templates/:id - Update a template
+app.put('/api/pipeline-templates/:id', requireWorkflowBuilder, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description } = req.body;
+    
+    console.log('[Pipeline Templates] Updating template:', id);
+    
+    const result = await query(
+      'UPDATE pipeline_templates SET name = $1, description = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3 RETURNING id, name, description, is_default, created_at, updated_at',
+      [name, description, parseInt(id)]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Template not found' });
+    }
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('[Pipeline Templates] Error updating template:', error);
+    res.status(500).json({ error: 'Failed to update template', details: error.message });
+  }
+});
+
+// DELETE /api/pipeline-templates/:id - Delete a template
+app.delete('/api/pipeline-templates/:id', requireWorkflowBuilder, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    console.log('[Pipeline Templates] Deleting template:', id);
+    
+    // Check if template is the default
+    const templateResult = await query(
+      'SELECT is_default FROM pipeline_templates WHERE id = $1',
+      [parseInt(id)]
+    );
+    
+    if (templateResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Template not found' });
+    }
+    
+    if (templateResult.rows[0].is_default) {
+      return res.status(400).json({ error: 'Cannot delete the default template' });
+    }
+    
+    // Check if template is in use by jobs
+    const jobsResult = await query(
+      'SELECT COUNT(*) as count FROM jobs WHERE pipeline_template_id = $1',
+      [parseInt(id)]
+    );
+    
+    const jobCount = parseInt(jobsResult.rows[0].count);
+    
+    if (jobCount > 0) {
+      return res.status(400).json({ 
+        error: 'Template is in use',
+        message: `This template is being used by ${jobCount} job(s). Please reassign those jobs to another template first.`,
+        jobCount
+      });
+    }
+    
+    // Delete template (stages will be deleted automatically due to CASCADE)
+    await query('DELETE FROM pipeline_templates WHERE id = $1', [parseInt(id)]);
+    
+    res.json({ success: true, message: 'Template deleted successfully' });
+  } catch (error) {
+    console.error('[Pipeline Templates] Error deleting template:', error);
+    res.status(500).json({ error: 'Failed to delete template', details: error.message });
+  }
+});
+
+// POST /api/pipeline-templates/:id/stages - Add a stage to template
+app.post('/api/pipeline-templates/:id/stages', requireWorkflowBuilder, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { stage_name, stage_type, stage_config, stage_order } = req.body;
+    
+    console.log('[Pipeline Templates] Adding stage to template:', id);
+    
+    const result = await query(
+      'INSERT INTO pipeline_template_stages (template_id, stage_name, stage_order, stage_type, stage_config) VALUES ($1, $2, $3, $4, $5) RETURNING id, stage_name, stage_order, stage_type, stage_config',
+      [parseInt(id), stage_name, stage_order, stage_type || 'custom', stage_config || {}]
+    );
+    
+    await query('UPDATE pipeline_templates SET updated_at = CURRENT_TIMESTAMP WHERE id = $1', [parseInt(id)]);
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('[Pipeline Templates] Error adding stage:', error);
+    res.status(500).json({ error: 'Failed to add stage', details: error.message });
+  }
+});
+
+// PUT /api/pipeline-templates/:id/stages/reorder - Reorder template stages
+app.put('/api/pipeline-templates/:id/stages/reorder', requireWorkflowBuilder, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { stageOrders } = req.body;
+    
+    if (!stageOrders || !Array.isArray(stageOrders) || stageOrders.length === 0) {
+      return res.status(400).json({ error: 'stageOrders must be a non-empty array' });
+    }
+    
+    console.log('[Pipeline Templates] Reordering stages for template:', id, stageOrders);
+    
+    // Validate payload structure
+    for (const entry of stageOrders) {
+      if (!entry || typeof entry !== 'object') {
+        return res.status(400).json({ 
+          error: 'Invalid stageOrders entry',
+          message: 'Each stageOrders entry must be an object with stageId and newOrder fields'
+        });
+      }
+      if (typeof entry.stageId !== 'number' || !Number.isInteger(entry.stageId)) {
+        return res.status(400).json({ 
+          error: 'Invalid stageId type',
+          message: 'All stageId values must be integers'
+        });
+      }
+      if (typeof entry.newOrder !== 'number' || !Number.isInteger(entry.newOrder)) {
+        return res.status(400).json({ 
+          error: 'Invalid newOrder type',
+          message: 'All newOrder values must be integers'
+        });
+      }
+      if (entry.newOrder < 0) {
+        return res.status(400).json({ 
+          error: 'Invalid newOrder value',
+          message: 'Stage order values cannot be negative'
+        });
+      }
+    }
+    
+    await query('BEGIN');
+    
+    let currentStagesResult;
+    try {
+      currentStagesResult = await query(
+        'SELECT id, stage_name, stage_order, stage_type FROM pipeline_template_stages WHERE template_id = $1 ORDER BY stage_order ASC FOR UPDATE',
+        [parseInt(id)]
+      );
+    } catch (error) {
+      await query('ROLLBACK');
+      throw error;
+    }
+    
+    const currentStages = currentStagesResult.rows;
+    
+    if (currentStages.length === 0) {
+      await query('ROLLBACK');
+      return res.status(404).json({ error: 'No stages found for this template' });
+    }
+    
+    if (stageOrders.length !== currentStages.length) {
+      await query('ROLLBACK');
+      return res.status(400).json({ 
+        error: 'Invalid stage count',
+        message: `Expected ${currentStages.length} stages, got ${stageOrders.length}`
+      });
+    }
+    
+    // Validation: Check all current stage IDs are present
+    const providedStageIds = new Set(stageOrders.map(s => s.stageId));
+    const currentStageIds = new Set(currentStages.map(s => s.id));
+    
+    for (const id of currentStageIds) {
+      if (!providedStageIds.has(id)) {
+        await query('ROLLBACK');
+        return res.status(400).json({ 
+          error: 'Missing stage in reorder',
+          message: `Stage ID ${id} is missing from the reorder payload`
+        });
+      }
+    }
+    
+    // Validation: Check for duplicate newOrder values
+    const newOrders = stageOrders.map(s => s.newOrder);
+    if (new Set(newOrders).size !== newOrders.length) {
+      await query('ROLLBACK');
+      return res.status(400).json({ 
+        error: 'Duplicate stage orders',
+        message: 'Each stage must have a unique order'
+      });
+    }
+    
+    // Validation: Ensure contiguous sequence
+    const sortedOrders = [...newOrders].sort((a, b) => a - b);
+    for (let i = 0; i < sortedOrders.length; i++) {
+      if (sortedOrders[i] !== i) {
+        await query('ROLLBACK');
+        return res.status(400).json({ 
+          error: 'Invalid stage order sequence',
+          message: `Stage orders must be a contiguous sequence from 0 to ${currentStages.length - 1}. Got: ${sortedOrders.join(', ')}`
+        });
+      }
+    }
+    
+    try {
+      // Update all stage orders
+      for (const { stageId, newOrder } of stageOrders) {
+        await query(
+          'UPDATE pipeline_template_stages SET stage_order = $1 WHERE id = $2 AND template_id = $3',
+          [newOrder, stageId, parseInt(id)]
+        );
+      }
+      
+      await query('UPDATE pipeline_templates SET updated_at = CURRENT_TIMESTAMP WHERE id = $1', [parseInt(id)]);
+      await query('COMMIT');
+      
+      // Fetch updated stages
+      const updatedStages = await query(
+        'SELECT id, stage_name, stage_order, stage_type, stage_config FROM pipeline_template_stages WHERE template_id = $1 ORDER BY stage_order ASC',
+        [parseInt(id)]
+      );
+      
+      res.json({ stages: updatedStages.rows });
+    } catch (error) {
+      await query('ROLLBACK');
+      throw error;
+    }
+  } catch (error) {
+    console.error('[Pipeline Templates] Error reordering stages:', error);
+    res.status(500).json({ error: 'Failed to reorder stages', details: error.message });
+  }
+});
+
+// DELETE /api/pipeline-templates/:id/stages/:stageId - Delete a stage from template
+app.delete('/api/pipeline-templates/:id/stages/:stageId', requireWorkflowBuilder, async (req, res) => {
+  try {
+    const { id, stageId } = req.params;
+    
+    console.log('[Pipeline Templates] Deleting stage from template:', id, stageId);
+    
+    // Check if stage exists and get its type
+    const stageResult = await query(
+      'SELECT stage_name, stage_type FROM pipeline_template_stages WHERE id = $1 AND template_id = $2',
+      [parseInt(stageId), parseInt(id)]
+    );
+    
+    if (stageResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Stage not found' });
+    }
+    
+    const { stage_name, stage_type } = stageResult.rows[0];
+    
+    // Prevent deletion of fixed stages
+    if (stage_type === 'fixed') {
+      return res.status(400).json({ 
+        error: 'Cannot delete fixed stage',
+        message: `Stage "${stage_name}" is a fixed stage and cannot be deleted`
+      });
+    }
+    
+    await query('DELETE FROM pipeline_template_stages WHERE id = $1 AND template_id = $2', [parseInt(stageId), parseInt(id)]);
+    await query('UPDATE pipeline_templates SET updated_at = CURRENT_TIMESTAMP WHERE id = $1', [parseInt(id)]);
+    
+    res.json({ success: true, message: `Stage "${stage_name}" deleted successfully` });
+  } catch (error) {
+    console.error('[Pipeline Templates] Error deleting stage:', error);
+    res.status(500).json({ error: 'Failed to delete stage', details: error.message });
+  }
+});
+
+// POST /api/jobs/:jobId/assign-template - Assign a template to a job (creates pipeline stages)
+app.post('/api/jobs/:jobId/assign-template', requireWorkflowBuilder, async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    const { templateId } = req.body;
+    
+    if (!templateId) {
+      return res.status(400).json({ error: 'templateId is required' });
+    }
+    
+    console.log('[Pipeline Templates] Assigning template to job:', { jobId, templateId });
+    
+    // Fetch template stages
+    const stagesResult = await query(
+      'SELECT stage_name, stage_order, stage_type, stage_config FROM pipeline_template_stages WHERE template_id = $1 ORDER BY stage_order ASC',
+      [parseInt(templateId)]
+    );
+    
+    if (stagesResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Template not found or has no stages' });
+    }
+    
+    await query('BEGIN');
+    
+    try {
+      // Delete existing job pipeline stages
+      await query('DELETE FROM job_pipeline_stages WHERE job_id = $1', [jobId]);
+      
+      // Create new stages from template
+      for (const stage of stagesResult.rows) {
+        await query(
+          'INSERT INTO job_pipeline_stages (job_id, stage_name, stage_order, stage_config) VALUES ($1, $2, $3, $4)',
+          [jobId, stage.stage_name, stage.stage_order, stage.stage_config]
+        );
+      }
+      
+      // Update job with template reference
+      await query(
+        'UPDATE jobs SET pipeline_template_id = $1 WHERE id = $2',
+        [parseInt(templateId), jobId]
+      );
+      
+      await query('COMMIT');
+      
+      // Fetch created stages
+      const createdStages = await query(
+        'SELECT id, stage_name, stage_order, stage_config FROM job_pipeline_stages WHERE job_id = $1 ORDER BY stage_order ASC',
+        [jobId]
+      );
+      
+      res.json({ 
+        success: true, 
+        message: 'Template assigned successfully',
+        stages: createdStages.rows
+      });
+    } catch (error) {
+      await query('ROLLBACK');
+      throw error;
+    }
+  } catch (error) {
+    console.error('[Pipeline Templates] Error assigning template:', error);
+    res.status(500).json({ error: 'Failed to assign template', details: error.message });
+  }
+});
+
 // GET /api/feature-flags - Public endpoint to check enabled features (no auth required)
 app.get('/api/feature-flags', (req, res) => {
   res.json({
