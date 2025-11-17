@@ -19,7 +19,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-// import { StageConfigPanel } from './workflow-builder/StageConfigModal'; // Temporarily disabled
+import { StageConfigPanel } from './workflow-builder/StageConfigModal';
 
 interface PipelineStage {
   id: number;
@@ -48,49 +48,6 @@ const STAGE_TEMPLATES: StageTemplate[] = [
   { id: 'skill-test', name: 'Skills Test', description: 'Practical skills assessment', icon: '✍️', type: 'custom' },
   { id: 'final-interview', name: 'Final Interview', description: 'Final decision interview', icon: '🎯', type: 'custom' },
 ];
-
-type StageCategory = 'ai-interview' | 'human-interview' | 'assessment' | 'general';
-
-function determineStageCategory(stage: PipelineStage): StageCategory {
-  const stageName = stage.stageName.toLowerCase();
-  const config = stage.config || {};
-  
-  const hasAIKeyword = /\bai\b/.test(stageName);
-  
-  if (
-    config.interviewType === 'ai' ||
-    (hasAIKeyword && (stageName.includes('interview') || stageName.includes('evaluation') || stageName.includes('screen'))) ||
-    'aiModel' in config ||
-    'aiQuestionCount' in config ||
-    'aiSentimentAnalysis' in config ||
-    'aiCategories' in config ||
-    'aiEvaluationCriteria' in config ||
-    'aiInterviewDuration' in config
-  ) {
-    return 'ai-interview';
-  }
-  
-  if (
-    stageName.includes('test') ||
-    stageName.includes('assessment') ||
-    stageName.includes('background check') ||
-    stageName.includes('reference check') ||
-    (config.assessmentType && config.assessmentType !== 'none')
-  ) {
-    return 'assessment';
-  }
-  
-  if (
-    stageName.includes('interview') ||
-    stageName.includes('screen') ||
-    stageName.includes('culture fit') ||
-    stageName.includes('panel')
-  ) {
-    return 'human-interview';
-  }
-  
-  return 'general';
-}
 
 interface PaletteItemProps {
   template: StageTemplate;
@@ -301,30 +258,43 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
     try {
       setLoading(true);
       
-      const url = isTemplateMode 
-        ? `/api/pipeline-templates/${templateId}`
-        : `/api/jobs/${jobId}/pipeline-stages`;
+      let response;
+      if (isTemplateMode) {
+        console.log('[WorkflowBuilder] Fetching template:', templateId);
+        console.log('[WorkflowBuilder] About to call fetch...');
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+          console.log('[WorkflowBuilder] Timeout triggered, aborting fetch');
+          controller.abort();
+        }, 5000);
+        
+        try {
+          console.log('[WorkflowBuilder] Fetch initiated');
+          response = await fetch(`/api/pipeline-templates/${templateId}`, {
+            signal: controller.signal
+          });
+          console.log('[WorkflowBuilder] Fetch completed');
+          clearTimeout(timeoutId);
+        } catch (fetchError: any) {
+          console.error('[WorkflowBuilder] Fetch error caught:', fetchError);
+          if (fetchError.name === 'AbortError') {
+            console.error('[WorkflowBuilder] Fetch timed out after 5 seconds');
+            throw new Error('Request timed out');
+          }
+          throw fetchError;
+        }
+      } else {
+        console.log('[WorkflowBuilder] Fetching job pipeline:', jobId);
+        response = await fetch(`/api/jobs/${jobId}/pipeline-stages`);
+      }
       
-      console.log('[WorkflowBuilder] Fetching from:', url);
-      
-      // Use XMLHttpRequest with setTimeout workaround
-      const data: any = await new Promise((resolve, reject) => {
-        const xhr = new XMLHttpRequest();
-        xhr.open('GET', url);
-        xhr.onload = () => {
-          setTimeout(() => {
-            if (xhr.status >= 200 && xhr.status < 300) {
-              resolve(JSON.parse(xhr.responseText));
-            } else {
-              reject(new Error(`HTTP ${xhr.status}`));
-            }
-          }, 0);
-        };
-        xhr.onerror = () => setTimeout(() => reject(new Error('Network error')), 0);
-        xhr.send();
-      });
-      
-      console.log('[WorkflowBuilder] Data received:', data);
+      console.log('[WorkflowBuilder] Response received, ok:', response.ok, 'status:', response.status);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch pipeline stages: ${response.status}`);
+      }
+
+      console.log('[WorkflowBuilder] About to parse JSON...');
+      const data = await response.json();
       console.log('[WorkflowBuilder] Data received, has stages:', !!data.stages, 'stage count:', data.stages?.length);
       
       if (isTemplateMode) {
@@ -375,16 +345,27 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
     }
   }, [isTemplateMode, templateId, jobId]);
 
-  // Auto-select first stage - DISABLED to debug fetch hang
-  // useEffect(() => {
-  //   if (stages.length > 0 && !configuringStage && !hasAutoSelectedRef.current) {
-  //     const firstConfigurable = stages.find(s => !FIXED_BOTTOM_STAGES.includes(s.stageName));
-  //     if (firstConfigurable) {
-  //       setConfiguringStage(firstConfigurable);
-  //       hasAutoSelectedRef.current = true;
-  //     }
-  //   }
-  // }, [stages, configuringStage]);
+  // Reconcile configuringStage when stages update (keep selection by ID)
+  useEffect(() => {
+    if (configuringStage && stages.length > 0) {
+      // Skip reconciliation for draft stages (id === -1)
+      if (configuringStage.id !== -1) {
+        const updatedStage = stages.find(s => s.id === configuringStage.id);
+        if (updatedStage && updatedStage !== configuringStage) {
+          setConfiguringStage(updatedStage);
+        } else if (!updatedStage) {
+          // Stage was deleted, clear selection
+          setConfiguringStage(null);
+        }
+      }
+    } else if (!configuringStage && stages.length > 0) {
+      // Auto-select first configurable (non-fixed) stage on initial load
+      const firstConfigurable = stages.find(s => !FIXED_BOTTOM_STAGES.includes(s.stageName));
+      if (firstConfigurable) {
+        setConfiguringStage(firstConfigurable);
+      }
+    }
+  }, [stages]);
 
   useEffect(() => {
     console.log('[WorkflowBuilder] useEffect triggered, entityId:', entityId, 'isTemplateMode:', isTemplateMode);
@@ -396,18 +377,7 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
       return;
     }
 
-    // TEMP: Use hardcoded data to show UI while debugging fetch hang
-    setTemplateName('Full Stack Tech Role');
-    setStages([
-      { id: 1, jobId: 0, stageName: 'Screening', stageOrder: 0, isDefault: true, config: { description: 'Initial candidate screening' }, createdAt: '' },
-      { id: 2, jobId: 0, stageName: 'Shortlist', stageOrder: 1, isDefault: true, config: { description: 'Qualified candidates' }, createdAt: '' },
-      { id: 3, jobId: 0, stageName: 'Client Endorsement', stageOrder: 2, isDefault: true, config: { description: 'Candidates endorsed to client' }, createdAt: '' },
-      { id: 4, jobId: 0, stageName: 'Offer', stageOrder: 3, isDefault: true, config: { description: 'Offer extended' }, createdAt: '' },
-      { id: 5, jobId: 0, stageName: 'Offer Accepted', stageOrder: 4, isDefault: true, config: { description: 'Offer accepted' }, createdAt: '' }
-    ]);
-    setLoading(false);
-    
-    // fetchStages(); // Disabled - using hardcoded data
+    fetchStages();
   }, [entityId, isTemplateMode, fetchStages]);
 
   const handleDragStart = (_event: DragStartEvent) => {
@@ -507,7 +477,79 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
     setConfiguringStage(stage);
   };
 
-  // handleUpdateStageConfig temporarily disabled while StageConfigPanel is disabled
+  const handleUpdateStageConfig = async (config: Record<string, any>) => {
+    if (!configuringStage) {
+      return;
+    }
+
+    try {
+      if (configuringStage.id === -1) {
+        // Adding a new stage
+        const firstBottomStageIndex = stages.findIndex(s => 
+          FIXED_BOTTOM_STAGES.includes(s.stageName)
+        );
+        const newOrder = firstBottomStageIndex !== -1 ? firstBottomStageIndex : stages.length;
+
+        const url = isTemplateMode
+          ? `/api/pipeline-templates/${templateId}/stages`
+          : `/api/jobs/${jobId}/pipeline-stages`;
+
+        const response = await fetch(url, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            stage_name: configuringStage.stageName,
+            stage_order: newOrder,
+            stage_type: 'custom',
+            stage_config: config
+          })
+        });
+
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to add stage');
+        }
+        
+        // Get the created stage from response and select it immediately
+        const responseData = await response.json();
+        const createdStage: PipelineStage = {
+          id: responseData.id,
+          jobId: responseData.job_id || 0,
+          stageName: responseData.stage_name,
+          stageOrder: responseData.stage_order,
+          isDefault: responseData.stage_type === 'fixed',
+          config: responseData.stage_config || {},
+          createdAt: responseData.created_at || ''
+        };
+        
+        // Update selection to the newly created stage immediately
+        setConfiguringStage(createdStage);
+      } else {
+        // Updating existing stage
+        const url = isTemplateMode
+          ? `/api/pipeline-templates/${templateId}/stages/${configuringStage.id}`
+          : `/api/jobs/${jobId}/pipeline-stages/${configuringStage.id}`;
+
+        const response = await fetch(url, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            stage_config: config
+          })
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to update stage');
+        }
+      }
+
+      await fetchStages();
+    } catch (err: any) {
+      console.error('[Workflow Builder] Error saving stage:', err);
+      setError(err.message);
+      throw err;
+    }
+  };
 
   const handleDeleteStage = async (stage: PipelineStage) => {
     if (!isTemplateMode && candidateCounts[stage.id] > 0) {
@@ -576,16 +618,16 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
           <div className="max-w-[1280px] mx-auto px-6 py-4">
             <button
               onClick={() => navigate(-1)}
-              className="text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 mb-2 inline-flex items-center text-sm font-medium"
+              className="text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 mb-3 inline-flex items-center text-sm font-medium"
             >
               ← Back
             </button>
-            <div className="flex items-center gap-2">
-              <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
+            <div className="flex items-center gap-3">
+              <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
                 {isTemplateMode && templateName ? templateName : 'Workflow Builder'}
               </h1>
               {isTemplateMode && (
-                <span className="text-[11px] font-semibold text-white px-2 py-0.5 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full shadow-sm">
+                <span className="text-xs text-purple-600 dark:text-purple-400 font-medium px-2 py-1 bg-purple-100 dark:bg-purple-900/30 rounded">
                   Template
                 </span>
               )}
@@ -651,14 +693,11 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
 
             {/* MIDDLE PANEL: Workflow Canvas */}
             <div className="lg:col-span-5">
-              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-                <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Workflow Pipeline</h2>
-                    <span className="text-xs font-medium text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-900/40 px-2 py-0.5 rounded-full">{stages.length} stages</span>
-                  </div>
+              <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Workflow Pipeline</h2>
+                  <span className="text-xs text-gray-500 dark:text-gray-400">{stages.length} stages</span>
                 </div>
-                <div className="p-4">
               
               <SortableContext
                 items={stages.map(s => s.id)}
@@ -710,8 +749,7 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
                   </div>
                 </div>
               )}
-            </div>
-            </div>
+              </div>
             </div>
 
             {/* RIGHT PANEL: Stage Configuration */}
@@ -726,466 +764,11 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
 
                 {configuringStage ? (
                   <div className="p-4 max-h-[calc(100vh-200px)] overflow-y-auto">
-                    <div className="space-y-5">
-                      {(() => {
-                        const stageCategory = determineStageCategory(configuringStage);
-                        
-                        return (
-                          <>
-                            {/* AI Interview Configuration */}
-                            {stageCategory === 'ai-interview' && (
-                              <>
-                                <div className="pb-3 border-b border-gray-200 dark:border-gray-700">
-                                  <h3 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                                    <span>🤖</span>
-                                    AI Interview Configuration
-                                  </h3>
-                                </div>
-                                
-                                <div>
-                                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                                    AI Model
-                                  </label>
-                                  <select
-                                    value={configuringStage.config?.aiModel || 'gpt-4'}
-                                    onChange={(e) => setConfiguringStage({
-                                      ...configuringStage,
-                                      config: { ...configuringStage.config, aiModel: e.target.value }
-                                    })}
-                                    className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
-                                  >
-                                    <option value="gpt-4">GPT-4 (Advanced)</option>
-                                    <option value="gpt-3.5-turbo">GPT-3.5 Turbo (Fast)</option>
-                                    <option value="claude-3">Claude 3 (Opus)</option>
-                                  </select>
-                                </div>
-
-                                <div>
-                                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                                    Interview Duration (minutes)
-                                  </label>
-                                  <input
-                                    type="number"
-                                    min="15"
-                                    max="120"
-                                    step="15"
-                                    value={configuringStage.config?.aiInterviewDuration || 45}
-                                    onChange={(e) => setConfiguringStage({
-                                      ...configuringStage,
-                                      config: { ...configuringStage.config, aiInterviewDuration: parseInt(e.target.value) }
-                                    })}
-                                    className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
-                                  />
-                                </div>
-
-                                <div>
-                                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                                    Number of Questions
-                                  </label>
-                                  <input
-                                    type="number"
-                                    min="5"
-                                    max="30"
-                                    value={configuringStage.config?.aiQuestionCount || 15}
-                                    onChange={(e) => setConfiguringStage({
-                                      ...configuringStage,
-                                      config: { ...configuringStage.config, aiQuestionCount: parseInt(e.target.value) }
-                                    })}
-                                    className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
-                                  />
-                                </div>
-
-                                <div>
-                                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Question Categories
-                                  </label>
-                                  <div className="space-y-2">
-                                    {['Technical', 'Behavioral', 'Cultural Fit', 'Situational'].map((category) => (
-                                      <label key={category} className="flex items-center gap-2">
-                                        <input
-                                          type="checkbox"
-                                          checked={configuringStage.config?.aiCategories?.[category] || false}
-                                          onChange={(e) => setConfiguringStage({
-                                            ...configuringStage,
-                                            config: { 
-                                              ...configuringStage.config, 
-                                              aiCategories: { 
-                                                ...configuringStage.config?.aiCategories, 
-                                                [category]: e.target.checked 
-                                              } 
-                                            }
-                                          })}
-                                          className="rounded text-purple-600 focus:ring-purple-500"
-                                        />
-                                        <span className="text-sm text-gray-700 dark:text-gray-300">{category}</span>
-                                      </label>
-                                    ))}
-                                  </div>
-                                </div>
-
-                                <div>
-                                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                                    Sentiment Analysis
-                                  </label>
-                                  <label className="flex items-center gap-2">
-                                    <input
-                                      type="checkbox"
-                                      checked={configuringStage.config?.aiSentimentAnalysis || false}
-                                      onChange={(e) => setConfiguringStage({
-                                        ...configuringStage,
-                                        config: { ...configuringStage.config, aiSentimentAnalysis: e.target.checked }
-                                      })}
-                                      className="rounded text-purple-600 focus:ring-purple-500"
-                                    />
-                                    <span className="text-sm text-gray-700 dark:text-gray-300">Enable real-time sentiment analysis</span>
-                                  </label>
-                                </div>
-
-                                <div>
-                                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                                    AI Evaluation Criteria
-                                  </label>
-                                  <textarea
-                                    value={configuringStage.config?.aiEvaluationCriteria || ''}
-                                    onChange={(e) => setConfiguringStage({
-                                      ...configuringStage,
-                                      config: { ...configuringStage.config, aiEvaluationCriteria: e.target.value }
-                                    })}
-                                    rows={3}
-                                    className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
-                                    placeholder="Enter criteria for AI to evaluate responses..."
-                                  />
-                                </div>
-                              </>
-                            )}
-
-                            {/* Assessment Configuration */}
-                            {stageCategory === 'assessment' && (
-                              <>
-                                <div className="pb-3 border-b border-gray-200 dark:border-gray-700">
-                                  <h3 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                                    <span>✍️</span>
-                                    Assessment Configuration
-                                  </h3>
-                                </div>
-
-                                <div>
-                                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                                    Assessment Type
-                                  </label>
-                                  <select
-                                    value={configuringStage.config?.assessmentType || 'technical'}
-                                    onChange={(e) => setConfiguringStage({
-                                      ...configuringStage,
-                                      config: { ...configuringStage.config, assessmentType: e.target.value }
-                                    })}
-                                    className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
-                                  >
-                                    <option value="technical">Technical Assessment</option>
-                                    <option value="coding">Coding Challenge</option>
-                                    <option value="case-study">Case Study</option>
-                                    <option value="presentation">Presentation</option>
-                                    <option value="personality">Personality Test</option>
-                                    <option value="skills">Skills Test</option>
-                                    <option value="background-check">Background Check</option>
-                                    <option value="reference-check">Reference Check</option>
-                                    <option value="other">Other</option>
-                                  </select>
-                                </div>
-
-                                <div>
-                                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                                    Assessment Duration (minutes)
-                                  </label>
-                                  <input
-                                    type="number"
-                                    min="15"
-                                    max="480"
-                                    step="15"
-                                    value={configuringStage.config?.assessmentDuration || 120}
-                                    onChange={(e) => setConfiguringStage({
-                                      ...configuringStage,
-                                      config: { ...configuringStage.config, assessmentDuration: parseInt(e.target.value) }
-                                    })}
-                                    className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
-                                  />
-                                </div>
-
-                                <div>
-                                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                                    Assessment Platform
-                                  </label>
-                                  <select
-                                    value={configuringStage.config?.assessmentPlatform || 'internal'}
-                                    onChange={(e) => setConfiguringStage({
-                                      ...configuringStage,
-                                      config: { ...configuringStage.config, assessmentPlatform: e.target.value }
-                                    })}
-                                    className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
-                                  >
-                                    <option value="internal">Internal Platform</option>
-                                    <option value="hackerrank">HackerRank</option>
-                                    <option value="codility">Codility</option>
-                                    <option value="leetcode">LeetCode</option>
-                                    <option value="testgorilla">TestGorilla</option>
-                                    <option value="external">External Link</option>
-                                  </select>
-                                </div>
-
-                                <div>
-                                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                                    Assessment Instructions
-                                  </label>
-                                  <textarea
-                                    value={configuringStage.config?.assessmentInstructions || ''}
-                                    onChange={(e) => setConfiguringStage({
-                                      ...configuringStage,
-                                      config: { ...configuringStage.config, assessmentInstructions: e.target.value }
-                                    })}
-                                    rows={3}
-                                    className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
-                                    placeholder="Enter instructions for the assessment..."
-                                  />
-                                </div>
-
-                                <div>
-                                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                                    Passing Score (%)
-                                  </label>
-                                  <input
-                                    type="number"
-                                    min="0"
-                                    max="100"
-                                    value={configuringStage.config?.passingScore || 70}
-                                    onChange={(e) => setConfiguringStage({
-                                      ...configuringStage,
-                                      config: { ...configuringStage.config, passingScore: parseInt(e.target.value) }
-                                    })}
-                                    className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
-                                  />
-                                </div>
-
-                                <div>
-                                  <label className="flex items-center gap-2">
-                                    <input
-                                      type="checkbox"
-                                      checked={configuringStage.config?.autoAdvanceOnPass || false}
-                                      onChange={(e) => setConfiguringStage({
-                                        ...configuringStage,
-                                        config: { ...configuringStage.config, autoAdvanceOnPass: e.target.checked }
-                                      })}
-                                      className="rounded text-purple-600 focus:ring-purple-500"
-                                    />
-                                    <span className="text-sm text-gray-700 dark:text-gray-300">Auto-advance on pass</span>
-                                  </label>
-                                </div>
-                              </>
-                            )}
-
-                            {/* Human Interview Configuration */}
-                            {stageCategory === 'human-interview' && (
-                              <>
-                                <div className="pb-3 border-b border-gray-200 dark:border-gray-700">
-                                  <h3 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-                                    <span>👤</span>
-                                    Interview Configuration
-                                  </h3>
-                                </div>
-
-                                <div>
-                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                          Interview Mode
-                        </label>
-                        <select
-                          value={configuringStage.config?.interviewMode || 'phone'}
-                          onChange={(e) => setConfiguringStage({
-                            ...configuringStage,
-                            config: { ...configuringStage.config, interviewMode: e.target.value }
-                          })}
-                          className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
-                        >
-                          <option value="phone">Phone Screening</option>
-                          <option value="video">Video Interview</option>
-                          <option value="onsite">On-site Interview</option>
-                          <option value="panel">Panel Interview</option>
-                        </select>
-                      </div>
-
-                      {/* Interview Duration */}
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                          Duration (minutes)
-                        </label>
-                        <input
-                          type="number"
-                          min="15"
-                          max="480"
-                          step="15"
-                          value={configuringStage.config?.interviewDuration || 60}
-                          onChange={(e) => setConfiguringStage({
-                            ...configuringStage,
-                            config: { ...configuringStage.config, interviewDuration: parseInt(e.target.value) }
-                          })}
-                          className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
-                        />
-                      </div>
-
-                      {/* Interview Template */}
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                          Interview Template
-                        </label>
-                        <select
-                          value={configuringStage.config?.interviewTemplate || 'standard'}
-                          onChange={(e) => setConfiguringStage({
-                            ...configuringStage,
-                            config: { ...configuringStage.config, interviewTemplate: e.target.value }
-                          })}
-                          className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
-                        >
-                          <option value="standard">Standard Interview</option>
-                          <option value="technical-deep-dive">Technical Deep Dive</option>
-                          <option value="behavioral-focus">Behavioral Focus</option>
-                          <option value="leadership-assessment">Leadership Assessment</option>
-                          <option value="culture-fit">Culture Fit Evaluation</option>
-                          <option value="custom">Custom Template</option>
-                        </select>
-                      </div>
-
-                      {/* AI Tools Section */}
-                      <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-                        <h4 className="text-xs font-semibold text-gray-900 dark:text-white mb-3">AI Tools</h4>
-                        <div className="space-y-2.5">
-                          <label className="flex items-start gap-2">
-                            <input
-                              type="checkbox"
-                              checked={configuringStage.config?.aiInterviewQuestions || false}
-                              onChange={(e) => setConfiguringStage({
-                                ...configuringStage,
-                                config: { ...configuringStage.config, aiInterviewQuestions: e.target.checked }
-                              })}
-                              className="mt-0.5 rounded text-purple-600 focus:ring-purple-500"
-                            />
-                            <span className="text-sm text-gray-700 dark:text-gray-300">AI-Assisted Question Generation</span>
-                          </label>
-                          <label className="flex items-start gap-2">
-                            <input
-                              type="checkbox"
-                              checked={configuringStage.config?.aiSentimentAnalysis || false}
-                              onChange={(e) => setConfiguringStage({
-                                ...configuringStage,
-                                config: { ...configuringStage.config, aiSentimentAnalysis: e.target.checked }
-                              })}
-                              className="mt-0.5 rounded text-purple-600 focus:ring-purple-500"
-                            />
-                            <span className="text-sm text-gray-700 dark:text-gray-300">Real-time Sentiment Analysis</span>
-                          </label>
-                        </div>
-                      </div>
-
-                                {/* Evaluation Criteria */}
-                                <div>
-                                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                                    Evaluation Criteria
-                                  </label>
-                                  <textarea
-                                    value={configuringStage.config?.evaluationCriteria || ''}
-                                    onChange={(e) => setConfiguringStage({
-                            ...configuringStage,
-                            config: { ...configuringStage.config, evaluationCriteria: e.target.value }
-                          })}
-                          rows={2}
-                          className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
-                          placeholder="Technical skills, Communication, Cultural fit..."
-                        />
-                      </div>
-
-                      {/* Automation Section */}
-                      <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-                        <h4 className="text-xs font-semibold text-gray-900 dark:text-white mb-3">Automation</h4>
-                        <div className="space-y-3">
-                          <label className="flex items-start gap-2">
-                            <input
-                              type="checkbox"
-                              checked={configuringStage.config?.autoAdvance || false}
-                              onChange={(e) => setConfiguringStage({
-                                ...configuringStage,
-                                config: { ...configuringStage.config, autoAdvance: e.target.checked }
-                              })}
-                              className="mt-0.5 rounded text-purple-600 focus:ring-purple-500"
-                            />
-                            <span className="text-sm text-gray-700 dark:text-gray-300">Auto-advance on completion</span>
-                          </label>
-                          
-                          <div>
-                            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                              Email Template
-                            </label>
-                            <select
-                              value={configuringStage.config?.emailTemplate || 'none'}
-                              onChange={(e) => setConfiguringStage({
-                                ...configuringStage,
-                                config: { ...configuringStage.config, emailTemplate: e.target.value }
-                              })}
-                              className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
-                            >
-                              <option value="none">No automated email</option>
-                              <option value="invite">Interview Invitation</option>
-                              <option value="reminder">Interview Reminder</option>
-                              <option value="assessment-link">Assessment Link</option>
-                              <option value="feedback">Feedback Request</option>
-                              <option value="rejection">Rejection Notice</option>
-                            </select>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* SLA & Visibility */}
-                      <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
-                        <h4 className="text-xs font-semibold text-gray-900 dark:text-white mb-3">SLA & Visibility</h4>
-                        <div className="space-y-3">
-                          <div>
-                            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                              SLA Duration (days)
-                            </label>
-                            <input
-                              type="number"
-                              min="1"
-                              max="90"
-                              value={configuringStage.config?.slaDays || 7}
-                              onChange={(e) => setConfiguringStage({
-                                ...configuringStage,
-                                config: { ...configuringStage.config, slaDays: parseInt(e.target.value) }
-                              })}
-                              className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
-                            />
-                          </div>
-                          
-                          <label className="flex items-start gap-2">
-                            <input
-                              type="checkbox"
-                              checked={configuringStage.config?.externalPortalVisible || false}
-                              onChange={(e) => setConfiguringStage({
-                                ...configuringStage,
-                                config: { ...configuringStage.config, externalPortalVisible: e.target.checked }
-                              })}
-                              className="mt-0.5 rounded text-purple-600 focus:ring-purple-500"
-                            />
-                            <span className="text-sm text-gray-700 dark:text-gray-300">Visible to External Portal</span>
-                          </label>
-                        </div>
-                      </div>
-
-                      {/* Save Button */}
-                      <div className="pt-3 border-t border-gray-200 dark:border-gray-700">
-                        <button
-                          onClick={() => alert('Backend integration pending - configuration will be saved later')}
-                          className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium transition-all shadow-sm"
-                        >
-                          Save Configuration
-                        </button>
-                      </div>
-                    </div>
+                    <StageConfigPanel
+                      key={configuringStage.id === -1 ? `draft-${configuringStage.stageName}` : configuringStage.id}
+                      stage={configuringStage}
+                      onSave={handleUpdateStageConfig}
+                    />
                   </div>
                 ) : (
                   <div className="p-8 text-center">
