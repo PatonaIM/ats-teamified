@@ -49,6 +49,49 @@ const STAGE_TEMPLATES: StageTemplate[] = [
   { id: 'final-interview', name: 'Final Interview', description: 'Final decision interview', icon: '🎯', type: 'custom' },
 ];
 
+type StageCategory = 'ai-interview' | 'human-interview' | 'assessment' | 'general';
+
+function determineStageCategory(stage: PipelineStage): StageCategory {
+  const stageName = stage.stageName.toLowerCase();
+  const config = stage.config || {};
+  
+  const hasAIKeyword = /\bai\b/.test(stageName);
+  
+  if (
+    config.interviewType === 'ai' ||
+    (hasAIKeyword && (stageName.includes('interview') || stageName.includes('evaluation') || stageName.includes('screen'))) ||
+    'aiModel' in config ||
+    'aiQuestionCount' in config ||
+    'aiSentimentAnalysis' in config ||
+    'aiCategories' in config ||
+    'aiEvaluationCriteria' in config ||
+    'aiInterviewDuration' in config
+  ) {
+    return 'ai-interview';
+  }
+  
+  if (
+    stageName.includes('test') ||
+    stageName.includes('assessment') ||
+    stageName.includes('background check') ||
+    stageName.includes('reference check') ||
+    (config.assessmentType && config.assessmentType !== 'none')
+  ) {
+    return 'assessment';
+  }
+  
+  if (
+    stageName.includes('interview') ||
+    stageName.includes('screen') ||
+    stageName.includes('culture fit') ||
+    stageName.includes('panel')
+  ) {
+    return 'human-interview';
+  }
+  
+  return 'general';
+}
+
 interface PaletteItemProps {
   template: StageTemplate;
   onClick: (template: StageTemplate) => void;
@@ -684,25 +727,272 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
                 {configuringStage ? (
                   <div className="p-4 max-h-[calc(100vh-200px)] overflow-y-auto">
                     <div className="space-y-5">
-                      {/* Description */}
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                          Description
-                        </label>
-                        <textarea
-                          value={configuringStage.config?.description || ''}
-                          onChange={(e) => setConfiguringStage({
-                            ...configuringStage,
-                            config: { ...configuringStage.config, description: e.target.value }
-                          })}
-                          rows={2}
-                          className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                          placeholder="Describe this stage..."
-                        />
-                      </div>
+                      {(() => {
+                        const stageCategory = determineStageCategory(configuringStage);
+                        
+                        return (
+                          <>
+                            {/* AI Interview Configuration */}
+                            {stageCategory === 'ai-interview' && (
+                              <>
+                                <div className="pb-3 border-b border-gray-200 dark:border-gray-700">
+                                  <h3 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                                    <span>🤖</span>
+                                    AI Interview Configuration
+                                  </h3>
+                                </div>
+                                
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                                    AI Model
+                                  </label>
+                                  <select
+                                    value={configuringStage.config?.aiModel || 'gpt-4'}
+                                    onChange={(e) => setConfiguringStage({
+                                      ...configuringStage,
+                                      config: { ...configuringStage.config, aiModel: e.target.value }
+                                    })}
+                                    className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
+                                  >
+                                    <option value="gpt-4">GPT-4 (Advanced)</option>
+                                    <option value="gpt-3.5-turbo">GPT-3.5 Turbo (Fast)</option>
+                                    <option value="claude-3">Claude 3 (Opus)</option>
+                                  </select>
+                                </div>
 
-                      {/* Interview Mode */}
-                      <div>
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                                    Interview Duration (minutes)
+                                  </label>
+                                  <input
+                                    type="number"
+                                    min="15"
+                                    max="120"
+                                    step="15"
+                                    value={configuringStage.config?.aiInterviewDuration || 45}
+                                    onChange={(e) => setConfiguringStage({
+                                      ...configuringStage,
+                                      config: { ...configuringStage.config, aiInterviewDuration: parseInt(e.target.value) }
+                                    })}
+                                    className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                                    Number of Questions
+                                  </label>
+                                  <input
+                                    type="number"
+                                    min="5"
+                                    max="30"
+                                    value={configuringStage.config?.aiQuestionCount || 15}
+                                    onChange={(e) => setConfiguringStage({
+                                      ...configuringStage,
+                                      config: { ...configuringStage.config, aiQuestionCount: parseInt(e.target.value) }
+                                    })}
+                                    className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Question Categories
+                                  </label>
+                                  <div className="space-y-2">
+                                    {['Technical', 'Behavioral', 'Cultural Fit', 'Situational'].map((category) => (
+                                      <label key={category} className="flex items-center gap-2">
+                                        <input
+                                          type="checkbox"
+                                          checked={configuringStage.config?.aiCategories?.[category] || false}
+                                          onChange={(e) => setConfiguringStage({
+                                            ...configuringStage,
+                                            config: { 
+                                              ...configuringStage.config, 
+                                              aiCategories: { 
+                                                ...configuringStage.config?.aiCategories, 
+                                                [category]: e.target.checked 
+                                              } 
+                                            }
+                                          })}
+                                          className="rounded text-purple-600 focus:ring-purple-500"
+                                        />
+                                        <span className="text-sm text-gray-700 dark:text-gray-300">{category}</span>
+                                      </label>
+                                    ))}
+                                  </div>
+                                </div>
+
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
+                                    Sentiment Analysis
+                                  </label>
+                                  <label className="flex items-center gap-2">
+                                    <input
+                                      type="checkbox"
+                                      checked={configuringStage.config?.aiSentimentAnalysis || false}
+                                      onChange={(e) => setConfiguringStage({
+                                        ...configuringStage,
+                                        config: { ...configuringStage.config, aiSentimentAnalysis: e.target.checked }
+                                      })}
+                                      className="rounded text-purple-600 focus:ring-purple-500"
+                                    />
+                                    <span className="text-sm text-gray-700 dark:text-gray-300">Enable real-time sentiment analysis</span>
+                                  </label>
+                                </div>
+
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                                    AI Evaluation Criteria
+                                  </label>
+                                  <textarea
+                                    value={configuringStage.config?.aiEvaluationCriteria || ''}
+                                    onChange={(e) => setConfiguringStage({
+                                      ...configuringStage,
+                                      config: { ...configuringStage.config, aiEvaluationCriteria: e.target.value }
+                                    })}
+                                    rows={3}
+                                    className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
+                                    placeholder="Enter criteria for AI to evaluate responses..."
+                                  />
+                                </div>
+                              </>
+                            )}
+
+                            {/* Assessment Configuration */}
+                            {stageCategory === 'assessment' && (
+                              <>
+                                <div className="pb-3 border-b border-gray-200 dark:border-gray-700">
+                                  <h3 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                                    <span>✍️</span>
+                                    Assessment Configuration
+                                  </h3>
+                                </div>
+
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                                    Assessment Type
+                                  </label>
+                                  <select
+                                    value={configuringStage.config?.assessmentType || 'technical'}
+                                    onChange={(e) => setConfiguringStage({
+                                      ...configuringStage,
+                                      config: { ...configuringStage.config, assessmentType: e.target.value }
+                                    })}
+                                    className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
+                                  >
+                                    <option value="technical">Technical Assessment</option>
+                                    <option value="coding">Coding Challenge</option>
+                                    <option value="case-study">Case Study</option>
+                                    <option value="presentation">Presentation</option>
+                                    <option value="personality">Personality Test</option>
+                                    <option value="skills">Skills Test</option>
+                                    <option value="background-check">Background Check</option>
+                                    <option value="reference-check">Reference Check</option>
+                                    <option value="other">Other</option>
+                                  </select>
+                                </div>
+
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                                    Assessment Duration (minutes)
+                                  </label>
+                                  <input
+                                    type="number"
+                                    min="15"
+                                    max="480"
+                                    step="15"
+                                    value={configuringStage.config?.assessmentDuration || 120}
+                                    onChange={(e) => setConfiguringStage({
+                                      ...configuringStage,
+                                      config: { ...configuringStage.config, assessmentDuration: parseInt(e.target.value) }
+                                    })}
+                                    className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                                    Assessment Platform
+                                  </label>
+                                  <select
+                                    value={configuringStage.config?.assessmentPlatform || 'internal'}
+                                    onChange={(e) => setConfiguringStage({
+                                      ...configuringStage,
+                                      config: { ...configuringStage.config, assessmentPlatform: e.target.value }
+                                    })}
+                                    className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
+                                  >
+                                    <option value="internal">Internal Platform</option>
+                                    <option value="hackerrank">HackerRank</option>
+                                    <option value="codility">Codility</option>
+                                    <option value="leetcode">LeetCode</option>
+                                    <option value="testgorilla">TestGorilla</option>
+                                    <option value="external">External Link</option>
+                                  </select>
+                                </div>
+
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                                    Assessment Instructions
+                                  </label>
+                                  <textarea
+                                    value={configuringStage.config?.assessmentInstructions || ''}
+                                    onChange={(e) => setConfiguringStage({
+                                      ...configuringStage,
+                                      config: { ...configuringStage.config, assessmentInstructions: e.target.value }
+                                    })}
+                                    rows={3}
+                                    className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
+                                    placeholder="Enter instructions for the assessment..."
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                                    Passing Score (%)
+                                  </label>
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    value={configuringStage.config?.passingScore || 70}
+                                    onChange={(e) => setConfiguringStage({
+                                      ...configuringStage,
+                                      config: { ...configuringStage.config, passingScore: parseInt(e.target.value) }
+                                    })}
+                                    className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
+                                  />
+                                </div>
+
+                                <div>
+                                  <label className="flex items-center gap-2">
+                                    <input
+                                      type="checkbox"
+                                      checked={configuringStage.config?.autoAdvanceOnPass || false}
+                                      onChange={(e) => setConfiguringStage({
+                                        ...configuringStage,
+                                        config: { ...configuringStage.config, autoAdvanceOnPass: e.target.checked }
+                                      })}
+                                      className="rounded text-purple-600 focus:ring-purple-500"
+                                    />
+                                    <span className="text-sm text-gray-700 dark:text-gray-300">Auto-advance on pass</span>
+                                  </label>
+                                </div>
+                              </>
+                            )}
+
+                            {/* Human Interview Configuration */}
+                            {stageCategory === 'human-interview' && (
+                              <>
+                                <div className="pb-3 border-b border-gray-200 dark:border-gray-700">
+                                  <h3 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                                    <span>👤</span>
+                                    Interview Configuration
+                                  </h3>
+                                </div>
+
+                                <div>
                         <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                           Interview Mode
                         </label>
@@ -793,14 +1083,14 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
                         </div>
                       </div>
 
-                      {/* Evaluation Criteria */}
-                      <div>
-                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                          Evaluation Criteria
-                        </label>
-                        <textarea
-                          value={configuringStage.config?.evaluationCriteria || ''}
-                          onChange={(e) => setConfiguringStage({
+                                {/* Evaluation Criteria */}
+                                <div>
+                                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                                    Evaluation Criteria
+                                  </label>
+                                  <textarea
+                                    value={configuringStage.config?.evaluationCriteria || ''}
+                                    onChange={(e) => setConfiguringStage({
                             ...configuringStage,
                             config: { ...configuringStage.config, evaluationCriteria: e.target.value }
                           })}
