@@ -261,28 +261,8 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
       let response;
       if (isTemplateMode) {
         console.log('[WorkflowBuilder] Fetching template:', templateId);
-        console.log('[WorkflowBuilder] About to call fetch...');
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => {
-          console.log('[WorkflowBuilder] Timeout triggered, aborting fetch');
-          controller.abort();
-        }, 5000);
-        
-        try {
-          console.log('[WorkflowBuilder] Fetch initiated');
-          response = await fetch(`/api/pipeline-templates/${templateId}`, {
-            signal: controller.signal
-          });
-          console.log('[WorkflowBuilder] Fetch completed');
-          clearTimeout(timeoutId);
-        } catch (fetchError: any) {
-          console.error('[WorkflowBuilder] Fetch error caught:', fetchError);
-          if (fetchError.name === 'AbortError') {
-            console.error('[WorkflowBuilder] Fetch timed out after 5 seconds');
-            throw new Error('Request timed out');
-          }
-          throw fetchError;
-        }
+        response = await fetch(`/api/pipeline-templates/${templateId}`);
+        console.log('[WorkflowBuilder] Fetch completed');
       } else {
         console.log('[WorkflowBuilder] Fetching job pipeline:', jobId);
         response = await fetch(`/api/jobs/${jobId}/pipeline-stages`);
