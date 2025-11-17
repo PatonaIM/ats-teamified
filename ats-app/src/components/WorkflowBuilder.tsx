@@ -20,7 +20,7 @@ const FIXED_TOP_STAGES = ['Screening', 'Shortlist', 'Client Endorsement'];
 const FIXED_BOTTOM_STAGES = ['Offer', 'Offer Accepted'];
 
 export function WorkflowBuilder() {
-  const { jobId } = useParams<{ jobId: string }>();
+  const { jobId, templateId } = useParams<{ jobId?: string; templateId?: string }>();
   const navigate = useNavigate();
   const [stages, setStages] = useState<PipelineStage[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -28,6 +28,10 @@ export function WorkflowBuilder() {
   const [selectedStage, setSelectedStage] = useState<PipelineStage | null>(null);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [candidateCounts, setCandidateCounts] = useState<Record<number, number>>({});
+  
+  // Determine if we're in template mode or job mode
+  const isTemplateMode = !!templateId;
+  const entityId = templateId || jobId;
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -40,7 +44,13 @@ export function WorkflowBuilder() {
   const fetchStages = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/jobs/${jobId}/pipeline-stages`);
+      
+      let response;
+      if (isTemplateMode) {
+        response = await fetch(`/api/pipeline-templates/${templateId}`);
+      } else {
+        response = await fetch(`/api/jobs/${jobId}/pipeline-stages`);
+      }
       
       if (!response.ok) {
         const errorData = await response.json();
@@ -48,10 +58,25 @@ export function WorkflowBuilder() {
       }
 
       const data = await response.json();
-      setStages(data.stages);
+      
+      if (isTemplateMode) {
+        // Transform template stages to match PipelineStage interface
+        const templateStages = data.stages.map((stage: any) => ({
+          id: stage.id,
+          jobId: 0, // Not applicable for templates
+          stageName: stage.stage_name,
+          stageOrder: stage.stage_order,
+          isDefault: stage.stage_type === 'fixed',
+          config: stage.stage_config || {},
+          createdAt: ''
+        }));
+        setStages(templateStages);
+      } else {
+        setStages(data.stages);
+        await fetchCandidateCounts(data.stages);
+      }
+      
       setError(null);
-
-      await fetchCandidateCounts(data.stages);
     } catch (err: any) {
       console.error('[Workflow Builder] Error fetching stages:', err);
       setError(err.message);
@@ -82,10 +107,10 @@ export function WorkflowBuilder() {
   };
 
   useEffect(() => {
-    if (jobId) {
+    if (entityId) {
       fetchStages();
     }
-  }, [jobId]);
+  }, [entityId, isTemplateMode]);
 
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
@@ -130,7 +155,11 @@ export function WorkflowBuilder() {
         newOrder: stage.stageOrder
       }));
 
-      const response = await fetch(`/api/jobs/${jobId}/pipeline-stages/reorder`, {
+      const url = isTemplateMode 
+        ? `/api/pipeline-templates/${templateId}/stages/reorder`
+        : `/api/jobs/${jobId}/pipeline-stages/reorder`;
+      
+      const response = await fetch(url, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ stageOrders })
@@ -142,7 +171,22 @@ export function WorkflowBuilder() {
       }
 
       const data = await response.json();
-      setStages(data.stages);
+      
+      if (isTemplateMode) {
+        // Transform template response back to PipelineStage format
+        const templateStages = data.stages.map((stage: any) => ({
+          id: stage.id,
+          jobId: 0,
+          stageName: stage.stage_name,
+          stageOrder: stage.stage_order,
+          isDefault: stage.stage_type === 'fixed',
+          config: stage.stage_config || {},
+          createdAt: ''
+        }));
+        setStages(templateStages);
+      } else {
+        setStages(data.stages);
+      }
     } catch (err: any) {
       console.error('[Workflow Builder] Error persisting reorder:', err);
       alert(`Failed to save stage order: ${err.message}`);
@@ -159,20 +203,29 @@ export function WorkflowBuilder() {
     if (!selectedStage) return;
 
     try {
-      const response = await fetch(`/api/jobs/${jobId}/pipeline-stages/${selectedStage.id}/config`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ config })
-      });
+      let response;
+      if (isTemplateMode) {
+        // For templates, we update the stage config
+        response = await fetch(`/api/pipeline-templates/${templateId}/stages/${selectedStage.id}/config`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ stage_config: config })
+        });
+      } else {
+        response = await fetch(`/api/jobs/${jobId}/pipeline-stages/${selectedStage.id}/config`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ config })
+        });
+      }
 
       if (!response.ok) {
         const errorData = await response.json();
         throw new Error(errorData.message || 'Failed to save configuration');
       }
 
-      const data = await response.json();
-      
-      setStages(prev => prev.map(s => s.id === selectedStage.id ? data.stage : s));
+      // Re-fetch stages to get latest state
+      await fetchStages();
       setIsModalOpen(false);
       setSelectedStage(null);
     } catch (err: any) {
@@ -185,7 +238,8 @@ export function WorkflowBuilder() {
     const stage = stages.find(s => s.id === stageId);
     if (!stage) return;
 
-    if (candidateCounts[stageId] > 0) {
+    // Only check candidate counts for job mode (templates don't have candidates)
+    if (!isTemplateMode && candidateCounts[stageId] > 0) {
       alert(`Cannot delete stage "${stage.stageName}": ${candidateCounts[stageId]} candidate(s) are currently in this stage.`);
       return;
     }
@@ -195,7 +249,11 @@ export function WorkflowBuilder() {
     }
 
     try {
-      const response = await fetch(`/api/jobs/${jobId}/pipeline-stages/${stageId}`, {
+      const url = isTemplateMode
+        ? `/api/pipeline-templates/${templateId}/stages/${stageId}`
+        : `/api/jobs/${jobId}/pipeline-stages/${stageId}`;
+      
+      const response = await fetch(url, {
         method: 'DELETE'
       });
 

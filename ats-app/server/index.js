@@ -2163,6 +2163,32 @@ app.post('/api/pipeline-templates/:id/stages', requireWorkflowBuilder, async (re
   }
 });
 
+// PUT /api/pipeline-templates/:id/stages/:stageId/config - Update template stage config
+app.put('/api/pipeline-templates/:id/stages/:stageId/config', requireWorkflowBuilder, async (req, res) => {
+  try {
+    const { id, stageId } = req.params;
+    const { stage_config } = req.body;
+    
+    console.log('[Pipeline Templates] Updating stage config:', id, stageId);
+    
+    const result = await query(
+      'UPDATE pipeline_template_stages SET stage_config = $1 WHERE id = $2 AND template_id = $3 RETURNING id, stage_name, stage_order, stage_type, stage_config',
+      [stage_config || {}, parseInt(stageId), parseInt(id)]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Stage not found' });
+    }
+    
+    await query('UPDATE pipeline_templates SET updated_at = CURRENT_TIMESTAMP WHERE id = $1', [parseInt(id)]);
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('[Pipeline Templates] Error updating stage config:', error);
+    res.status(500).json({ error: 'Failed to update stage config', details: error.message });
+  }
+});
+
 // PUT /api/pipeline-templates/:id/stages/reorder - Reorder template stages
 app.put('/api/pipeline-templates/:id/stages/reorder', requireWorkflowBuilder, async (req, res) => {
   try {
