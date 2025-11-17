@@ -19,7 +19,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { StageConfigModal } from './workflow-builder/StageConfigModal';
+import { StageConfigPanel } from './workflow-builder/StageConfigModal';
 
 interface PipelineStage {
   id: number;
@@ -99,9 +99,10 @@ interface SortableWorkflowStageProps {
   index: number;
   onConfigure: (stage: PipelineStage) => void;
   onDelete: (stage: PipelineStage) => void;
+  isSelected: boolean;
 }
 
-function SortableWorkflowStage({ stage, index, onConfigure, onDelete }: SortableWorkflowStageProps) {
+function SortableWorkflowStage({ stage, index, onConfigure, onDelete, isSelected }: SortableWorkflowStageProps) {
   const {
     attributes,
     listeners,
@@ -120,7 +121,7 @@ function SortableWorkflowStage({ stage, index, onConfigure, onDelete }: Sortable
   const isFixedBottom = FIXED_BOTTOM_STAGES.includes(stage.stageName);
 
   const handleCardClick = () => {
-    if (!isDragging && !stage.isDefault) {
+    if (!isDragging && !isFixedBottom) {
       onConfigure(stage);
     }
   };
@@ -129,17 +130,17 @@ function SortableWorkflowStage({ stage, index, onConfigure, onDelete }: Sortable
     <div ref={setNodeRef} style={style} className="w-full flex justify-center">
       <div 
         onClick={handleCardClick}
-        className={`relative rounded-lg p-4 border-2 transition-all w-full max-w-[280px] ${
-        stage.isDefault ? 'cursor-default' : 'cursor-pointer'
-      } ${
-        isFixedBottom
-          ? 'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50'
-          : 'border-purple-200 dark:border-purple-800 bg-white dark:bg-gray-800 hover:border-purple-400 dark:hover:border-purple-600 hover:shadow-md'
+        className={`relative rounded-md p-2.5 border-2 transition-all w-full max-w-[200px] cursor-pointer ${
+        isSelected
+          ? 'border-purple-500 dark:border-purple-400 bg-purple-50 dark:bg-purple-900/20 shadow-md ring-2 ring-purple-200 dark:ring-purple-800'
+          : isFixedBottom
+            ? 'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50 hover:border-gray-400 dark:hover:border-gray-500'
+            : 'border-purple-200 dark:border-purple-800 bg-white dark:bg-gray-800 hover:border-purple-400 dark:hover:border-purple-600 hover:shadow-md'
       }`}>
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2">
           {/* Header: Number badge and drag handle */}
           <div className="flex items-center justify-between">
-            <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-base font-semibold ${
+            <div className={`w-7 h-7 rounded flex items-center justify-center text-sm font-semibold ${
               isFixedBottom
                 ? 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
                 : 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'
@@ -153,7 +154,7 @@ function SortableWorkflowStage({ stage, index, onConfigure, onDelete }: Sortable
                 onClick={(e) => e.stopPropagation()}
                 className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
                 </svg>
               </div>
@@ -162,10 +163,10 @@ function SortableWorkflowStage({ stage, index, onConfigure, onDelete }: Sortable
 
           {/* Title and badge */}
           <div>
-            <h3 className="font-semibold text-gray-900 dark:text-white text-base mb-1 line-clamp-2">
+            <h3 className="font-semibold text-gray-900 dark:text-white text-sm mb-1 line-clamp-2 leading-tight">
               {stage.stageName}
             </h3>
-            <span className={`inline-block px-2 py-0.5 rounded text-xs font-medium ${
+            <span className={`inline-block px-1.5 py-0.5 rounded text-xs font-medium ${
               isFixedBottom
                 ? 'bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
                 : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
@@ -176,19 +177,19 @@ function SortableWorkflowStage({ stage, index, onConfigure, onDelete }: Sortable
 
           {/* Description */}
           {stage.config?.description && (
-            <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2 min-h-[2.5rem]">
+            <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 min-h-[2rem]">
               {stage.config.description}
             </p>
           )}
 
           {/* Action buttons */}
-          <div className="flex items-center gap-2 pt-2 border-t border-gray-200 dark:border-gray-700">
+          <div className="flex items-center gap-1.5 pt-1.5 border-t border-gray-200 dark:border-gray-700">
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 onConfigure(stage);
               }}
-              className="flex-1 px-3 py-1.5 text-sm font-medium text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded transition-colors"
+              className="flex-1 px-2 py-1 text-xs font-medium text-purple-700 dark:text-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded transition-colors"
               title="Configure"
             >
               Configure
@@ -199,10 +200,10 @@ function SortableWorkflowStage({ stage, index, onConfigure, onDelete }: Sortable
                   e.stopPropagation();
                   onDelete(stage);
                 }}
-                className="p-1.5 text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                className="p-1 text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
                 title="Delete"
               >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                 </svg>
               </button>
@@ -238,7 +239,6 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
   const [stages, setStages] = useState<PipelineStage[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
-  const [isConfigModalOpen, setIsConfigModalOpen] = useState<boolean>(false);
   const [configuringStage, setConfiguringStage] = useState<PipelineStage | null>(null);
   const [candidateCounts, setCandidateCounts] = useState<Record<number, number>>({});
   const [templateName, setTemplateName] = useState<string>('');
@@ -345,6 +345,28 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
     }
   }, [isTemplateMode, templateId, jobId]);
 
+  // Reconcile configuringStage when stages update (keep selection by ID)
+  useEffect(() => {
+    if (configuringStage && stages.length > 0) {
+      // Skip reconciliation for draft stages (id === -1)
+      if (configuringStage.id !== -1) {
+        const updatedStage = stages.find(s => s.id === configuringStage.id);
+        if (updatedStage && updatedStage !== configuringStage) {
+          setConfiguringStage(updatedStage);
+        } else if (!updatedStage) {
+          // Stage was deleted, clear selection
+          setConfiguringStage(null);
+        }
+      }
+    } else if (!configuringStage && stages.length > 0) {
+      // Auto-select first configurable (non-fixed) stage on initial load
+      const firstConfigurable = stages.find(s => !FIXED_BOTTOM_STAGES.includes(s.stageName));
+      if (firstConfigurable) {
+        setConfiguringStage(firstConfigurable);
+      }
+    }
+  }, [stages]);
+
   useEffect(() => {
     console.log('[WorkflowBuilder] useEffect triggered, entityId:', entityId, 'isTemplateMode:', isTemplateMode);
     
@@ -449,12 +471,10 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
       config: { description: template.description },
       createdAt: ''
     });
-    setIsConfigModalOpen(true);
   };
 
   const handleConfigureStage = (stage: PipelineStage) => {
     setConfiguringStage(stage);
-    setIsConfigModalOpen(true);
   };
 
   const handleUpdateStageConfig = async (config: Record<string, any>) => {
@@ -489,6 +509,21 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
           const errorData = await response.json();
           throw new Error(errorData.error || 'Failed to add stage');
         }
+        
+        // Get the created stage from response and select it immediately
+        const responseData = await response.json();
+        const createdStage: PipelineStage = {
+          id: responseData.id,
+          jobId: responseData.job_id || 0,
+          stageName: responseData.stage_name,
+          stageOrder: responseData.stage_order,
+          isDefault: responseData.stage_type === 'fixed',
+          config: responseData.stage_config || {},
+          createdAt: responseData.created_at || ''
+        };
+        
+        // Update selection to the newly created stage immediately
+        setConfiguringStage(createdStage);
       } else {
         // Updating existing stage
         const url = isTemplateMode
@@ -508,8 +543,6 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
         }
       }
 
-      setIsConfigModalOpen(false);
-      setConfiguringStage(null);
       await fetchStages();
     } catch (err: any) {
       console.error('[Workflow Builder] Error saving stage:', err);
@@ -609,19 +642,44 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        {/* Two Panel Layout */}
-        <div className="max-w-[1280px] mx-auto px-6 py-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Three Panel Layout */}
+        <div className="mx-auto px-6 py-6">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
             
             {/* LEFT PANEL: Stage Library */}
-            <div className="lg:col-span-1">
-              <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-                <div className="flex items-center justify-between mb-4">
+            <div className="lg:col-span-3">
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 px-4 py-3 border-b border-gray-200 dark:border-gray-700">
                   <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Stage Library</h2>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">{STAGE_TEMPLATES.length} stages</span>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{STAGE_TEMPLATES.length} available stages</p>
                 </div>
                 
-                <div className="space-y-2">
+                <div className="p-4 space-y-2 max-h-[calc(100vh-200px)] overflow-y-auto">
+                  {/* Add Custom Stage Button */}
+                  <button
+                    onClick={() => handleAddStageFromTemplate({
+                      id: 'custom',
+                      name: 'Custom Stage',
+                      description: 'Create a custom workflow stage',
+                      icon: '⚙️',
+                      type: 'custom'
+                    })}
+                    className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 border border-purple-500 dark:border-purple-600 rounded-md p-3 cursor-pointer transition-all text-left group shadow-sm"
+                  >
+                    <div className="flex items-start gap-2">
+                      <div className="text-2xl shrink-0">➕</div>
+                      <div className="flex-1 min-w-0">
+                        <h3 className="font-semibold text-white text-sm truncate">
+                          Add Custom Stage
+                        </h3>
+                        <p className="text-xs text-purple-100 line-clamp-1">
+                          Create your own workflow stage
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+                  
+                  {/* Stage Templates */}
                   {STAGE_TEMPLATES.map((template) => (
                     <PaletteItem 
                       key={template.id} 
@@ -633,8 +691,8 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
               </div>
             </div>
 
-            {/* RIGHT PANEL: Workflow Canvas */}
-            <div className="lg:col-span-2">
+            {/* MIDDLE PANEL: Workflow Canvas */}
+            <div className="lg:col-span-5">
               <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Workflow Pipeline</h2>
@@ -668,6 +726,7 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
                         index={index}
                         onConfigure={handleConfigureStage}
                         onDelete={handleDeleteStage}
+                        isSelected={configuringStage?.id === stage.id}
                       />
                     ))
                   )}
@@ -692,22 +751,47 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
               )}
               </div>
             </div>
+
+            {/* RIGHT PANEL: Stage Configuration */}
+            <div className="lg:col-span-4">
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden sticky top-6">
+                <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                  <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Stage Configuration</h2>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    {configuringStage ? 'Customize stage settings' : 'Select a stage to configure'}
+                  </p>
+                </div>
+
+                {configuringStage ? (
+                  <div className="p-4 max-h-[calc(100vh-200px)] overflow-y-auto">
+                    <StageConfigPanel
+                      key={configuringStage.id === -1 ? `draft-${configuringStage.stageName}` : configuringStage.id}
+                      stage={configuringStage}
+                      onSave={handleUpdateStageConfig}
+                    />
+                  </div>
+                ) : (
+                  <div className="p-8 text-center">
+                    <div className="w-16 h-16 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <svg className="w-8 h-8 text-gray-400 dark:text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    </div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-1">
+                      No stage selected
+                    </p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500">
+                      Click on a stage to view and edit its configuration
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
       </DndContext>
-
-      {/* Configuration Modal */}
-      {isConfigModalOpen && configuringStage && (
-        <StageConfigModal
-          stage={configuringStage}
-          onClose={() => {
-            setIsConfigModalOpen(false);
-            setConfiguringStage(null);
-          }}
-          onSave={handleUpdateStageConfig}
-        />
-      )}
     </div>
   );
 }
