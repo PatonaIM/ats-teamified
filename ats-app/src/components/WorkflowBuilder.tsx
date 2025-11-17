@@ -228,6 +228,7 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
   const [isConfigModalOpen, setIsConfigModalOpen] = useState<boolean>(false);
   const [configuringStage, setConfiguringStage] = useState<PipelineStage | null>(null);
   const [candidateCounts, setCandidateCounts] = useState<Record<number, number>>({});
+  const [templateName, setTemplateName] = useState<string>('');
   
   const isTemplateMode = !!templateId;
   const entityId = templateId || jobId;
@@ -284,6 +285,9 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
       console.log('[WorkflowBuilder] Data received, has stages:', !!data.stages, 'stage count:', data.stages?.length);
       
       if (isTemplateMode) {
+        // Store template name
+        setTemplateName(data.name || 'Untitled Template');
+        
         const stagesList = data.stages || [];
         console.log('[WorkflowBuilder] Mapping', stagesList.length, 'template stages');
         const templateStages = stagesList.map((stage: any) => ({
@@ -565,15 +569,24 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
       {/* Header */}
       {!hideBackButton && (
         <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-          <div className="max-w-7xl mx-auto px-6 py-6">
+          <div className="px-6 py-6">
             <button
               onClick={() => navigate(-1)}
               className="text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 mb-4 inline-flex items-center text-sm font-medium"
             >
               ← Back to Templates
             </button>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Workflow Builder</h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-1">
+            <div className="flex items-baseline gap-4">
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+                {isTemplateMode && templateName ? templateName : 'Workflow Builder'}
+              </h1>
+              {isTemplateMode && (
+                <span className="text-sm text-purple-600 dark:text-purple-400 font-medium px-3 py-1 bg-purple-100 dark:bg-purple-900/30 rounded-full">
+                  Editing Template
+                </span>
+              )}
+            </div>
+            <p className="text-gray-600 dark:text-gray-400 mt-2">
               Drag or click stages from the library to add them to your workflow
             </p>
           </div>
@@ -586,8 +599,8 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
       >
-        {/* Two Panel Layout */}
-        <div className="max-w-7xl mx-auto px-6 py-8">
+        {/* Two Panel Layout - Full Width */}
+        <div className="px-6 py-8">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             
             {/* LEFT PANEL: Stage Library/Palette */}
