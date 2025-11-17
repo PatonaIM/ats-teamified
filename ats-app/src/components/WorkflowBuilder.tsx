@@ -131,7 +131,9 @@ function SortableWorkflowStage({ stage, index, onConfigure, onDelete }: Sortable
     <div ref={setNodeRef} style={style} className="w-full">
       <div 
         onClick={handleCardClick}
-        className={`relative rounded-lg p-4 border-2 transition-all cursor-pointer ${
+        className={`relative rounded-lg p-4 border-2 transition-all ${
+        stage.isDefault ? 'cursor-default' : 'cursor-pointer'
+      } ${
         isFixedBottom
           ? 'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50'
           : 'border-purple-400 dark:border-purple-600 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 hover:shadow-md'
