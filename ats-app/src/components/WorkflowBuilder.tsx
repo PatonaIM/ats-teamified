@@ -121,9 +121,17 @@ function SortableWorkflowStage({ stage, index, onConfigure, onDelete }: Sortable
 
   const isFixedBottom = FIXED_BOTTOM_STAGES.includes(stage.stageName);
 
+  const handleCardClick = () => {
+    if (!isDragging && !stage.isDefault) {
+      onConfigure(stage);
+    }
+  };
+
   return (
     <div ref={setNodeRef} style={style} className="w-full">
-      <div className={`relative rounded-lg p-4 border-2 transition-all ${
+      <div 
+        onClick={handleCardClick}
+        className={`relative rounded-lg p-4 border-2 transition-all cursor-pointer ${
         isFixedBottom
           ? 'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-700/50'
           : 'border-purple-400 dark:border-purple-600 bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 hover:shadow-md'
@@ -133,6 +141,7 @@ function SortableWorkflowStage({ stage, index, onConfigure, onDelete }: Sortable
             <div
               {...attributes}
               {...listeners}
+              onClick={(e) => e.stopPropagation()}
               className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -159,7 +168,10 @@ function SortableWorkflowStage({ stage, index, onConfigure, onDelete }: Sortable
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => onConfigure(stage)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onConfigure(stage);
+              }}
               className="p-2 text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors"
               title="Configure stage"
             >
@@ -170,7 +182,10 @@ function SortableWorkflowStage({ stage, index, onConfigure, onDelete }: Sortable
             </button>
             {!isFixedBottom && (
               <button
-                onClick={() => onDelete(stage)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onDelete(stage);
+                }}
                 className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors"
                 title="Delete stage"
               >
