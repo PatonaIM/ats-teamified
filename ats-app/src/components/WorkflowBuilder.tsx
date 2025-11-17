@@ -619,10 +619,10 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
       >
         {/* Two Panel Layout */}
         <div className="max-w-7xl mx-auto px-6 py-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             
             {/* LEFT PANEL: Stage Library/Palette */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <div className="lg:col-span-1 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Stage Library</h2>
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
                 Drag or click a stage to add it to your workflow →
@@ -640,7 +640,7 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
             </div>
 
             {/* RIGHT PANEL: Workflow Canvas */}
-            <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6">Workflow</h2>
               
               <SortableContext
