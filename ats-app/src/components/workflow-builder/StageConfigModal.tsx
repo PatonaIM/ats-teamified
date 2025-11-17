@@ -253,6 +253,141 @@ export function StageConfigModal({ stage, onClose, onSave }: StageConfigModalPro
                 </select>
               </div>
 
+              {/* Video Interview Specific Fields */}
+              {config.interviewMode === 'video' && (
+                <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg space-y-4 border border-blue-200 dark:border-blue-800">
+                  <h4 className="text-sm font-semibold text-blue-900 dark:text-blue-200 flex items-center gap-2">
+                    <span>📹</span>
+                    Video Interview Settings
+                  </h4>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Video Platform
+                    </label>
+                    <select
+                      value={config.videoPlatform || 'zoom'}
+                      onChange={(e) => updateConfig('videoPlatform', e.target.value)}
+                      className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                    >
+                      <option value="zoom">Zoom</option>
+                      <option value="teams">Microsoft Teams</option>
+                      <option value="meet">Google Meet</option>
+                      <option value="webex">Cisco Webex</option>
+                      <option value="custom">Custom Link</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Recording Enabled
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={config.videoRecording || false}
+                        onChange={(e) => updateConfig('videoRecording', e.target.checked)}
+                        className="w-4 h-4 text-blue-600 rounded"
+                      />
+                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                        Record video interview for later review
+                      </span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Auto-generate Meeting Link
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={config.autoGenerateLink || false}
+                        onChange={(e) => updateConfig('autoGenerateLink', e.target.checked)}
+                        className="w-4 h-4 text-blue-600 rounded"
+                      />
+                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                        Automatically create meeting link when scheduling
+                      </span>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Waiting Room
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={config.waitingRoom !== false}
+                        onChange={(e) => updateConfig('waitingRoom', e.target.checked)}
+                        className="w-4 h-4 text-blue-600 rounded"
+                      />
+                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                        Enable waiting room for candidates
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Panel Interview Specific Fields */}
+              {config.interviewMode === 'panel' && (
+                <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg space-y-4 border border-purple-200 dark:border-purple-800">
+                  <h4 className="text-sm font-semibold text-purple-900 dark:text-purple-200 flex items-center gap-2">
+                    <span>👥</span>
+                    Panel Interview Settings
+                  </h4>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Number of Interviewers
+                    </label>
+                    <input
+                      type="number"
+                      min="2"
+                      max="10"
+                      value={config.panelSize || 3}
+                      onChange={(e) => updateConfig('panelSize', parseInt(e.target.value))}
+                      className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Scoring Method
+                    </label>
+                    <select
+                      value={config.panelScoringMethod || 'average'}
+                      onChange={(e) => updateConfig('panelScoringMethod', e.target.value)}
+                      className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                    >
+                      <option value="average">Average All Scores</option>
+                      <option value="consensus">Require Consensus</option>
+                      <option value="majority">Majority Vote</option>
+                      <option value="weighted">Weighted by Role</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Individual Feedback Required
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={config.individualFeedbackRequired !== false}
+                        onChange={(e) => updateConfig('individualFeedbackRequired', e.target.checked)}
+                        className="w-4 h-4 text-purple-600 rounded"
+                      />
+                      <span className="text-sm text-gray-700 dark:text-gray-300">
+                        Each interviewer must submit feedback separately
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Interview Duration (minutes)
@@ -302,6 +437,52 @@ export function StageConfigModal({ stage, onClose, onSave }: StageConfigModalPro
                   </span>
                 </div>
               </div>
+
+              {/* AI Question Generation Settings (shown when enabled) */}
+              {config.aiInterviewQuestions && (
+                <div className="bg-purple-50 dark:bg-purple-900/20 p-4 rounded-lg space-y-4 border border-purple-200 dark:border-purple-800">
+                  <h4 className="text-sm font-semibold text-purple-900 dark:text-purple-200 flex items-center gap-2">
+                    <span>🤖</span>
+                    AI Question Generation Settings
+                  </h4>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Number of AI Questions
+                    </label>
+                    <input
+                      type="number"
+                      min="5"
+                      max="20"
+                      value={config.aiQuestionCount || 10}
+                      onChange={(e) => updateConfig('aiQuestionCount', parseInt(e.target.value))}
+                      className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Question Focus Areas
+                    </label>
+                    <div className="space-y-2">
+                      {['Technical Skills', 'Problem Solving', 'Communication', 'Leadership', 'Cultural Fit'].map((focus) => (
+                        <div key={focus} className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={config.aiFocusAreas?.[focus] || false}
+                            onChange={(e) => updateConfig('aiFocusAreas', { 
+                              ...config.aiFocusAreas, 
+                              [focus]: e.target.checked 
+                            })}
+                            className="w-4 h-4 text-purple-600 rounded"
+                          />
+                          <span className="text-sm text-gray-700 dark:text-gray-300">{focus}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
@@ -362,21 +543,6 @@ export function StageConfigModal({ stage, onClose, onSave }: StageConfigModalPro
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Assessment Duration (minutes)
-                </label>
-                <input
-                  type="number"
-                  min="15"
-                  max="480"
-                  step="15"
-                  value={config.assessmentDuration || 120}
-                  onChange={(e) => updateConfig('assessmentDuration', parseInt(e.target.value))}
-                  className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                   Assessment Platform
                 </label>
                 <select
@@ -389,8 +555,190 @@ export function StageConfigModal({ stage, onClose, onSave }: StageConfigModalPro
                   <option value="codility">Codility</option>
                   <option value="leetcode">LeetCode</option>
                   <option value="testgorilla">TestGorilla</option>
+                  <option value="criteria">Criteria Corp</option>
+                  <option value="pymetrics">Pymetrics</option>
                   <option value="external">External Link</option>
                 </select>
+              </div>
+
+              {/* Platform-Specific Settings */}
+              {['hackerrank', 'codility', 'leetcode'].includes(config.assessmentPlatform) && (
+                <div className="bg-green-50 dark:bg-green-900/20 p-4 rounded-lg space-y-4 border border-green-200 dark:border-green-800">
+                  <h4 className="text-sm font-semibold text-green-900 dark:text-green-200 flex items-center gap-2">
+                    <span>💻</span>
+                    Coding Platform Settings
+                  </h4>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Test Link/ID
+                    </label>
+                    <input
+                      type="text"
+                      value={config.platformTestId || ''}
+                      onChange={(e) => updateConfig('platformTestId', e.target.value)}
+                      placeholder={`Enter ${config.assessmentPlatform} test link or ID`}
+                      className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Difficulty Level
+                    </label>
+                    <select
+                      value={config.codingDifficulty || 'medium'}
+                      onChange={(e) => updateConfig('codingDifficulty', e.target.value)}
+                      className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                    >
+                      <option value="easy">Easy</option>
+                      <option value="medium">Medium</option>
+                      <option value="hard">Hard</option>
+                      <option value="expert">Expert</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Programming Languages Allowed
+                    </label>
+                    <div className="space-y-2">
+                      {['JavaScript', 'Python', 'Java', 'C++', 'Go', 'Ruby'].map((lang) => (
+                        <div key={lang} className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={config.allowedLanguages?.[lang] !== false}
+                            onChange={(e) => updateConfig('allowedLanguages', { 
+                              ...config.allowedLanguages, 
+                              [lang]: e.target.checked 
+                            })}
+                            className="w-4 h-4 text-green-600 rounded"
+                          />
+                          <span className="text-sm text-gray-700 dark:text-gray-300">{lang}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Background Check Specific Settings */}
+              {config.assessmentType === 'background-check' && (
+                <div className="bg-orange-50 dark:bg-orange-900/20 p-4 rounded-lg space-y-4 border border-orange-200 dark:border-orange-800">
+                  <h4 className="text-sm font-semibold text-orange-900 dark:text-orange-200 flex items-center gap-2">
+                    <span>🔍</span>
+                    Background Check Details
+                  </h4>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Check Types
+                    </label>
+                    <div className="space-y-2">
+                      {['Criminal Record', 'Employment History', 'Education Verification', 'Credit Check', 'Drug Test'].map((checkType) => (
+                        <div key={checkType} className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={config.backgroundCheckTypes?.[checkType] || false}
+                            onChange={(e) => updateConfig('backgroundCheckTypes', { 
+                              ...config.backgroundCheckTypes, 
+                              [checkType]: e.target.checked 
+                            })}
+                            className="w-4 h-4 text-orange-600 rounded"
+                          />
+                          <span className="text-sm text-gray-700 dark:text-gray-300">{checkType}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Background Check Provider
+                    </label>
+                    <input
+                      type="text"
+                      value={config.backgroundCheckProvider || ''}
+                      onChange={(e) => updateConfig('backgroundCheckProvider', e.target.value)}
+                      placeholder="e.g., Checkr, GoodHire, Sterling"
+                      className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Reference Check Specific Settings */}
+              {config.assessmentType === 'reference-check' && (
+                <div className="bg-teal-50 dark:bg-teal-900/20 p-4 rounded-lg space-y-4 border border-teal-200 dark:border-teal-800">
+                  <h4 className="text-sm font-semibold text-teal-900 dark:text-teal-200 flex items-center gap-2">
+                    <span>📞</span>
+                    Reference Check Details
+                  </h4>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Number of References Required
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="10"
+                      value={config.referencesRequired || 3}
+                      onChange={(e) => updateConfig('referencesRequired', parseInt(e.target.value))}
+                      className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Reference Type Required
+                    </label>
+                    <div className="space-y-2">
+                      {['Manager', 'Colleague', 'Direct Report', 'Client', 'Any'].map((refType) => (
+                        <div key={refType} className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={config.referenceTypes?.[refType] || false}
+                            onChange={(e) => updateConfig('referenceTypes', { 
+                              ...config.referenceTypes, 
+                              [refType]: e.target.checked 
+                            })}
+                            className="w-4 h-4 text-teal-600 rounded"
+                          />
+                          <span className="text-sm text-gray-700 dark:text-gray-300">{refType}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Reference Check Questions
+                    </label>
+                    <textarea
+                      value={config.referenceQuestions || ''}
+                      onChange={(e) => updateConfig('referenceQuestions', e.target.value)}
+                      placeholder="Enter questions to ask references (one per line)"
+                      rows={4}
+                      className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Assessment Duration (minutes)
+                </label>
+                <input
+                  type="number"
+                  min="15"
+                  max="480"
+                  step="15"
+                  value={config.assessmentDuration || 120}
+                  onChange={(e) => updateConfig('assessmentDuration', parseInt(e.target.value))}
+                  className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                />
               </div>
 
               <div>
