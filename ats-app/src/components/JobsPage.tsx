@@ -35,10 +35,19 @@ const employmentTypeLabels: Record<string, string> = {
 };
 
 const statusIcons = {
+  draft: <Clock className="w-4 h-4 text-orange-500" />,
   active: <CheckCircle className="w-4 h-4 text-green-500" />,
   paused: <Pause className="w-4 h-4 text-yellow-500" />,
   filled: <CheckCircle className="w-4 h-4 text-blue-500" />,
   closed: <XCircle className="w-4 h-4 text-red-500" />
+};
+
+const statusLabels: Record<string, string> = {
+  draft: 'Draft',
+  active: 'Active',
+  paused: 'Paused',
+  filled: 'Filled',
+  closed: 'Closed'
 };
 
 export function JobsPage() {
@@ -255,7 +264,11 @@ export function JobsPage() {
               return (
                 <div
                   key={job.id}
-                  className="group bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 hover:shadow-xl hover:border-brand-purple/50 dark:hover:border-brand-purple/50 transition-all duration-300 hover:-translate-y-1 cursor-pointer animate-slide-up"
+                  className={`group bg-white dark:bg-gray-800 rounded-xl border p-6 hover:shadow-xl transition-all duration-300 hover:-translate-y-1 cursor-pointer animate-slide-up ${
+                    job.status === 'draft' 
+                      ? 'border-orange-300 dark:border-orange-600 bg-orange-50/30 dark:bg-orange-900/10' 
+                      : 'border-gray-200 dark:border-gray-700 hover:border-brand-purple/50 dark:hover:border-brand-purple/50'
+                  }`}
                   style={{ animationDelay: `${index * 50}ms` }}
                 >
                   <div className="flex items-start justify-between gap-4">
@@ -264,11 +277,25 @@ export function JobsPage() {
                         <h3 className="text-xl font-bold text-gray-900 dark:text-white group-hover:text-brand-purple transition-colors">
                           {job.title}
                         </h3>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-sm font-semibold border ${typeColors.bg} ${typeColors.border} ${typeColors.text}`}>
                             {typeLabel}
                           </span>
-                          {statusIcons[job.status as keyof typeof statusIcons]}
+                          {/* Status Badge */}
+                          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-lg text-sm font-semibold ${
+                            job.status === 'draft' 
+                              ? 'bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 border border-orange-300 dark:border-orange-600' 
+                              : job.status === 'active'
+                              ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 border border-green-300'
+                              : job.status === 'paused'
+                              ? 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 border border-yellow-300'
+                              : job.status === 'filled'
+                              ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-300'
+                              : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 border border-red-300'
+                          }`}>
+                            {statusIcons[job.status as keyof typeof statusIcons]}
+                            <span className="capitalize">{statusLabels[job.status as keyof typeof statusLabels] || job.status}</span>
+                          </span>
                           {job.linkedin_synced && (
                             <span className="text-xs text-blue-600 dark:text-blue-400 flex items-center gap-1">
                               <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
