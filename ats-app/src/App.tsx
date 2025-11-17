@@ -33,6 +33,7 @@ function App() {
             <Route path="jobs" element={<JobsPageDashboard />} />
             <Route path="approvals" element={<ApprovalsPage />} />
             <Route path="workflow-builder" element={<WorkflowBuilderList />} />
+            <Route path="pipeline-templates" element={<WorkflowBuilderList />} />
             <Route path="pipeline-templates/:templateId/edit" element={<WorkflowBuilder />} />
             <Route path="candidates" element={<div className="text-center py-20"><h2 className="text-2xl font-bold text-gray-900 dark:text-white">Candidates Page</h2><p className="text-gray-600 dark:text-gray-400 mt-2">Coming soon...</p></div>} />
             <Route path="analytics" element={<div className="text-center py-20"><h2 className="text-2xl font-bold text-gray-900 dark:text-white">Analytics Page</h2><p className="text-gray-600 dark:text-gray-400 mt-2">Coming soon...</p></div>} />

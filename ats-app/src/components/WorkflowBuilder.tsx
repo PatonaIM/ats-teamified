@@ -9,6 +9,7 @@ import {
   useSensors,
   type DragEndEvent,
   type DragStartEvent,
+  useDraggable,
 } from '@dnd-kit/core';
 import {
   arrayMove,
@@ -56,10 +57,24 @@ interface PaletteItemProps {
 }
 
 function PaletteItem({ template, onClick }: PaletteItemProps) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: `palette-${template.id}`,
+    data: { type: 'palette-item', template }
+  });
+
+  const style = {
+    transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
   return (
     <div
-      onClick={() => onClick(template)}
-      className="bg-gradient-to-r from-purple-100 to-blue-100 dark:from-purple-900/30 dark:to-blue-900/30 border-2 border-dashed border-purple-300 dark:border-purple-700 rounded-lg p-4 cursor-pointer hover:shadow-md hover:scale-[1.02] transition-all"
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      onClick={() => !isDragging && onClick(template)}
+      className="bg-gradient-to-r from-purple-100 to-blue-100 dark:from-purple-900/30 dark:to-blue-900/30 border-2 border-dashed border-purple-300 dark:border-purple-700 rounded-lg p-4 cursor-grab active:cursor-grabbing hover:shadow-md hover:scale-[1.02] transition-all"
     >
       <div className="flex items-center gap-3">
         <div className="text-3xl">{template.icon}</div>
@@ -179,9 +194,19 @@ function SortableWorkflowStage({ stage, index, onConfigure, onDelete }: Sortable
   );
 }
 
-export function WorkflowBuilder() {
-  const { jobId, templateId } = useParams<{ jobId?: string; templateId?: string }>();
+interface WorkflowBuilderProps {
+  templateId?: number;
+  jobId?: number;
+  hideBackButton?: boolean;
+}
+
+export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, hideBackButton = false }: WorkflowBuilderProps = {}) {
+  const params = useParams<{ jobId?: string; templateId?: string }>();
   const navigate = useNavigate();
+  
+  // Use props if provided, otherwise fall back to URL params
+  const templateId = propTemplateId || (params.templateId ? parseInt(params.templateId) : undefined);
+  const jobId = propJobId || (params.jobId ? parseInt(params.jobId) : undefined);
   const [stages, setStages] = useState<PipelineStage[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -310,7 +335,20 @@ export function WorkflowBuilder() {
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
 
-    if (!over || active.id === over.id) {
+    if (!over) {
+      return;
+    }
+
+    // Check if dragging from palette (adding new stage)
+    if (active.data.current?.type === 'palette-item') {
+      const template = active.data.current.template as StageTemplate;
+      // Trigger the add stage flow with configuration modal
+      handleAddStageFromTemplate(template);
+      return;
+    }
+
+    // Otherwise, handle reordering of existing stages
+    if (active.id === over.id) {
       return;
     }
 
@@ -539,20 +577,22 @@ export function WorkflowBuilder() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-        <div className="max-w-7xl mx-auto px-6 py-6">
-          <button
-            onClick={() => navigate(-1)}
-            className="text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 mb-4 inline-flex items-center text-sm font-medium"
-          >
-            ← Back to Templates
-          </button>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Workflow Builder</h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            Click stages from the library to add them to your workflow
-          </p>
+      {!hideBackButton && (
+        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+          <div className="max-w-7xl mx-auto px-6 py-6">
+            <button
+              onClick={() => navigate(-1)}
+              className="text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 mb-4 inline-flex items-center text-sm font-medium"
+            >
+              ← Back to Templates
+            </button>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Workflow Builder</h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-1">
+              Drag or click stages from the library to add them to your workflow
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       <DndContext
         sensors={sensors}
@@ -568,7 +608,7 @@ export function WorkflowBuilder() {
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 p-6">
               <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">Stage Library</h2>
               <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
-                Click a stage to add it to your workflow →
+                Drag or click a stage to add it to your workflow →
               </p>
               
               <div className="grid grid-cols-1 gap-3">
@@ -597,7 +637,7 @@ export function WorkflowBuilder() {
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                       </svg>
                       <p className="text-gray-500 dark:text-gray-400">
-                        Click stages from the library to add them to your workflow
+                        Drag or click stages from the library to add them to your workflow
                       </p>
                     </div>
                   ) : (
