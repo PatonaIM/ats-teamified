@@ -261,28 +261,8 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
       let response;
       if (isTemplateMode) {
         console.log('[WorkflowBuilder] Fetching template:', templateId);
-        console.log('[WorkflowBuilder] About to call fetch...');
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => {
-          console.log('[WorkflowBuilder] Timeout triggered, aborting fetch');
-          controller.abort();
-        }, 5000);
-        
-        try {
-          console.log('[WorkflowBuilder] Fetch initiated');
-          response = await fetch(`/api/pipeline-templates/${templateId}`, {
-            signal: controller.signal
-          });
-          console.log('[WorkflowBuilder] Fetch completed');
-          clearTimeout(timeoutId);
-        } catch (fetchError: any) {
-          console.error('[WorkflowBuilder] Fetch error caught:', fetchError);
-          if (fetchError.name === 'AbortError') {
-            console.error('[WorkflowBuilder] Fetch timed out after 5 seconds');
-            throw new Error('Request timed out');
-          }
-          throw fetchError;
-        }
+        response = await fetch(`/api/pipeline-templates/${templateId}`);
+        console.log('[WorkflowBuilder] Fetch completed');
       } else {
         console.log('[WorkflowBuilder] Fetching job pipeline:', jobId);
         response = await fetch(`/api/jobs/${jobId}/pipeline-stages`);
@@ -618,16 +598,16 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
           <div className="max-w-[1280px] mx-auto px-6 py-4">
             <button
               onClick={() => navigate(-1)}
-              className="text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 mb-3 inline-flex items-center text-sm font-medium"
+              className="text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 mb-2 inline-flex items-center text-sm font-medium"
             >
               ← Back
             </button>
-            <div className="flex items-center gap-3">
-              <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
+            <div className="flex items-center gap-2">
+              <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
                 {isTemplateMode && templateName ? templateName : 'Workflow Builder'}
               </h1>
               {isTemplateMode && (
-                <span className="text-xs text-purple-600 dark:text-purple-400 font-medium px-2 py-1 bg-purple-100 dark:bg-purple-900/30 rounded">
+                <span className="text-[11px] font-semibold text-white px-2 py-0.5 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full shadow-sm">
                   Template
                 </span>
               )}
@@ -693,11 +673,14 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
 
             {/* MIDDLE PANEL: Workflow Canvas */}
             <div className="lg:col-span-5">
-              <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Workflow Pipeline</h2>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">{stages.length} stages</span>
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Workflow Pipeline</h2>
+                    <span className="text-xs font-medium text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-900/40 px-2 py-0.5 rounded-full">{stages.length} stages</span>
+                  </div>
                 </div>
+                <div className="p-4">
               
               <SortableContext
                 items={stages.map(s => s.id)}
@@ -749,6 +732,7 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
                   </div>
                 </div>
               )}
+              </div>
               </div>
             </div>
 
