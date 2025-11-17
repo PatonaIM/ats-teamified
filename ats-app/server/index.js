@@ -2156,18 +2156,33 @@ app.post('/api/pipeline-templates/:id/stages', requireWorkflowBuilder, async (re
     
     console.log('[Pipeline Templates] Adding stage to template:', id, 'at position:', stage_order);
     
-    await query('UPDATE pipeline_template_stages SET stage_order = stage_order + 1 WHERE template_id = $1 AND stage_order >= $2', 
-      [parseInt(id), stage_order]
-    );
+    await query('BEGIN');
     
-    const result = await query(
-      'INSERT INTO pipeline_template_stages (template_id, stage_name, stage_order, stage_type, stage_config) VALUES ($1, $2, $3, $4, $5) RETURNING id, stage_name, stage_order, stage_type, stage_config',
-      [parseInt(id), stage_name, stage_order, stage_type || 'custom', stage_config || {}]
-    );
-    
-    await query('UPDATE pipeline_templates SET updated_at = CURRENT_TIMESTAMP WHERE id = $1', [parseInt(id)]);
-    
-    return res.json(result.rows[0]);
+    try {
+      await query(
+        'UPDATE pipeline_template_stages SET stage_order = stage_order + 1000 WHERE template_id = $1 AND stage_order >= $2',
+        [parseInt(id), stage_order]
+      );
+      
+      const result = await query(
+        'INSERT INTO pipeline_template_stages (template_id, stage_name, stage_order, stage_type, stage_config) VALUES ($1, $2, $3, $4, $5) RETURNING id, stage_name, stage_order, stage_type, stage_config',
+        [parseInt(id), stage_name, stage_order, stage_type || 'custom', stage_config || {}]
+      );
+      
+      await query(
+        'UPDATE pipeline_template_stages SET stage_order = stage_order - 999 WHERE template_id = $1 AND stage_order >= $2',
+        [parseInt(id), stage_order + 1000]
+      );
+      
+      await query('UPDATE pipeline_templates SET updated_at = CURRENT_TIMESTAMP WHERE id = $1', [parseInt(id)]);
+      
+      await query('COMMIT');
+      
+      return res.json(result.rows[0]);
+    } catch (error) {
+      await query('ROLLBACK');
+      throw error;
+    }
   } catch (error) {
     console.error('[Pipeline Templates] Error adding stage:', error);
     return res.status(500).json({ error: 'Failed to add stage', details: error.message });
