@@ -457,79 +457,13 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
     setConfiguringStage(stage);
   };
 
-  const handleUpdateStageConfig = async (config: Record<string, any>) => {
-    if (!configuringStage) {
-      return;
-    }
-
-    try {
-      if (configuringStage.id === -1) {
-        // Adding a new stage
-        const firstBottomStageIndex = stages.findIndex(s => 
-          FIXED_BOTTOM_STAGES.includes(s.stageName)
-        );
-        const newOrder = firstBottomStageIndex !== -1 ? firstBottomStageIndex : stages.length;
-
-        const url = isTemplateMode
-          ? `/api/pipeline-templates/${templateId}/stages`
-          : `/api/jobs/${jobId}/pipeline-stages`;
-
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            stage_name: configuringStage.stageName,
-            stage_order: newOrder,
-            stage_type: 'custom',
-            stage_config: config
-          })
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to add stage');
-        }
-        
-        // Get the created stage from response and select it immediately
-        const responseData = await response.json();
-        const createdStage: PipelineStage = {
-          id: responseData.id,
-          jobId: responseData.job_id || 0,
-          stageName: responseData.stage_name,
-          stageOrder: responseData.stage_order,
-          isDefault: responseData.stage_type === 'fixed',
-          config: responseData.stage_config || {},
-          createdAt: responseData.created_at || ''
-        };
-        
-        // Update selection to the newly created stage immediately
-        setConfiguringStage(createdStage);
-      } else {
-        // Updating existing stage
-        const url = isTemplateMode
-          ? `/api/pipeline-templates/${templateId}/stages/${configuringStage.id}`
-          : `/api/jobs/${jobId}/pipeline-stages/${configuringStage.id}`;
-
-        const response = await fetch(url, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            stage_config: config
-          })
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to update stage');
-        }
-      }
-
-      await fetchStages();
-    } catch (err: any) {
-      console.error('[Workflow Builder] Error saving stage:', err);
-      setError(err.message);
-      throw err;
-    }
-  };
+  // Temporarily commented out for testing
+  // const handleUpdateStageConfig = async (config: Record<string, any>) => {
+  //   if (!configuringStage) {
+  //     return;
+  //   }
+  //   ... function body ...
+  // };
 
   const handleDeleteStage = async (stage: PipelineStage) => {
     if (!isTemplateMode && candidateCounts[stage.id] > 0) {
@@ -598,16 +532,16 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
           <div className="max-w-[1280px] mx-auto px-6 py-4">
             <button
               onClick={() => navigate(-1)}
-              className="text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 mb-3 inline-flex items-center text-sm font-medium"
+              className="text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 mb-2 inline-flex items-center text-sm font-medium"
             >
               ← Back
             </button>
-            <div className="flex items-center gap-3">
-              <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
+            <div className="flex items-center gap-2">
+              <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
                 {isTemplateMode && templateName ? templateName : 'Workflow Builder'}
               </h1>
               {isTemplateMode && (
-                <span className="text-xs text-purple-600 dark:text-purple-400 font-medium px-2 py-1 bg-purple-100 dark:bg-purple-900/30 rounded">
+                <span className="text-[11px] font-semibold text-white px-2 py-0.5 bg-gradient-to-r from-purple-600 to-blue-600 rounded-full shadow-sm">
                   Template
                 </span>
               )}
@@ -673,11 +607,14 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
 
             {/* MIDDLE PANEL: Workflow Canvas */}
             <div className="lg:col-span-5">
-              <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Workflow Pipeline</h2>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">{stages.length} stages</span>
+              <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+                <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 px-4 py-3 border-b border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Workflow Pipeline</h2>
+                    <span className="text-xs font-medium text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-900/40 px-2 py-0.5 rounded-full">{stages.length} stages</span>
+                  </div>
                 </div>
+                <div className="p-4">
               
               <SortableContext
                 items={stages.map(s => s.id)}
@@ -730,6 +667,7 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
                 </div>
               )}
               </div>
+              </div>
             </div>
 
             {/* RIGHT PANEL: Stage Configuration */}
@@ -744,11 +682,10 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
 
                 {configuringStage ? (
                   <div className="p-4 max-h-[calc(100vh-200px)] overflow-y-auto">
-                    <StageConfigPanel
-                      key={configuringStage.id === -1 ? `draft-${configuringStage.stageName}` : configuringStage.id}
-                      stage={configuringStage}
-                      onSave={handleUpdateStageConfig}
-                    />
+                    <div className="text-sm text-gray-600 dark:text-gray-300">
+                      Stage Config Panel (Temporarily Disabled for Testing)
+                      <pre className="mt-2 text-xs">{JSON.stringify(configuringStage, null, 2)}</pre>
+                    </div>
                   </div>
                 ) : (
                   <div className="p-8 text-center">
