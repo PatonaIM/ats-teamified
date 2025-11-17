@@ -683,15 +683,7 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
 
                 {configuringStage ? (
                   <div className="p-4 max-h-[calc(100vh-200px)] overflow-y-auto">
-                    <div className="space-y-4">
-                      {/* Stage Header */}
-                      <div className="pb-3 border-b border-gray-200 dark:border-gray-700">
-                        <h3 className="font-semibold text-gray-900 dark:text-white">{configuringStage.stageName}</h3>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          {configuringStage.isDefault ? 'Fixed stage' : 'Custom stage'}
-                        </p>
-                      </div>
-
+                    <div className="space-y-5">
                       {/* Description */}
                       <div>
                         <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
@@ -703,70 +695,193 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
                             ...configuringStage,
                             config: { ...configuringStage.config, description: e.target.value }
                           })}
-                          rows={3}
-                          className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                          rows={2}
+                          className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                           placeholder="Describe this stage..."
                         />
                       </div>
 
-                      {/* Interview Mode (for custom stages) */}
-                      {!configuringStage.isDefault && (
-                        <div>
-                          <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-                            Interview Mode
-                          </label>
-                          <select
-                            value={configuringStage.config?.interviewMode || 'none'}
-                            onChange={(e) => setConfiguringStage({
-                              ...configuringStage,
-                              config: { ...configuringStage.config, interviewMode: e.target.value }
-                            })}
-                            className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                          >
-                            <option value="none">No interview</option>
-                            <option value="phone">Phone screening</option>
-                            <option value="video">Video interview</option>
-                            <option value="onsite">Onsite interview</option>
-                            <option value="panel">Panel interview</option>
-                          </select>
-                        </div>
-                      )}
-
-                      {/* AI Tools */}
+                      {/* Interview Mode */}
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-2">
-                          AI Tools
+                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                          Interview Mode
                         </label>
-                        <div className="space-y-2">
-                          <label className="flex items-center gap-2">
+                        <select
+                          value={configuringStage.config?.interviewMode || 'phone'}
+                          onChange={(e) => setConfiguringStage({
+                            ...configuringStage,
+                            config: { ...configuringStage.config, interviewMode: e.target.value }
+                          })}
+                          className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
+                        >
+                          <option value="phone">Phone Screening</option>
+                          <option value="video">Video Interview</option>
+                          <option value="onsite">On-site Interview</option>
+                          <option value="panel">Panel Interview</option>
+                        </select>
+                      </div>
+
+                      {/* Interview Duration */}
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                          Duration (minutes)
+                        </label>
+                        <input
+                          type="number"
+                          min="15"
+                          max="480"
+                          step="15"
+                          value={configuringStage.config?.interviewDuration || 60}
+                          onChange={(e) => setConfiguringStage({
+                            ...configuringStage,
+                            config: { ...configuringStage.config, interviewDuration: parseInt(e.target.value) }
+                          })}
+                          className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
+                        />
+                      </div>
+
+                      {/* Interview Template */}
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                          Interview Template
+                        </label>
+                        <select
+                          value={configuringStage.config?.interviewTemplate || 'standard'}
+                          onChange={(e) => setConfiguringStage({
+                            ...configuringStage,
+                            config: { ...configuringStage.config, interviewTemplate: e.target.value }
+                          })}
+                          className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
+                        >
+                          <option value="standard">Standard Interview</option>
+                          <option value="technical-deep-dive">Technical Deep Dive</option>
+                          <option value="behavioral-focus">Behavioral Focus</option>
+                          <option value="leadership-assessment">Leadership Assessment</option>
+                          <option value="culture-fit">Culture Fit Evaluation</option>
+                          <option value="custom">Custom Template</option>
+                        </select>
+                      </div>
+
+                      {/* AI Tools Section */}
+                      <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                        <h4 className="text-xs font-semibold text-gray-900 dark:text-white mb-3">AI Tools</h4>
+                        <div className="space-y-2.5">
+                          <label className="flex items-start gap-2">
                             <input
                               type="checkbox"
-                              checked={configuringStage.config?.aiTools?.questionGeneration || false}
+                              checked={configuringStage.config?.aiInterviewQuestions || false}
                               onChange={(e) => setConfiguringStage({
                                 ...configuringStage,
-                                config: {
-                                  ...configuringStage.config,
-                                  aiTools: { ...configuringStage.config?.aiTools, questionGeneration: e.target.checked }
-                                }
+                                config: { ...configuringStage.config, aiInterviewQuestions: e.target.checked }
                               })}
-                              className="rounded text-purple-600 focus:ring-purple-500"
+                              className="mt-0.5 rounded text-purple-600 focus:ring-purple-500"
                             />
-                            <span className="text-sm text-gray-700 dark:text-gray-300">Interview question generation</span>
+                            <span className="text-sm text-gray-700 dark:text-gray-300">AI-Assisted Question Generation</span>
                           </label>
-                          <label className="flex items-center gap-2">
+                          <label className="flex items-start gap-2">
                             <input
                               type="checkbox"
-                              checked={configuringStage.config?.aiTools?.sentimentAnalysis || false}
+                              checked={configuringStage.config?.aiSentimentAnalysis || false}
                               onChange={(e) => setConfiguringStage({
                                 ...configuringStage,
-                                config: {
-                                  ...configuringStage.config,
-                                  aiTools: { ...configuringStage.config?.aiTools, sentimentAnalysis: e.target.checked }
-                                }
+                                config: { ...configuringStage.config, aiSentimentAnalysis: e.target.checked }
                               })}
-                              className="rounded text-purple-600 focus:ring-purple-500"
+                              className="mt-0.5 rounded text-purple-600 focus:ring-purple-500"
                             />
-                            <span className="text-sm text-gray-700 dark:text-gray-300">Candidate sentiment analysis</span>
+                            <span className="text-sm text-gray-700 dark:text-gray-300">Real-time Sentiment Analysis</span>
+                          </label>
+                        </div>
+                      </div>
+
+                      {/* Evaluation Criteria */}
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                          Evaluation Criteria
+                        </label>
+                        <textarea
+                          value={configuringStage.config?.evaluationCriteria || ''}
+                          onChange={(e) => setConfiguringStage({
+                            ...configuringStage,
+                            config: { ...configuringStage.config, evaluationCriteria: e.target.value }
+                          })}
+                          rows={2}
+                          className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
+                          placeholder="Technical skills, Communication, Cultural fit..."
+                        />
+                      </div>
+
+                      {/* Automation Section */}
+                      <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                        <h4 className="text-xs font-semibold text-gray-900 dark:text-white mb-3">Automation</h4>
+                        <div className="space-y-3">
+                          <label className="flex items-start gap-2">
+                            <input
+                              type="checkbox"
+                              checked={configuringStage.config?.autoAdvance || false}
+                              onChange={(e) => setConfiguringStage({
+                                ...configuringStage,
+                                config: { ...configuringStage.config, autoAdvance: e.target.checked }
+                              })}
+                              className="mt-0.5 rounded text-purple-600 focus:ring-purple-500"
+                            />
+                            <span className="text-sm text-gray-700 dark:text-gray-300">Auto-advance on completion</span>
+                          </label>
+                          
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                              Email Template
+                            </label>
+                            <select
+                              value={configuringStage.config?.emailTemplate || 'none'}
+                              onChange={(e) => setConfiguringStage({
+                                ...configuringStage,
+                                config: { ...configuringStage.config, emailTemplate: e.target.value }
+                              })}
+                              className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
+                            >
+                              <option value="none">No automated email</option>
+                              <option value="invite">Interview Invitation</option>
+                              <option value="reminder">Interview Reminder</option>
+                              <option value="assessment-link">Assessment Link</option>
+                              <option value="feedback">Feedback Request</option>
+                              <option value="rejection">Rejection Notice</option>
+                            </select>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* SLA & Visibility */}
+                      <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                        <h4 className="text-xs font-semibold text-gray-900 dark:text-white mb-3">SLA & Visibility</h4>
+                        <div className="space-y-3">
+                          <div>
+                            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                              SLA Duration (days)
+                            </label>
+                            <input
+                              type="number"
+                              min="1"
+                              max="90"
+                              value={configuringStage.config?.slaDays || 7}
+                              onChange={(e) => setConfiguringStage({
+                                ...configuringStage,
+                                config: { ...configuringStage.config, slaDays: parseInt(e.target.value) }
+                              })}
+                              className="w-full px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500"
+                            />
+                          </div>
+                          
+                          <label className="flex items-start gap-2">
+                            <input
+                              type="checkbox"
+                              checked={configuringStage.config?.externalPortalVisible || false}
+                              onChange={(e) => setConfiguringStage({
+                                ...configuringStage,
+                                config: { ...configuringStage.config, externalPortalVisible: e.target.checked }
+                              })}
+                              className="mt-0.5 rounded text-purple-600 focus:ring-purple-500"
+                            />
+                            <span className="text-sm text-gray-700 dark:text-gray-300">Visible to External Portal</span>
                           </label>
                         </div>
                       </div>
