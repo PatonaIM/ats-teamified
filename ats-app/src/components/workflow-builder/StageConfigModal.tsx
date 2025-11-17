@@ -751,6 +751,142 @@ export function StageConfigModal({ stage, onClose, onSave }: StageConfigModalPro
                     </select>
                   </div>
 
+                  {/* Practical Demonstration Specific Settings */}
+                  {config.skillsTestFormat === 'practical' && (
+                    <div className="bg-cyan-50 dark:bg-cyan-900/20 p-4 rounded-lg space-y-4 border border-cyan-200 dark:border-cyan-800">
+                      <h4 className="text-sm font-semibold text-cyan-900 dark:text-cyan-200 flex items-center gap-2">
+                        <span>🛠️</span>
+                        Practical Demonstration Settings
+                      </h4>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Task/Exercise Type
+                        </label>
+                        <select
+                          value={config.practicalTaskType || 'hands-on'}
+                          onChange={(e) => updateConfig('practicalTaskType', e.target.value)}
+                          className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                        >
+                          <option value="hands-on">Hands-on Task</option>
+                          <option value="live-demo">Live Demonstration</option>
+                          <option value="project-based">Project-Based Assignment</option>
+                          <option value="role-play">Role Play Exercise</option>
+                          <option value="work-sample">Work Sample Creation</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Task Description
+                        </label>
+                        <textarea
+                          value={config.practicalTaskDescription || ''}
+                          onChange={(e) => updateConfig('practicalTaskDescription', e.target.value)}
+                          placeholder="Describe the practical task candidates need to complete..."
+                          rows={3}
+                          className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Required Tools/Software
+                        </label>
+                        <input
+                          type="text"
+                          value={config.requiredTools || ''}
+                          onChange={(e) => updateConfig('requiredTools', e.target.value)}
+                          placeholder="e.g., Excel, Photoshop, CAD software"
+                          className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Materials Provided
+                        </label>
+                        <textarea
+                          value={config.materialsProvided || ''}
+                          onChange={(e) => updateConfig('materialsProvided', e.target.value)}
+                          placeholder="List materials or resources provided to candidates..."
+                          rows={2}
+                          className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Evaluation Criteria
+                        </label>
+                        <div className="space-y-2">
+                          {['Quality of Work', 'Speed/Efficiency', 'Problem-Solving Approach', 'Attention to Detail', 'Following Instructions', 'Creativity/Innovation'].map((criteria) => (
+                            <div key={criteria} className="flex items-center gap-3">
+                              <input
+                                type="checkbox"
+                                checked={config.practicalEvaluationCriteria?.[criteria] || false}
+                                onChange={(e) => updateConfig('practicalEvaluationCriteria', { 
+                                  ...config.practicalEvaluationCriteria, 
+                                  [criteria]: e.target.checked 
+                                })}
+                                className="w-4 h-4 text-cyan-600 rounded"
+                              />
+                              <span className="text-sm text-gray-700 dark:text-gray-300">{criteria}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Observation Method
+                        </label>
+                        <select
+                          value={config.observationMethod || 'in-person'}
+                          onChange={(e) => updateConfig('observationMethod', e.target.value)}
+                          className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                        >
+                          <option value="in-person">In-Person Observation</option>
+                          <option value="video-call">Video Call Observation</option>
+                          <option value="screen-recording">Screen Recording Review</option>
+                          <option value="submitted-work">Review Submitted Work Product</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Allow Questions During Task
+                        </label>
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="checkbox"
+                            checked={config.allowQuestionsDuringTask !== false}
+                            onChange={(e) => updateConfig('allowQuestionsDuringTask', e.target.checked)}
+                            className="w-4 h-4 text-cyan-600 rounded"
+                          />
+                          <span className="text-sm text-gray-700 dark:text-gray-300">
+                            Candidates can ask clarifying questions while performing the task
+                          </span>
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                          Time Limit per Task (minutes)
+                        </label>
+                        <input
+                          type="number"
+                          min="10"
+                          max="480"
+                          step="5"
+                          value={config.practicalTimeLimit || 60}
+                          onChange={(e) => updateConfig('practicalTimeLimit', parseInt(e.target.value))}
+                          className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                       Skills Being Tested
