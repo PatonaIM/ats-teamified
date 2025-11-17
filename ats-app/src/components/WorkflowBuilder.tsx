@@ -19,7 +19,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { StageConfigPanel } from './workflow-builder/StageConfigModal';
+// import { StageConfigPanel } from './workflow-builder/StageConfigModal'; // Temporarily disabled
 
 interface PipelineStage {
   id: number;
@@ -457,79 +457,7 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
     setConfiguringStage(stage);
   };
 
-  const handleUpdateStageConfig = async (config: Record<string, any>) => {
-    if (!configuringStage) {
-      return;
-    }
-
-    try {
-      if (configuringStage.id === -1) {
-        // Adding a new stage
-        const firstBottomStageIndex = stages.findIndex(s => 
-          FIXED_BOTTOM_STAGES.includes(s.stageName)
-        );
-        const newOrder = firstBottomStageIndex !== -1 ? firstBottomStageIndex : stages.length;
-
-        const url = isTemplateMode
-          ? `/api/pipeline-templates/${templateId}/stages`
-          : `/api/jobs/${jobId}/pipeline-stages`;
-
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            stage_name: configuringStage.stageName,
-            stage_order: newOrder,
-            stage_type: 'custom',
-            stage_config: config
-          })
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to add stage');
-        }
-        
-        // Get the created stage from response and select it immediately
-        const responseData = await response.json();
-        const createdStage: PipelineStage = {
-          id: responseData.id,
-          jobId: responseData.job_id || 0,
-          stageName: responseData.stage_name,
-          stageOrder: responseData.stage_order,
-          isDefault: responseData.stage_type === 'fixed',
-          config: responseData.stage_config || {},
-          createdAt: responseData.created_at || ''
-        };
-        
-        // Update selection to the newly created stage immediately
-        setConfiguringStage(createdStage);
-      } else {
-        // Updating existing stage
-        const url = isTemplateMode
-          ? `/api/pipeline-templates/${templateId}/stages/${configuringStage.id}`
-          : `/api/jobs/${jobId}/pipeline-stages/${configuringStage.id}`;
-
-        const response = await fetch(url, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            stage_config: config
-          })
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to update stage');
-        }
-      }
-
-      await fetchStages();
-    } catch (err: any) {
-      console.error('[Workflow Builder] Error saving stage:', err);
-      setError(err.message);
-      throw err;
-    }
-  };
+  // handleUpdateStageConfig temporarily disabled while StageConfigPanel is disabled
 
   const handleDeleteStage = async (stage: PipelineStage) => {
     if (!isTemplateMode && candidateCounts[stage.id] > 0) {
@@ -732,8 +660,8 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
                   </div>
                 </div>
               )}
-              </div>
-              </div>
+            </div>
+            </div>
             </div>
 
             {/* RIGHT PANEL: Stage Configuration */}
@@ -748,11 +676,20 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
 
                 {configuringStage ? (
                   <div className="p-4 max-h-[calc(100vh-200px)] overflow-y-auto">
-                    <StageConfigPanel
-                      key={configuringStage.id === -1 ? `draft-${configuringStage.stageName}` : configuringStage.id}
-                      stage={configuringStage}
-                      onSave={handleUpdateStageConfig}
-                    />
+                    <div className="space-y-4">
+                      <div className="text-sm font-medium text-gray-900 dark:text-white">
+                        {configuringStage.stageName}
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-3">
+                        ⚠️ Stage configuration panel temporarily disabled. Use the checkpoint rollback feature to restore full functionality.
+                      </div>
+                      <details className="text-xs">
+                        <summary className="cursor-pointer text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white">
+                          View stage data
+                        </summary>
+                        <pre className="mt-2 p-2 bg-gray-100 dark:bg-gray-900 rounded overflow-auto text-[10px]">{JSON.stringify(configuringStage, null, 2)}</pre>
+                      </details>
+                    </div>
                   </div>
                 ) : (
                   <div className="p-8 text-center">
