@@ -511,55 +511,7 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitti
 
         <form onSubmit={(e) => handleSubmit(e, false)} className="p-6 max-h-[calc(100vh-200px)] overflow-y-auto">
           <div className="space-y-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Employment Type*</label>
-              <select
-                value={formData.employmentType}
-                onChange={(e) => handleChange('employmentType', e.target.value)}
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${errors.employmentType ? 'border-red-500' : 'border-gray-300'}`}
-                disabled={isSubmitting}
-              >
-                <option value="">Select employment type</option>
-                {Object.values(employmentTypeConfigs).map(config => (
-                  <option key={config.value} value={config.value}>{config.label}</option>
-                ))}
-              </select>
-              {errors.employmentType && <p className="text-red-500 text-sm mt-1">{errors.employmentType}</p>}
-            </div>
-
-            <h3 className="text-lg font-semibold text-gray-700 mt-6 mb-2">Common Details</h3>
-
-            <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Created By</label>
-              <div className="flex items-center gap-3">
-                <div className={`flex items-center justify-center w-10 h-10 rounded-full ${
-                  formData.createdByRole === 'client' 
-                    ? 'bg-blue-100 text-blue-700' 
-                    : 'bg-purple-100 text-purple-700'
-                }`}>
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                </div>
-                <div className="flex-1">
-                  <p className="font-semibold text-gray-900">
-                    {formData.createdByRole === 'client' ? 'Client' : 'Recruiter'}
-                    <span className="ml-2 text-xs font-normal text-gray-600">
-                      ({user?.role || 'Unknown Role'})
-                    </span>
-                  </p>
-                  <p className="text-xs text-gray-600 mt-0.5">
-                    {formData.createdByRole === 'client' 
-                      ? '🔒 Requires manager approval before going live' 
-                      : '✅ Can publish immediately without approval'}
-                  </p>
-                </div>
-              </div>
-              <p className="text-xs text-gray-500 mt-2 italic">
-                Automatically determined from your account role
-              </p>
-            </div>
-
+            {/* Job Title - Top Priority Field */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Job Title*</label>
               <input
@@ -623,6 +575,57 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitti
               </p>
               {errors.description && <p className="text-red-500 text-sm mt-1">{errors.description}</p>}
             </div>
+
+            {/* Employment Type */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Employment Type*</label>
+              <select
+                value={formData.employmentType}
+                onChange={(e) => handleChange('employmentType', e.target.value)}
+                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent ${errors.employmentType ? 'border-red-500' : 'border-gray-300'}`}
+                disabled={isSubmitting}
+              >
+                <option value="">Select employment type</option>
+                {Object.values(employmentTypeConfigs).map(config => (
+                  <option key={config.value} value={config.value}>{config.label}</option>
+                ))}
+              </select>
+              {errors.employmentType && <p className="text-red-500 text-sm mt-1">{errors.employmentType}</p>}
+            </div>
+
+            {/* Created By Indicator */}
+            <div className="bg-gradient-to-r from-purple-50 to-blue-50 border border-purple-200 rounded-lg p-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Created By</label>
+              <div className="flex items-center gap-3">
+                <div className={`flex items-center justify-center w-10 h-10 rounded-full ${
+                  formData.createdByRole === 'client' 
+                    ? 'bg-blue-100 text-blue-700' 
+                    : 'bg-purple-100 text-purple-700'
+                }`}>
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-gray-900">
+                    {formData.createdByRole === 'client' ? 'Client' : 'Recruiter'}
+                    <span className="ml-2 text-xs font-normal text-gray-600">
+                      ({user?.role || 'Unknown Role'})
+                    </span>
+                  </p>
+                  <p className="text-xs text-gray-600 mt-0.5">
+                    {formData.createdByRole === 'client' 
+                      ? '🔒 Requires manager approval before going live' 
+                      : '✅ Can publish immediately without approval'}
+                  </p>
+                </div>
+              </div>
+              <p className="text-xs text-gray-500 mt-2 italic">
+                Automatically determined from your account role
+              </p>
+            </div>
+
+            <h3 className="text-lg font-semibold text-gray-700 mt-4">Additional Details</h3>
 
             <div className="grid grid-cols-2 gap-4">
               <div>

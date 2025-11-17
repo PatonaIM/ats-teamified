@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Search, Plus, Briefcase, MapPin, DollarSign, Users, Calendar, CheckCircle, Clock, XCircle, Pause } from 'lucide-react';
+import { Search, Plus, Briefcase, MapPin, DollarSign, Users, Calendar, CheckCircle, Clock, XCircle, Pause, AlertCircle } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Job {
   id: number;
@@ -41,12 +42,19 @@ const statusIcons = {
 };
 
 export function JobsPage() {
+  const { user } = useAuth();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [employmentTypeFilter, setEmploymentTypeFilter] = useState('all');
   const [statusFilter, setStatusFilter] = useState('all');
+  
+  // Check if user is a client
+  const isClient = user?.role === 'client_admin' || user?.role === 'client_hr';
+  
+  // Filter draft jobs for clients
+  const draftJobs = isClient ? jobs.filter(job => job.status === 'draft') : [];
 
   useEffect(() => {
     fetchJobs();
@@ -186,6 +194,29 @@ export function JobsPage() {
             </div>
           )}
         </div>
+
+        {/* Draft Jobs Alert for Clients */}
+        {isClient && draftJobs.length > 0 && statusFilter !== 'draft' && (
+          <div className="mb-6 bg-gradient-to-r from-orange-50 to-yellow-50 dark:from-orange-900/20 dark:to-yellow-900/20 border border-orange-200 dark:border-orange-700 rounded-xl p-4 shadow-sm">
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-orange-600 dark:text-orange-400 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="font-semibold text-orange-900 dark:text-orange-200 mb-1">
+                  You have {draftJobs.length} draft job{draftJobs.length > 1 ? 's' : ''} awaiting approval
+                </h3>
+                <p className="text-sm text-orange-700 dark:text-orange-300 mb-3">
+                  These jobs require manager approval before going live
+                </p>
+                <button
+                  onClick={() => setStatusFilter('draft')}
+                  className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-sm font-medium transition-colors shadow-sm"
+                >
+                  View Draft Jobs ({draftJobs.length})
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Results Count */}
         <div className="mb-6 flex items-center justify-between">
