@@ -2154,7 +2154,11 @@ app.post('/api/pipeline-templates/:id/stages', requireWorkflowBuilder, async (re
     const { id } = req.params;
     const { stage_name, stage_type, stage_config, stage_order } = req.body;
     
-    console.log('[Pipeline Templates] Adding stage to template:', id);
+    console.log('[Pipeline Templates] Adding stage to template:', id, 'at position:', stage_order);
+    
+    await query('UPDATE pipeline_template_stages SET stage_order = stage_order + 1 WHERE template_id = $1 AND stage_order >= $2', 
+      [parseInt(id), stage_order]
+    );
     
     const result = await query(
       'INSERT INTO pipeline_template_stages (template_id, stage_name, stage_order, stage_type, stage_config) VALUES ($1, $2, $3, $4, $5) RETURNING id, stage_name, stage_order, stage_type, stage_config',
@@ -2163,10 +2167,10 @@ app.post('/api/pipeline-templates/:id/stages', requireWorkflowBuilder, async (re
     
     await query('UPDATE pipeline_templates SET updated_at = CURRENT_TIMESTAMP WHERE id = $1', [parseInt(id)]);
     
-    res.json(result.rows[0]);
+    return res.json(result.rows[0]);
   } catch (error) {
     console.error('[Pipeline Templates] Error adding stage:', error);
-    res.status(500).json({ error: 'Failed to add stage', details: error.message });
+    return res.status(500).json({ error: 'Failed to add stage', details: error.message });
   }
 });
 
