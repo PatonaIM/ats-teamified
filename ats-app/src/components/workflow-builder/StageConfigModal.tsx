@@ -22,23 +22,36 @@ function determineStageCategory(stage: PipelineStage): StageCategory {
   const stageName = stage.stageName.toLowerCase();
   const config = stage.config || {};
   
-  // Check if explicitly configured as AI interview
-  if (config.interviewType === 'ai') {
+  // Helper: Check if "ai" appears as a standalone word (not substring)
+  const hasAIKeyword = /\bai\b/.test(stageName);
+  
+  // PRIORITY 1: Check for AI interview indicators (check BEFORE general interview patterns)
+  // Use property presence check (in operator) not truthy check to handle false/0 values
+  if (
+    config.interviewType === 'ai' ||
+    (hasAIKeyword && (stageName.includes('interview') || stageName.includes('evaluation') || stageName.includes('screen'))) ||
+    'aiModel' in config ||
+    'aiQuestionCount' in config ||
+    'aiSentimentAnalysis' in config ||
+    'aiCategories' in config ||
+    'aiEvaluationCriteria' in config ||
+    'aiInterviewDuration' in config
+  ) {
     return 'ai-interview';
   }
   
-  // Check for assessment-type stages
+  // PRIORITY 2: Check for assessment-type stages
   if (
     stageName.includes('test') ||
     stageName.includes('assessment') ||
     stageName.includes('background check') ||
     stageName.includes('reference check') ||
-    config.assessmentType && config.assessmentType !== 'none'
+    (config.assessmentType && config.assessmentType !== 'none')
   ) {
     return 'assessment';
   }
   
-  // Check for interview-type stages
+  // PRIORITY 3: Check for human interview-type stages
   if (
     stageName.includes('interview') ||
     stageName.includes('screen') ||
