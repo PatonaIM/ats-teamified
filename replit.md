@@ -58,6 +58,21 @@ The system employs an Azure-native, microservices-based architecture.
     - **Email Constraint:** UNIQUE(job_id, email) allows same candidate across multiple jobs
     - **Field Normalization:** Both create and update operations accept camelCase input, converted to snake_case for database
     - **Phase 2 Deferred:** Frontend UI for candidate profiles, Kanban pipeline board
+- **External Portal API (✅ MVP Complete):**
+    - **Purpose:** REST API for external candidate portals to submit and manage candidates during Screening/Shortlist stages (handoff to internal ATS at Client Endorsement)
+    - **Authentication:** X-API-Key header-based authentication (PORTAL_API_KEY env variable, dev mode bypass when unset)
+    - **CORS Configuration:** Allows cross-origin requests with X-API-Key header for browser-based external portals
+    - **Stage Restrictions:** Portal can only advance candidates through Screening → Shortlist → Client Endorsement (internal ATS manages remaining stages)
+    - **Field Restrictions:** External portals limited to updating phone, resumeUrl, externalPortalId (prevents unauthorized data modification)
+    - **API Endpoints:**
+        - POST /api/portal/candidates - Submit candidate (auto-assigned to Screening, source='portal')
+        - PUT /api/portal/candidates/:id/advance - Advance candidate to next stage (Screening → Shortlist → Client Endorsement)
+        - GET /api/portal/jobs/:jobId/candidates - Get candidates filtered by stage/status
+        - GET /api/portal/candidates/:id - Get full candidate details with documents, communications, and stage history
+        - PUT /api/portal/candidates/:id - Update limited candidate fields
+    - **Audit Trail:** All stage transitions logged in candidate_stage_history table with timestamps, notes, and user tracking
+    - **Error Handling:** Comprehensive validation for duplicate emails, invalid stages, missing required fields, and unauthorized stage transitions
+    - **Documentation:** Complete API reference at docs/EXTERNAL_PORTAL_API.md with request/response examples and integration guide
 - **Essential Supporting Infrastructure (MVP):** Multi-employment type job management, customizable 6-stage candidate pipeline, accept/reject decision workflows, basic email notifications and in-app alerts.
 - **Authentication & Authorization (✅ Implemented):**
     - **OAuth 2.0 with PKCE:** Complete implementation using Teamified Accounts SSO provider (teamified-accounts.replit.app). Public client (no client_secret) with PKCE flow for enhanced security.
