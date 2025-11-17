@@ -1996,21 +1996,29 @@ app.get('/api/pipeline-templates/:id', requireWorkflowBuilder, async (req, res) 
       [parseInt(id)]
     );
     
+    console.log('[Pipeline Templates] Template query complete, rows:', templateResult.rows.length);
+    
     if (templateResult.rows.length === 0) {
+      console.log('[Pipeline Templates] Template not found:', id);
       return res.status(404).json({ error: 'Template not found' });
     }
     
+    console.log('[Pipeline Templates] Fetching stages for template:', id);
     const stagesResult = await query(
       'SELECT id, stage_name, stage_order, stage_type, stage_config FROM pipeline_template_stages WHERE template_id = $1 ORDER BY stage_order ASC',
       [parseInt(id)]
     );
+    
+    console.log('[Pipeline Templates] Stages query complete, rows:', stagesResult.rows.length);
     
     const template = {
       ...templateResult.rows[0],
       stages: stagesResult.rows
     };
     
+    console.log('[Pipeline Templates] Sending response for template:', id);
     res.json(template);
+    console.log('[Pipeline Templates] Response sent successfully for template:', id);
   } catch (error) {
     console.error('[Pipeline Templates] Error fetching template:', error);
     res.status(500).json({ error: 'Failed to fetch template', details: error.message });
