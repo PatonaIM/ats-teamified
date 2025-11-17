@@ -63,10 +63,16 @@ interface JobFormProps {
   onSubmit: (data: JobFormData) => void;
   isSubmitting?: boolean;
   initialData?: Partial<JobFormData>;
-  templateId?: number | null;
 }
 
-const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitting = false, initialData, templateId }) => {
+interface Template {
+  id: number;
+  name: string;
+  description: string | null;
+  is_default: boolean;
+}
+
+const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitting = false, initialData }) => {
   const { user } = useAuth();
   
   const getDefaultPipelineStages = (): PipelineStage[] => [
@@ -107,38 +113,64 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitti
   const [variations, setVariations] = useState<Array<{ id: string; name: string; tone: string; description: string }>>([]);
   const [partialFailure, setPartialFailure] = useState(false);
   const [failedCount, setFailedCount] = useState(0);
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(null);
+  const [loadingTemplates, setLoadingTemplates] = useState(false);
 
   useEffect(() => {
     if (!isOpen) {
       setFormData(getInitialFormData());
       setErrors({});
+      setSelectedTemplateId(null);
+    } else {
+      fetchTemplates();
     }
   }, [isOpen]);
   
-  // Fetch template stages when templateId is provided
-  useEffect(() => {
-    const fetchTemplateStages = async () => {
-      if (!templateId || !isOpen) return;
+  const fetchTemplates = async () => {
+    try {
+      setLoadingTemplates(true);
+      const response = await fetch('/api/pipeline-templates');
+      if (!response.ok) throw new Error('Failed to fetch templates');
       
-      try {
-        const response = await fetch(`/api/pipeline-templates/${templateId}`);
-        if (!response.ok) throw new Error('Failed to fetch template');
-        
-        const data = await response.json();
-        const templateStages = data.stages.map((stage: any, index: number) => ({
-          name: stage.stage_name,
-          order: index + 1
-        }));
-        
-        setFormData(prev => ({ ...prev, pipelineStages: templateStages }));
-      } catch (error) {
-        console.error('Error fetching template stages:', error);
-        // Keep default stages if fetch fails
+      const data = await response.json();
+      setTemplates(data.templates || []);
+      
+      // Auto-select default template
+      const defaultTemplate = data.templates?.find((t: Template) => t.is_default);
+      if (defaultTemplate) {
+        setSelectedTemplateId(defaultTemplate.id);
+        await loadTemplateStages(defaultTemplate.id);
       }
-    };
-    
-    fetchTemplateStages();
-  }, [templateId, isOpen]);
+    } catch (error) {
+      console.error('Error fetching templates:', error);
+    } finally {
+      setLoadingTemplates(false);
+    }
+  };
+  
+  const loadTemplateStages = async (templateId: number) => {
+    try {
+      const response = await fetch(`/api/pipeline-templates/${templateId}`);
+      if (!response.ok) throw new Error('Failed to fetch template');
+      
+      const data = await response.json();
+      const templateStages = data.stages.map((stage: any, index: number) => ({
+        name: stage.stage_name,
+        order: index + 1
+      }));
+      
+      setFormData(prev => ({ ...prev, pipelineStages: templateStages }));
+    } catch (error) {
+      console.error('Error fetching template stages:', error);
+    }
+  };
+  
+  const handleTemplateChange = async (templateId: string) => {
+    const id = parseInt(templateId);
+    setSelectedTemplateId(id);
+    await loadTemplateStages(id);
+  };
 
   const handleChange = (field: keyof JobFormData, value: string | boolean) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -537,6 +569,30 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitti
 
         <form onSubmit={(e) => handleSubmit(e, false)} className="p-6 max-h-[calc(100vh-200px)] overflow-y-auto">
           <div className="space-y-6">
+            {/* Pipeline Template Selector */}
+            <div className="bg-purple-50 p-4 rounded-lg border-2 border-purple-200">
+              <label htmlFor="template" className="block text-sm font-medium text-gray-700 mb-2">
+                Pipeline Template
+              </label>
+              <select
+                id="template"
+                value={selectedTemplateId || ''}
+                onChange={(e) => handleTemplateChange(e.target.value)}
+                disabled={loadingTemplates}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              >
+                {templates.map((template) => (
+                  <option key={template.id} value={template.id}>
+                    {template.name} {template.is_default ? '(Default)' : ''}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-2 text-xs text-gray-600">
+                {selectedTemplateId && templates.find(t => t.id === selectedTemplateId)?.description || 
+                  'Select a pipeline template to use for this job\'s hiring workflow'}
+              </p>
+            </div>
+
             {/* Job Title - Top Priority Field */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Job Title*</label>

@@ -63,14 +63,13 @@ export function JobsPageDashboard() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(null);
   
-  // Check for templateId in URL query params
+  // Check for action=create in URL query params
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    const templateId = params.get('templateId');
-    if (templateId) {
-      setSelectedTemplateId(parseInt(templateId));
+    const action = params.get('action');
+    
+    if (action === 'create') {
       setIsCreateModalOpen(true);
       // Remove the query param from URL
       navigate('/dashboard/jobs', { replace: true });
@@ -414,13 +413,9 @@ export function JobsPageDashboard() {
 
       <JobForm 
         isOpen={isCreateModalOpen}
-        onClose={() => {
-          setIsCreateModalOpen(false);
-          setSelectedTemplateId(null);
-        }}
+        onClose={() => setIsCreateModalOpen(false)}
         onSubmit={handleCreateJob}
         isSubmitting={isSubmitting}
-        templateId={selectedTemplateId}
       />
     </div>
   );
