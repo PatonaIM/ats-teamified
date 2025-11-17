@@ -42,13 +42,10 @@ interface StageTemplate {
 const FIXED_BOTTOM_STAGES = ['Offer', 'Offer Accepted'];
 
 const STAGE_TEMPLATES: StageTemplate[] = [
-  { id: 'phone-screen', name: 'Phone Screen', description: 'Initial phone interview', icon: '📞', type: 'custom' },
   { id: 'tech-interview', name: 'Technical Interview', description: 'Technical assessment', icon: '💻', type: 'custom' },
   { id: 'culture-fit', name: 'Culture Fit', description: 'Team culture assessment', icon: '🤝', type: 'custom' },
   { id: 'panel-interview', name: 'Panel Interview', description: 'Multi-person interview', icon: '👥', type: 'custom' },
   { id: 'skill-test', name: 'Skills Test', description: 'Practical skills assessment', icon: '✍️', type: 'custom' },
-  { id: 'reference-check', name: 'Reference Check', description: 'Verify references', icon: '📋', type: 'custom' },
-  { id: 'background-check', name: 'Background Check', description: 'Background verification', icon: '🔍', type: 'custom' },
   { id: 'final-interview', name: 'Final Interview', description: 'Final decision interview', icon: '🎯', type: 'custom' },
 ];
 
