@@ -20,6 +20,8 @@ export function WorkflowBuilderList() {
   const [newTemplateName, setNewTemplateName] = useState('');
   const [newTemplateDescription, setNewTemplateDescription] = useState('');
   const [creating, setCreating] = useState(false);
+  const [showTemplateSelector, setShowTemplateSelector] = useState(false);
+  const [selectedTemplateForJob, setSelectedTemplateForJob] = useState<number | null>(null);
 
   useEffect(() => {
     fetchTemplates();
@@ -152,13 +154,22 @@ export function WorkflowBuilderList() {
               Create reusable hiring pipeline templates and assign them to jobs
             </p>
           </div>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg font-semibold hover:shadow-lg transition-all duration-200"
-          >
-            <Plus className="w-5 h-5" />
-            New Template
-          </button>
+          <div className="flex gap-3">
+            <button
+              onClick={() => setShowTemplateSelector(true)}
+              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg font-semibold hover:shadow-lg transition-all duration-200"
+            >
+              <Plus className="w-5 h-5" />
+              Add Job Request
+            </button>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-purple-600 to-purple-700 text-white rounded-lg font-semibold hover:shadow-lg transition-all duration-200"
+            >
+              <Plus className="w-5 h-5" />
+              New Template
+            </button>
+          </div>
         </div>
 
         {/* Templates List */}
@@ -194,14 +205,6 @@ export function WorkflowBuilderList() {
                 </div>
 
                 <div className="flex gap-2">
-                  <button
-                    onClick={() => navigate(`/dashboard/jobs?templateId=${template.id}`)}
-                    className="px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg font-semibold hover:shadow-lg transition-all duration-200 flex items-center gap-2"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Add Job Request
-                  </button>
-                  
                   <button
                     onClick={() => navigate(`/dashboard/pipeline-templates/${template.id}/edit`)}
                     className="px-4 py-2 bg-white dark:bg-gray-800 text-purple-700 dark:text-purple-300 border-2 border-purple-500 rounded-lg font-semibold hover:bg-purple-50 dark:hover:bg-purple-900/20 hover:shadow-lg transition-all duration-200 flex items-center gap-2"
@@ -309,6 +312,78 @@ export function WorkflowBuilderList() {
                     Create
                   </>
                 )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Template Selector Modal for Add Job Request */}
+      {showTemplateSelector && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl p-6 w-full max-w-md">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-4">
+              Select Pipeline Template
+            </h2>
+            <p className="text-gray-600 dark:text-gray-400 mb-4">
+              Choose which pipeline template to use for this job request
+            </p>
+            
+            <div className="space-y-2 max-h-96 overflow-y-auto mb-6">
+              {templates.map((template) => (
+                <div
+                  key={template.id}
+                  onClick={() => setSelectedTemplateForJob(template.id)}
+                  className={`p-4 rounded-lg border-2 cursor-pointer transition-all ${
+                    selectedTemplateForJob === template.id
+                      ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
+                      : 'border-gray-200 dark:border-gray-700 hover:border-green-300 dark:hover:border-green-700'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                        {template.name}
+                        {template.is_default && (
+                          <span className="px-2 py-0.5 rounded text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300">
+                            Default
+                          </span>
+                        )}
+                      </h3>
+                      {template.description && (
+                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                          {template.description}
+                        </p>
+                      )}
+                    </div>
+                    {selectedTemplateForJob === template.id && (
+                      <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400 ml-3" />
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={() => {
+                  setShowTemplateSelector(false);
+                  setSelectedTemplateForJob(null);
+                }}
+                className="px-6 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  if (selectedTemplateForJob) {
+                    navigate(`/dashboard/jobs?templateId=${selectedTemplateForJob}`);
+                  }
+                }}
+                disabled={!selectedTemplateForJob}
+                className="px-6 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg font-semibold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Continue to Job Form
               </button>
             </div>
           </div>
