@@ -16,9 +16,45 @@ interface StageConfigModalProps {
   onSave: (config: Record<string, any>) => void;
 }
 
+type StageCategory = 'ai-interview' | 'human-interview' | 'assessment' | 'general';
+
+function determineStageCategory(stage: PipelineStage): StageCategory {
+  const stageName = stage.stageName.toLowerCase();
+  const config = stage.config || {};
+  
+  // Check if explicitly configured as AI interview
+  if (config.interviewType === 'ai') {
+    return 'ai-interview';
+  }
+  
+  // Check for assessment-type stages
+  if (
+    stageName.includes('test') ||
+    stageName.includes('assessment') ||
+    stageName.includes('background check') ||
+    stageName.includes('reference check') ||
+    config.assessmentType && config.assessmentType !== 'none'
+  ) {
+    return 'assessment';
+  }
+  
+  // Check for interview-type stages
+  if (
+    stageName.includes('interview') ||
+    stageName.includes('screen') ||
+    stageName.includes('culture fit') ||
+    stageName.includes('panel')
+  ) {
+    return 'human-interview';
+  }
+  
+  return 'general';
+}
+
 export function StageConfigModal({ stage, onClose, onSave }: StageConfigModalProps) {
   const [config, setConfig] = useState<Record<string, any>>(stage.config || {});
   const [saving, setSaving] = useState<boolean>(false);
+  const stageCategory = determineStageCategory(stage);
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -53,7 +89,10 @@ export function StageConfigModal({ stage, onClose, onSave }: StageConfigModalPro
               Configure Stage: {stage.stageName}
             </h2>
             <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              Customize settings for this pipeline stage
+              {stageCategory === 'ai-interview' && 'AI-powered interview configuration'}
+              {stageCategory === 'human-interview' && 'Human interview settings'}
+              {stageCategory === 'assessment' && 'Assessment and testing configuration'}
+              {stageCategory === 'general' && 'Customize settings for this pipeline stage'}
             </p>
           </div>
           <button
@@ -67,146 +106,326 @@ export function StageConfigModal({ stage, onClose, onSave }: StageConfigModalPro
         </div>
 
         <form onSubmit={handleSubmit} className="px-6 py-6 space-y-6">
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Interview Configuration
-            </h3>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Interview Type
-              </label>
-              <select
-                value={config.interviewType || 'human'}
-                onChange={(e) => updateConfig('interviewType', e.target.value)}
-                className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
-              >
-                <option value="human">Human Interview</option>
-                <option value="ai">AI Interview</option>
-                <option value="hybrid">Hybrid (AI + Human)</option>
-              </select>
-            </div>
+          {/* AI Interview Configuration */}
+          {stageCategory === 'ai-interview' && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                <span className="text-2xl">🤖</span>
+                AI Interview Configuration
+              </h3>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  AI Model
+                </label>
+                <select
+                  value={config.aiModel || 'gpt-4'}
+                  onChange={(e) => updateConfig('aiModel', e.target.value)}
+                  className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                >
+                  <option value="gpt-4">GPT-4 (Advanced)</option>
+                  <option value="gpt-3.5-turbo">GPT-3.5 Turbo (Fast)</option>
+                  <option value="claude-3">Claude 3 (Opus)</option>
+                </select>
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Interview Mode
-              </label>
-              <select
-                value={config.interviewMode || 'none'}
-                onChange={(e) => updateConfig('interviewMode', e.target.value)}
-                className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
-              >
-                <option value="none">No Interview</option>
-                <option value="phone">Phone Screening</option>
-                <option value="video">Video Interview</option>
-                <option value="onsite">On-site Interview</option>
-                <option value="panel">Panel Interview</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Interview Duration (minutes)
-              </label>
-              <input
-                type="number"
-                min="15"
-                max="480"
-                step="15"
-                value={config.interviewDuration || 60}
-                onChange={(e) => updateConfig('interviewDuration', parseInt(e.target.value))}
-                className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                AI Interview Questions
-              </label>
-              <div className="flex items-center gap-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Interview Duration (minutes)
+                </label>
                 <input
-                  type="checkbox"
-                  checked={config.aiInterviewQuestions || false}
-                  onChange={(e) => updateConfig('aiInterviewQuestions', e.target.checked)}
-                  className="w-4 h-4 text-purple-600 rounded"
+                  type="number"
+                  min="15"
+                  max="120"
+                  step="15"
+                  value={config.aiInterviewDuration || 45}
+                  onChange={(e) => updateConfig('aiInterviewDuration', parseInt(e.target.value))}
+                  className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
                 />
-                <span className="text-sm text-gray-700 dark:text-gray-300">
-                  Generate AI-powered interview questions
-                </span>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Number of Questions
+                </label>
+                <input
+                  type="number"
+                  min="5"
+                  max="30"
+                  value={config.aiQuestionCount || 15}
+                  onChange={(e) => updateConfig('aiQuestionCount', parseInt(e.target.value))}
+                  className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Question Categories
+                </label>
+                <div className="space-y-2">
+                  {['Technical', 'Behavioral', 'Cultural Fit', 'Situational'].map((category) => (
+                    <div key={category} className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={config.aiCategories?.[category] || false}
+                        onChange={(e) => updateConfig('aiCategories', { 
+                          ...config.aiCategories, 
+                          [category]: e.target.checked 
+                        })}
+                        className="w-4 h-4 text-purple-600 rounded"
+                      />
+                      <span className="text-sm text-gray-700 dark:text-gray-300">{category}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Sentiment Analysis
+                </label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={config.aiSentimentAnalysis || false}
+                    onChange={(e) => updateConfig('aiSentimentAnalysis', e.target.checked)}
+                    className="w-4 h-4 text-purple-600 rounded"
+                  />
+                  <span className="text-sm text-gray-700 dark:text-gray-300">
+                    Enable real-time sentiment analysis during interview
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  AI Evaluation Criteria
+                </label>
+                <textarea
+                  value={config.aiEvaluationCriteria || ''}
+                  onChange={(e) => updateConfig('aiEvaluationCriteria', e.target.value)}
+                  placeholder="Enter criteria for AI to evaluate responses (e.g., technical depth, clarity, problem-solving approach)"
+                  rows={3}
+                  className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                />
               </div>
             </div>
+          )}
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Evaluation Criteria
-              </label>
-              <textarea
-                value={config.evaluationCriteria || ''}
-                onChange={(e) => updateConfig('evaluationCriteria', e.target.value)}
-                placeholder="Enter evaluation criteria (e.g., Technical skills, Communication, Cultural fit)"
-                rows={3}
-                className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
-              />
+          {/* Human Interview Configuration */}
+          {stageCategory === 'human-interview' && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                <span className="text-2xl">👤</span>
+                Interview Configuration
+              </h3>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Interview Mode
+                </label>
+                <select
+                  value={config.interviewMode || 'phone'}
+                  onChange={(e) => updateConfig('interviewMode', e.target.value)}
+                  className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                >
+                  <option value="phone">Phone Screening</option>
+                  <option value="video">Video Interview</option>
+                  <option value="onsite">On-site Interview</option>
+                  <option value="panel">Panel Interview</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Interview Duration (minutes)
+                </label>
+                <input
+                  type="number"
+                  min="15"
+                  max="480"
+                  step="15"
+                  value={config.interviewDuration || 60}
+                  onChange={(e) => updateConfig('interviewDuration', parseInt(e.target.value))}
+                  className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Interview Template
+                </label>
+                <select
+                  value={config.interviewTemplate || 'standard'}
+                  onChange={(e) => updateConfig('interviewTemplate', e.target.value)}
+                  className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                >
+                  <option value="standard">Standard Interview</option>
+                  <option value="technical-deep-dive">Technical Deep Dive</option>
+                  <option value="behavioral-focus">Behavioral Focus</option>
+                  <option value="leadership-assessment">Leadership Assessment</option>
+                  <option value="culture-fit">Culture Fit Evaluation</option>
+                  <option value="custom">Custom Template</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  AI-Assisted Question Generation
+                </label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={config.aiInterviewQuestions || false}
+                    onChange={(e) => updateConfig('aiInterviewQuestions', e.target.checked)}
+                    className="w-4 h-4 text-purple-600 rounded"
+                  />
+                  <span className="text-sm text-gray-700 dark:text-gray-300">
+                    Generate AI-powered interview questions
+                  </span>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Evaluation Criteria
+                </label>
+                <textarea
+                  value={config.evaluationCriteria || ''}
+                  onChange={(e) => updateConfig('evaluationCriteria', e.target.value)}
+                  placeholder="Enter evaluation criteria (e.g., Technical skills, Communication, Cultural fit)"
+                  rows={3}
+                  className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Interviewer Notes Template
+                </label>
+                <textarea
+                  value={config.notesTemplate || ''}
+                  onChange={(e) => updateConfig('notesTemplate', e.target.value)}
+                  placeholder="Enter template for interviewer notes (optional)"
+                  rows={2}
+                  className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                />
+              </div>
             </div>
-          </div>
+          )}
 
+          {/* Assessment Configuration */}
+          {stageCategory === 'assessment' && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                <span className="text-2xl">✍️</span>
+                Assessment Configuration
+              </h3>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Assessment Type
+                </label>
+                <select
+                  value={config.assessmentType || 'technical'}
+                  onChange={(e) => updateConfig('assessmentType', e.target.value)}
+                  className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                >
+                  <option value="technical">Technical Assessment</option>
+                  <option value="coding">Coding Challenge</option>
+                  <option value="case-study">Case Study</option>
+                  <option value="presentation">Presentation</option>
+                  <option value="personality">Personality Test</option>
+                  <option value="skills">Skills Test</option>
+                  <option value="background-check">Background Check</option>
+                  <option value="reference-check">Reference Check</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Assessment Duration (minutes)
+                </label>
+                <input
+                  type="number"
+                  min="15"
+                  max="480"
+                  step="15"
+                  value={config.assessmentDuration || 120}
+                  onChange={(e) => updateConfig('assessmentDuration', parseInt(e.target.value))}
+                  className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Assessment Platform
+                </label>
+                <select
+                  value={config.assessmentPlatform || 'internal'}
+                  onChange={(e) => updateConfig('assessmentPlatform', e.target.value)}
+                  className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                >
+                  <option value="internal">Internal Platform</option>
+                  <option value="hackerrank">HackerRank</option>
+                  <option value="codility">Codility</option>
+                  <option value="leetcode">LeetCode</option>
+                  <option value="testgorilla">TestGorilla</option>
+                  <option value="external">External Link</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Assessment Instructions
+                </label>
+                <textarea
+                  value={config.assessmentInstructions || ''}
+                  onChange={(e) => updateConfig('assessmentInstructions', e.target.value)}
+                  placeholder="Enter instructions for the assessment..."
+                  rows={4}
+                  className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Passing Score (%)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={config.passingScore || 70}
+                  onChange={(e) => updateConfig('passingScore', parseInt(e.target.value))}
+                  className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Auto-advance on Pass
+                </label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="checkbox"
+                    checked={config.autoAdvanceOnPass || false}
+                    onChange={(e) => updateConfig('autoAdvanceOnPass', e.target.checked)}
+                    className="w-4 h-4 text-purple-600 rounded"
+                  />
+                  <span className="text-sm text-gray-700 dark:text-gray-300">
+                    Automatically advance candidates who pass the assessment
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* General Configuration - shown for all stages */}
           <div className="space-y-4">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Assessment Configuration
-            </h3>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Assessment Type
-              </label>
-              <select
-                value={config.assessmentType || 'none'}
-                onChange={(e) => updateConfig('assessmentType', e.target.value)}
-                className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
-              >
-                <option value="none">No Assessment</option>
-                <option value="technical">Technical Assessment</option>
-                <option value="coding">Coding Challenge</option>
-                <option value="case-study">Case Study</option>
-                <option value="presentation">Presentation</option>
-                <option value="personality">Personality Test</option>
-                <option value="skills">Skills Test</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Assessment Duration (minutes)
-              </label>
-              <input
-                type="number"
-                min="15"
-                max="480"
-                step="15"
-                value={config.assessmentDuration || 120}
-                onChange={(e) => updateConfig('assessmentDuration', parseInt(e.target.value))}
-                className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Assessment Instructions
-              </label>
-              <textarea
-                value={config.assessmentInstructions || ''}
-                onChange={(e) => updateConfig('assessmentInstructions', e.target.value)}
-                placeholder="Enter instructions for the assessment..."
-                rows={3}
-                className="w-full px-4 py-2 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-900 dark:text-white"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-              Automation Settings
+              Automation & Notifications
             </h3>
 
             <div>
@@ -238,6 +457,7 @@ export function StageConfigModal({ stage, onClose, onSave }: StageConfigModalPro
                 <option value="none">No automated email</option>
                 <option value="invite">Interview Invitation</option>
                 <option value="reminder">Interview Reminder</option>
+                <option value="assessment-link">Assessment Link</option>
                 <option value="feedback">Feedback Request</option>
                 <option value="rejection">Rejection Notice</option>
               </select>
