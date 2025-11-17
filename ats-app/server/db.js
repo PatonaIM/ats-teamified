@@ -18,17 +18,32 @@ if (isProduction && process.env.PGHOST?.includes('azure')) {
   process.exit(1);
 }
 
-const pool = new Pool({
+// Azure PostgreSQL configuration
+const azureConfig = {
+  host: 'teamified-candidate-ats.postgres.database.azure.com',
+  user: 'tmfadmin',
+  port: 5432,
+  database: 'postgres',
+  password: process.env.AZURE_DB_PASSWORD,
+  ssl: {
+    rejectUnauthorized: false  // Allow self-signed certificates in development
+    // For Azure production: ca: fs.readFileSync('./certs/DigiCertGlobalRootCA.crt.pem'), rejectUnauthorized: true
+  }
+};
+
+// Use Azure config if AZURE_DB_PASSWORD is provided, otherwise fall back to DATABASE_URL
+const poolConfig = process.env.AZURE_DB_PASSWORD ? azureConfig : {
   host: process.env.PGHOST,
   user: process.env.PGUSER,
   port: parseInt(process.env.PGPORT || '5432'),
   database: process.env.PGDATABASE,
   password: process.env.PGPASSWORD,
   ssl: process.env.PGHOST ? {
-    rejectUnauthorized: false  // Allow self-signed certificates in development
-    // For Azure production: ca: fs.readFileSync('./certs/DigiCertGlobalRootCA.crt.pem'), rejectUnauthorized: true
+    rejectUnauthorized: false
   } : false
-});
+};
+
+const pool = new Pool(poolConfig);
 
 pool.on('error', (err) => {
   console.error('Unexpected error on idle client', err);
