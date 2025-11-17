@@ -34,25 +34,14 @@ export function WorkflowBuilder() {
       let response;
       if (isTemplateMode) {
         const url = `/api/pipeline-templates/${templateId}`;
-        console.log('[WorkflowBuilder] Template mode, fetching:', url);
-        
-        try {
-          response = await fetch(url, {
-            headers: {
-              'Content-Type': 'application/json',
-              'Cache-Control': 'no-cache'
-            }
-          });
-        } catch (fetchError: any) {
-          console.error('[WorkflowBuilder] Fetch error:', fetchError);
-          throw fetchError;
-        }
+        console.log('[WorkflowBuilder] Fetching template from:', url);
+        response = await fetch(url);
+        console.log('[WorkflowBuilder] Response received:', response.ok, response.status);
       } else {
         console.log('[WorkflowBuilder] Job mode, fetching:', `/api/jobs/${jobId}/pipeline-stages`);
         response = await fetch(`/api/jobs/${jobId}/pipeline-stages`);
+        console.log('[WorkflowBuilder] Response received:', response.ok, response.status);
       }
-      
-      console.log('[WorkflowBuilder] Response received:', response.ok, response.status);
       
       if (!response.ok) {
         const errorText = await response.text();
@@ -61,11 +50,12 @@ export function WorkflowBuilder() {
       }
 
       const data = await response.json();
-      console.log('[WorkflowBuilder] Data received:', JSON.stringify(data).substring(0, 200));
+      console.log('[WorkflowBuilder] Data received, keys:', Object.keys(data));
+      console.log('[WorkflowBuilder] Data stages count:', data.stages?.length || 0);
       
       if (isTemplateMode) {
         const stagesList = data.stages || [];
-        console.log('[WorkflowBuilder] Mapped stages:', stagesList.length);
+        console.log('[WorkflowBuilder] Template mode - mapping', stagesList.length, 'stages');
         const templateStages = stagesList.map((stage: any) => ({
           id: stage.id,
           jobId: 0,
@@ -75,13 +65,17 @@ export function WorkflowBuilder() {
           config: stage.stage_config || {},
           createdAt: ''
         }));
+        console.log('[WorkflowBuilder] Setting stages:', templateStages.length);
         setStages(templateStages);
+        console.log('[WorkflowBuilder] Stages set successfully');
       } else {
+        console.log('[WorkflowBuilder] Job mode - setting stages');
         setStages(data.stages);
         await fetchCandidateCounts(data.stages);
       }
       
       setError(null);
+      console.log('[WorkflowBuilder] Fetch complete, clearing loading state');
     } catch (err: any) {
       console.error('[Workflow Builder] Error fetching stages:', err);
       setError(err.message);
@@ -112,8 +106,13 @@ export function WorkflowBuilder() {
   };
 
   useEffect(() => {
+    console.log('[WorkflowBuilder] useEffect triggered, entityId:', entityId, 'isTemplateMode:', isTemplateMode);
     if (entityId) {
       fetchStages();
+    } else {
+      console.error('[WorkflowBuilder] No entityId available!');
+      setError('No template or job ID provided');
+      setLoading(false);
     }
   }, [entityId, isTemplateMode]);
 

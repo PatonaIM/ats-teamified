@@ -2017,8 +2017,7 @@ app.get('/api/pipeline-templates/:id', requireWorkflowBuilder, async (req, res) 
     };
     
     console.log('[Pipeline Templates] Sending response for template:', id);
-    res.json(template);
-    console.log('[Pipeline Templates] Response sent successfully for template:', id);
+    return res.json(template);
   } catch (error) {
     console.error('[Pipeline Templates] Error fetching template:', error);
     res.status(500).json({ error: 'Failed to fetch template', details: error.message });
