@@ -87,7 +87,7 @@ export function WorkflowBuilder() {
     }
   }, [jobId]);
 
-  const handleDragEnd = (event: DragEndEvent) => {
+  const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
 
     if (!over || active.id === over.id) {
@@ -104,26 +104,50 @@ export function WorkflowBuilder() {
       return;
     }
 
-    setStages((prevStages) => {
-      const oldIndex = prevStages.findIndex(s => s.id === active.id);
-      const newIndex = prevStages.findIndex(s => s.id === over.id);
+    const previousStages = [...stages];
 
-      const fixedTopCount = FIXED_TOP_STAGES.length;
-      const fixedBottomStart = prevStages.length - FIXED_BOTTOM_STAGES.length;
+    const oldIndex = stages.findIndex(s => s.id === active.id);
+    const newIndex = stages.findIndex(s => s.id === over.id);
 
-      if (newIndex < fixedTopCount || newIndex >= fixedBottomStart) {
-        alert('Cannot move stages to fixed positions');
-        return prevStages;
-      }
+    const fixedTopCount = FIXED_TOP_STAGES.length;
+    const fixedBottomStart = stages.length - FIXED_BOTTOM_STAGES.length;
 
-      const reordered = arrayMove(prevStages, oldIndex, newIndex);
+    if (newIndex < fixedTopCount || newIndex >= fixedBottomStart) {
+      alert('Cannot move stages to fixed positions');
+      return;
+    }
 
-      reordered.forEach((stage, index) => {
-        stage.stageOrder = index;
+    const reordered = arrayMove([...stages], oldIndex, newIndex);
+    reordered.forEach((stage, index) => {
+      stage.stageOrder = index;
+    });
+
+    setStages(reordered);
+
+    try {
+      const stageOrders = reordered.map((stage) => ({
+        stageId: stage.id,
+        newOrder: stage.stageOrder
+      }));
+
+      const response = await fetch(`/api/jobs/${jobId}/pipeline-stages/reorder`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stageOrders })
       });
 
-      return reordered;
-    });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to reorder stages');
+      }
+
+      const data = await response.json();
+      setStages(data.stages);
+    } catch (err: any) {
+      console.error('[Workflow Builder] Error persisting reorder:', err);
+      alert(`Failed to save stage order: ${err.message}`);
+      setStages(previousStages);
+    }
   };
 
   const handleEditStage = (stage: PipelineStage) => {

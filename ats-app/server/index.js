@@ -1740,6 +1740,174 @@ app.get('/api/jobs/:jobId/pipeline-stages/:stageId/candidate-count', requireWork
   }
 });
 
+// PUT /api/jobs/:jobId/pipeline-stages/reorder - Reorder pipeline stages
+app.put('/api/jobs/:jobId/pipeline-stages/reorder', requireWorkflowBuilder, async (req, res) => {
+  try {
+    const { jobId } = req.params;
+    const { stageOrders } = req.body;
+    
+    if (!Array.isArray(stageOrders) || stageOrders.length === 0) {
+      return res.status(400).json({ error: 'stageOrders array is required' });
+    }
+    
+    console.log('[Workflow Builder] Reordering stages for job:', jobId, stageOrders);
+    
+    for (const entry of stageOrders) {
+      if (!entry || typeof entry !== 'object') {
+        return res.status(400).json({ 
+          error: 'Invalid stageOrders entry',
+          message: 'Each stageOrders entry must be an object with stageId and newOrder fields'
+        });
+      }
+      if (typeof entry.stageId !== 'number' || !Number.isInteger(entry.stageId)) {
+        return res.status(400).json({ 
+          error: 'Invalid stageId type',
+          message: 'All stageId values must be integers'
+        });
+      }
+      if (typeof entry.newOrder !== 'number' || !Number.isInteger(entry.newOrder)) {
+        return res.status(400).json({ 
+          error: 'Invalid newOrder type',
+          message: 'All newOrder values must be integers'
+        });
+      }
+      if (entry.newOrder < 0) {
+        return res.status(400).json({ 
+          error: 'Invalid newOrder value',
+          message: 'Stage order values cannot be negative'
+        });
+      }
+    }
+    
+    const FIXED_TOP_STAGES = ['Screening', 'Shortlist', 'Client Endorsement'];
+    const FIXED_BOTTOM_STAGES = ['Offer', 'Offer Accepted'];
+    const FIXED_STAGES = [...FIXED_TOP_STAGES, ...FIXED_BOTTOM_STAGES];
+    
+    await query('BEGIN');
+    
+    let currentStagesResult;
+    try {
+      currentStagesResult = await query(
+        'SELECT id, stage_name, stage_order FROM job_pipeline_stages WHERE job_id = $1 ORDER BY stage_order ASC FOR UPDATE',
+        [parseInt(jobId)]
+      );
+    } catch (error) {
+      await query('ROLLBACK');
+      throw error;
+    }
+    
+    const currentStages = currentStagesResult.rows;
+    
+    if (currentStages.length === 0) {
+      await query('ROLLBACK');
+      return res.status(404).json({ error: 'No stages found for this job' });
+    }
+    
+    if (stageOrders.length !== currentStages.length) {
+      await query('ROLLBACK');
+      return res.status(400).json({ 
+        error: 'Invalid stage count',
+        message: `Expected ${currentStages.length} stages, got ${stageOrders.length}`
+      });
+    }
+    
+    const providedStageIds = new Set(stageOrders.map(s => s.stageId));
+    const currentStageIds = new Set(currentStages.map(s => s.id));
+    
+    for (const id of currentStageIds) {
+      if (!providedStageIds.has(id)) {
+        await query('ROLLBACK');
+        return res.status(400).json({ 
+          error: 'Missing stage in reorder',
+          message: `Stage ID ${id} is missing from the reorder payload`
+        });
+      }
+    }
+    
+    const newOrders = stageOrders.map(s => s.newOrder);
+    if (new Set(newOrders).size !== newOrders.length) {
+      await query('ROLLBACK');
+      return res.status(400).json({ 
+        error: 'Duplicate stage orders',
+        message: 'Each stage must have a unique order'
+      });
+    }
+    
+    const sortedOrders = [...newOrders].sort((a, b) => a - b);
+    for (let i = 0; i < sortedOrders.length; i++) {
+      if (sortedOrders[i] !== i) {
+        await query('ROLLBACK');
+        return res.status(400).json({ 
+          error: 'Invalid stage order sequence',
+          message: `Stage orders must be a contiguous sequence from 0 to ${currentStages.length - 1}. Got: ${sortedOrders.join(', ')}`
+        });
+      }
+    }
+    
+    const stageIdToStage = new Map(currentStages.map(s => [s.id, s]));
+    
+    for (const { stageId, newOrder } of stageOrders) {
+      const stage = stageIdToStage.get(stageId);
+      
+      if (!stage) {
+        await query('ROLLBACK');
+        return res.status(400).json({ 
+          error: 'Invalid stage ID',
+          message: `Stage ID ${stageId} does not exist for this job`
+        });
+      }
+      
+      const isFixedStage = FIXED_STAGES.includes(stage.stage_name);
+      
+      if (isFixedStage && newOrder !== stage.stage_order) {
+        await query('ROLLBACK');
+        return res.status(400).json({ 
+          error: 'Cannot move fixed stage',
+          message: `Stage "${stage.stage_name}" is a fixed stage and must remain at position ${stage.stage_order}`
+        });
+      }
+    }
+    
+    try {
+      for (const { stageId, newOrder } of stageOrders) {
+        await query(
+          'UPDATE job_pipeline_stages SET stage_order = $1 WHERE id = $2 AND job_id = $3',
+          [newOrder, stageId, parseInt(jobId)]
+        );
+      }
+      
+      await query('COMMIT');
+      
+      const result = await query(
+        `SELECT id, job_id, stage_name, stage_order, is_default, stage_config, created_at
+         FROM job_pipeline_stages 
+         WHERE job_id = $1 
+         ORDER BY stage_order ASC`,
+        [parseInt(jobId)]
+      );
+      
+      res.json({
+        success: true,
+        stages: result.rows.map(stage => ({
+          id: stage.id,
+          jobId: stage.job_id,
+          stageName: stage.stage_name,
+          stageOrder: stage.stage_order,
+          isDefault: stage.is_default,
+          config: stage.stage_config || {},
+          createdAt: stage.created_at
+        }))
+      });
+    } catch (error) {
+      await query('ROLLBACK');
+      throw error;
+    }
+  } catch (error) {
+    console.error('[Workflow Builder] Error reordering stages:', error);
+    res.status(500).json({ error: 'Failed to reorder stages', details: error.message });
+  }
+});
+
 // DELETE /api/jobs/:jobId/pipeline-stages/:stageId - Delete stage (only if no candidates)
 app.delete('/api/jobs/:jobId/pipeline-stages/:stageId', requireWorkflowBuilder, async (req, res) => {
   try {
