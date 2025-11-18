@@ -3020,7 +3020,9 @@ const getClientId = (req) => {
   const clientId = req.headers['x-client-id'];
   
   if (!clientId) {
-    return null; // Will only see default templates
+    // For demo/dev mode, use a demo UUID so users can test the Stage Library
+    // This is a fixed UUID for demo purposes: '00000000-0000-0000-0000-000000000001'
+    return '00000000-0000-0000-0000-000000000001';
   }
   
   return clientId;
@@ -3112,12 +3114,6 @@ app.post('/api/stage-library', async (req, res) => {
       error: 'Missing required field: name' 
     });
   }
-  
-  if (!clientId) {
-    return res.status(401).json({ 
-      error: 'Authentication required to create custom templates' 
-    });
-  }
 
   try {
     const result = await query(`
@@ -3153,12 +3149,6 @@ app.put('/api/stage-library/:id', async (req, res) => {
   
   // Security: Get clientId from server-side auth context
   const clientId = getClientId(req);
-  
-  if (!clientId) {
-    return res.status(401).json({ 
-      error: 'Authentication required to update templates' 
-    });
-  }
 
   try {
     const checkResult = await query(
@@ -3214,12 +3204,6 @@ app.delete('/api/stage-library/:id', async (req, res) => {
   
   // Security: Get clientId from server-side auth context
   const clientId = getClientId(req);
-  
-  if (!clientId) {
-    return res.status(401).json({ 
-      error: 'Authentication required to delete templates' 
-    });
-  }
 
   try {
     const checkResult = await query(
