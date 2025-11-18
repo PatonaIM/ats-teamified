@@ -45,9 +45,11 @@ const FIXED_BOTTOM_STAGES = ['Offer', 'Offer Accepted'];
 interface PaletteItemProps {
   template: StageTemplate;
   isDisabled?: boolean;
+  onConfigure?: (template: StageTemplate) => void;
+  isSelected?: boolean;
 }
 
-function PaletteItem({ template, isDisabled = false }: PaletteItemProps) {
+function PaletteItem({ template, isDisabled = false, onConfigure, isSelected = false }: PaletteItemProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `palette-${template.id}`,
     data: { type: 'palette-item', template }
@@ -58,13 +60,24 @@ function PaletteItem({ template, isDisabled = false }: PaletteItemProps) {
     opacity: isDragging ? 0.5 : 1,
   };
 
+  const handleClick = () => {
+    if (!isDragging && onConfigure) {
+      onConfigure(template);
+    }
+  };
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       {...attributes}
       {...listeners}
-      className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md p-3 cursor-grab active:cursor-grabbing hover:border-purple-400 dark:hover:border-purple-600 hover:shadow-sm transition-all group"
+      onClick={handleClick}
+      className={`border rounded-md p-3 cursor-grab active:cursor-grabbing hover:shadow-sm transition-all group ${
+        isSelected 
+          ? 'bg-purple-50 dark:bg-purple-900/20 border-purple-500 dark:border-purple-400 ring-2 ring-purple-200 dark:ring-purple-800'
+          : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-purple-400 dark:hover:border-purple-600'
+      }`}
     >
       <div className="flex items-start gap-2">
         <div className="text-2xl shrink-0">{template.icon}</div>
@@ -233,6 +246,7 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [configuringStage, setConfiguringStage] = useState<PipelineStage | null>(null);
+  const [configuringLibraryTemplate, setConfiguringLibraryTemplate] = useState<StageTemplate | null>(null);
   const [candidateCounts, setCandidateCounts] = useState<Record<number, number>>({});
   const [templateName, setTemplateName] = useState<string>('');
   const [stageLibrary, setStageLibrary] = useState<StageTemplate[]>([]);
@@ -514,6 +528,12 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
 
   const handleConfigureStage = (stage: PipelineStage) => {
     setConfiguringStage(stage);
+    setConfiguringLibraryTemplate(null);
+  };
+
+  const handleConfigureLibraryTemplate = (template: StageTemplate) => {
+    setConfiguringLibraryTemplate(template);
+    setConfiguringStage(null);
   };
 
   const handleUpdateStageConfig = async (config: Record<string, any>) => {
@@ -691,6 +711,8 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
                           key={template.id} 
                           template={template}
                           isDisabled={isInWorkflow}
+                          onConfigure={handleConfigureLibraryTemplate}
+                          isSelected={configuringLibraryTemplate?.id === template.id}
                         />
                       );
                     })
@@ -777,13 +799,50 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
             <div className="lg:col-span-5">
               <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden sticky top-6">
                 <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-                  <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Stage Configuration</h2>
+                  <h2 className="text-sm font-semibold text-gray-900 dark:text-white">
+                    {configuringLibraryTemplate ? 'Library Template' : 'Stage Configuration'}
+                  </h2>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                    {configuringStage ? 'Customize stage settings' : 'Select a stage to configure'}
+                    {configuringLibraryTemplate 
+                      ? 'View and edit library template details'
+                      : configuringStage 
+                        ? 'Customize stage settings' 
+                        : 'Select a stage to configure'}
                   </p>
                 </div>
 
-                {configuringStage ? (
+                {configuringLibraryTemplate ? (
+                  <div className="p-4 max-h-[calc(100vh-200px)] overflow-y-auto">
+                    <div className="space-y-4">
+                      <div className="flex items-start gap-3 p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
+                        <div className="text-3xl">{configuringLibraryTemplate.icon}</div>
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-gray-900 dark:text-white mb-1">
+                            {configuringLibraryTemplate.name}
+                          </h3>
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            {configuringLibraryTemplate.description}
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div className="text-sm text-gray-600 dark:text-gray-400 space-y-2">
+                        <p className="flex items-start gap-2">
+                          <span className="text-purple-600 dark:text-purple-400">•</span>
+                          <span>Click to view template details</span>
+                        </p>
+                        <p className="flex items-start gap-2">
+                          <span className="text-purple-600 dark:text-purple-400">•</span>
+                          <span>Drag to add this stage to your workflow</span>
+                        </p>
+                        <p className="flex items-start gap-2">
+                          <span className="text-purple-600 dark:text-purple-400">•</span>
+                          <span>Configure settings after adding to workflow</span>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : configuringStage ? (
                   <div className="p-4 max-h-[calc(100vh-200px)] overflow-y-auto">
                     <StageConfigPanel
                       key={configuringStage.id === -1 ? `draft-${configuringStage.stageName}` : configuringStage.id}
