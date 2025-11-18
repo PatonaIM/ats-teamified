@@ -127,10 +127,10 @@ function SortableWorkflowStage({ stage, index, onConfigure, onDelete, isSelected
   };
 
   return (
-    <div ref={setNodeRef} style={style} className="w-full flex justify-center">
+    <div ref={setNodeRef} style={style} className="w-full">
       <div 
         onClick={handleCardClick}
-        className={`relative rounded-md p-2.5 border-2 transition-all w-full max-w-[200px] cursor-pointer ${
+        className={`relative rounded-md p-2 border-2 transition-all w-full cursor-pointer ${
         isSelected
           ? 'border-purple-500 dark:border-purple-400 bg-purple-50 dark:bg-purple-900/20 shadow-md ring-2 ring-purple-200 dark:ring-purple-800'
           : isFixedBottom
@@ -672,7 +672,7 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
             </div>
 
             {/* MIDDLE PANEL: Workflow Canvas */}
-            <div className="lg:col-span-5">
+            <div className="lg:col-span-4">
               <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
                 <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 px-4 py-3 border-b border-gray-200 dark:border-gray-700">
                   <div className="flex items-center justify-between">
@@ -680,7 +680,7 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
                     <span className="text-xs font-medium text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-900/40 px-2 py-0.5 rounded-full">{stages.length} stages</span>
                   </div>
                 </div>
-                <div className="p-4">
+                <div className="p-3">
               
               <SortableContext
                 items={stages.map(s => s.id)}
@@ -713,7 +713,7 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
                         />
                         {/* Arrow between stages */}
                         {index < stages.length - 1 && (
-                          <div className="py-2 flex items-center justify-center">
+                          <div className="py-1 flex items-center justify-center">
                             <svg className="w-5 h-5 text-purple-400 dark:text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
                             </svg>
@@ -746,7 +746,7 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
             </div>
 
             {/* RIGHT PANEL: Stage Configuration */}
-            <div className="lg:col-span-4">
+            <div className="lg:col-span-5">
               <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden sticky top-6">
                 <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 px-4 py-3 border-b border-gray-200 dark:border-gray-700">
                   <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Stage Configuration</h2>
