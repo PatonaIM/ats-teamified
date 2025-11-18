@@ -1401,18 +1401,15 @@ export function StageConfigPanel({ stage, onSave, onLibrarySaved }: StageConfigP
           
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-              Interview Mode
+              Interviewer Name <span className="text-xs text-gray-500">(With Whom)</span>
             </label>
-            <select
-              value={config.interviewMode || 'phone'}
-              onChange={(e) => updateConfig('interviewMode', e.target.value)}
+            <input
+              type="text"
+              value={config.interviewerName || ''}
+              onChange={(e) => updateConfig('interviewerName', e.target.value)}
+              placeholder="Enter interviewer's name"
               className="w-full px-3 py-2 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md text-gray-900 dark:text-white"
-            >
-              <option value="phone">Phone Screening</option>
-              <option value="video">Video Interview</option>
-              <option value="onsite">On-site Interview</option>
-              <option value="panel">Panel Interview</option>
-            </select>
+            />
           </div>
 
           <div>
@@ -1432,48 +1429,42 @@ export function StageConfigPanel({ stage, onSave, onLibrarySaved }: StageConfigP
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-              Interview Template
+              Meeting Platform
             </label>
             <select
-              value={config.interviewTemplate || 'standard'}
-              onChange={(e) => updateConfig('interviewTemplate', e.target.value)}
+              value={config.meetingPlatform || 'google-meet'}
+              onChange={(e) => updateConfig('meetingPlatform', e.target.value)}
               className="w-full px-3 py-2 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md text-gray-900 dark:text-white"
             >
-              <option value="standard">Standard Interview</option>
-              <option value="technical-deep-dive">Technical Deep Dive</option>
-              <option value="behavioral-focus">Behavioral Focus</option>
-              <option value="leadership-assessment">Leadership Assessment</option>
-              <option value="culture-fit">Culture Fit Evaluation</option>
-              <option value="custom">Custom Template</option>
+              <option value="google-meet">Google Meet</option>
+              <option value="zoom">Zoom</option>
+              <option value="microsoft-teams">Microsoft Teams</option>
+              <option value="phone">Phone Call</option>
+              <option value="onsite">On-site</option>
+              <option value="other">Other</option>
             </select>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-              AI-Assisted Question Generation
+              Schedule Call
             </label>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 mb-2">
               <input
                 type="checkbox"
-                checked={config.aiInterviewQuestions || false}
-                onChange={(e) => updateConfig('aiInterviewQuestions', e.target.checked)}
+                checked={config.autoSchedule || false}
+                onChange={(e) => updateConfig('autoSchedule', e.target.checked)}
                 className="w-4 h-4 text-purple-600 rounded"
               />
               <span className="text-sm text-gray-700 dark:text-gray-300">
-                Generate AI-powered interview questions
+                Enable automatic scheduling
               </span>
             </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
-              Evaluation Criteria
-            </label>
             <textarea
-              value={config.evaluationCriteria || ''}
-              onChange={(e) => updateConfig('evaluationCriteria', e.target.value)}
-              placeholder="Enter evaluation criteria"
-              rows={3}
+              value={config.schedulingNotes || ''}
+              onChange={(e) => updateConfig('schedulingNotes', e.target.value)}
+              placeholder="Add scheduling notes or preferences (optional)"
+              rows={2}
               className="w-full px-3 py-2 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md text-gray-900 dark:text-white"
             />
           </div>
