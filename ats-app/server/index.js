@@ -3022,14 +3022,15 @@ app.get('/api/stage-library', async (req, res) => {
     // Security: Get clientId from server-side auth context, NOT from client input
     const clientId = getClientId(req);
 
+    // Only return client-specific custom stages (no default templates)
+    // Default templates are hidden unless client explicitly creates them
     const result = await query(`
       SELECT 
         id, name, description, category, icon,
         client_id, is_default, created_at
       FROM stage_library
-      WHERE client_id = $1 OR is_default = TRUE
+      WHERE client_id = $1
       ORDER BY 
-        is_default DESC,
         category ASC,
         name ASC
     `, [clientId]);
