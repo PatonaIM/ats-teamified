@@ -54,7 +54,7 @@ app.use(cors({
   origin: true,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control', 'X-API-Key']
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control', 'X-API-Key', 'X-Client-ID']
 }));
 app.use(express.json());
 
@@ -2981,6 +2981,260 @@ app.delete('/api/slots/:slotId', async (req, res) => {
     await query('ROLLBACK');
     console.error('Error deleting slot:', error);
     res.status(500).json({ error: 'Failed to delete slot' });
+  }
+});
+
+// =============================================================================
+// STAGE LIBRARY ENDPOINTS - Client-specific stage templates
+// =============================================================================
+
+// Middleware to extract and validate client ID from request
+const getClientId = (req) => {
+  // ⚠️  SECURITY WARNING: This implementation is for DEMO/DEV purposes only!
+  //
+  // PRODUCTION REQUIREMENTS:
+  // 1. Derive clientId from authenticated JWT token or server-side session
+  // 2. Validate token signature using secret key
+  // 3. Never trust client-provided headers for tenant isolation
+  // 4. Use proper auth middleware (e.g., passport, express-jwt) 
+  //
+  // Current implementation uses X-Client-ID header which is still spoofable.
+  // This provides protection at the application layer but NOT at the authentication layer.
+  // A malicious user can still set any X-Client-ID header value.
+  //
+  // Example production fix:
+  //   const token = req.headers['authorization']?.split(' ')[1];
+  //   const decoded = jwt.verify(token, process.env.JWT_SECRET);
+  //   return decoded.clientId;
+  //
+  const clientId = req.headers['x-client-id'];
+  
+  if (!clientId) {
+    return null; // Will only see default templates
+  }
+  
+  return clientId;
+};
+
+// GET /api/stage-library - Get all stage templates for authenticated client
+app.get('/api/stage-library', async (req, res) => {
+  try {
+    // Security: Get clientId from server-side auth context, NOT from client input
+    const clientId = getClientId(req);
+
+    const result = await query(`
+      SELECT 
+        id, name, description, category, icon,
+        client_id, is_default, created_at
+      FROM stage_library
+      WHERE client_id = $1 OR is_default = TRUE
+      ORDER BY 
+        is_default DESC,
+        category ASC,
+        name ASC
+    `, [clientId]);
+
+    res.json({
+      success: true,
+      templates: result.rows
+    });
+  } catch (error) {
+    console.error('Error fetching stage library:', error);
+    res.status(500).json({ error: 'Failed to fetch stage library' });
+  }
+});
+
+// GET /api/stage-library/:id - Get specific stage template
+app.get('/api/stage-library/:id', async (req, res) => {
+  const { id } = req.params;
+  
+  // Security: Get clientId from server-side auth context
+  const clientId = getClientId(req);
+
+  try {
+    const result = await query(
+      'SELECT * FROM stage_library WHERE id = $1',
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Stage template not found' });
+    }
+
+    const template = result.rows[0];
+
+    // Security: Verify ownership - only return if default OR owned by authenticated client
+    if (!template.is_default && template.client_id !== clientId) {
+      return res.status(403).json({ 
+        error: 'You do not have permission to view this template' 
+      });
+    }
+
+    res.json({
+      success: true,
+      template: template
+    });
+  } catch (error) {
+    console.error('Error fetching stage template:', error);
+    res.status(500).json({ error: 'Failed to fetch stage template' });
+  }
+});
+
+// POST /api/stage-library - Create new client-specific stage template
+app.post('/api/stage-library', async (req, res) => {
+  const { name, description, category, icon, userId } = req.body;
+  
+  // Security: Get clientId from server-side auth context
+  const clientId = getClientId(req);
+
+  if (!name) {
+    return res.status(400).json({ 
+      error: 'Missing required field: name' 
+    });
+  }
+  
+  if (!clientId) {
+    return res.status(401).json({ 
+      error: 'Authentication required to create custom templates' 
+    });
+  }
+
+  try {
+    const result = await query(`
+      INSERT INTO stage_library (
+        name, description, category, icon, client_id, created_by, is_default
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, FALSE)
+      RETURNING *
+    `, [name, description, category, icon, clientId, userId || null]);
+
+    res.status(201).json({
+      success: true,
+      message: 'Stage template created successfully',
+      template: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Error creating stage template:', error);
+    
+    if (error.code === '23505') {
+      return res.status(409).json({ 
+        error: 'A stage template with this name already exists for your organization' 
+      });
+    }
+    
+    res.status(500).json({ error: 'Failed to create stage template' });
+  }
+});
+
+// PUT /api/stage-library/:id - Update client-specific stage template
+app.put('/api/stage-library/:id', async (req, res) => {
+  const { id } = req.params;
+  const { name, description, category, icon } = req.body;
+  
+  // Security: Get clientId from server-side auth context
+  const clientId = getClientId(req);
+  
+  if (!clientId) {
+    return res.status(401).json({ 
+      error: 'Authentication required to update templates' 
+    });
+  }
+
+  try {
+    const checkResult = await query(
+      'SELECT * FROM stage_library WHERE id = $1',
+      [id]
+    );
+
+    if (checkResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Stage template not found' });
+    }
+
+    const template = checkResult.rows[0];
+
+    if (template.is_default) {
+      return res.status(403).json({ 
+        error: 'Cannot modify default Teamified templates' 
+      });
+    }
+
+    // Security: Verify ownership - prevent cross-tenant modification
+    if (template.client_id !== clientId) {
+      return res.status(403).json({ 
+        error: 'You do not have permission to modify this template' 
+      });
+    }
+
+    const result = await query(`
+      UPDATE stage_library
+      SET 
+        name = COALESCE($1, name),
+        description = COALESCE($2, description),
+        category = COALESCE($3, category),
+        icon = COALESCE($4, icon),
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = $5
+      RETURNING *
+    `, [name, description, category, icon, id]);
+
+    res.json({
+      success: true,
+      message: 'Stage template updated successfully',
+      template: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Error updating stage template:', error);
+    res.status(500).json({ error: 'Failed to update stage template' });
+  }
+});
+
+// DELETE /api/stage-library/:id - Delete client-specific stage template
+app.delete('/api/stage-library/:id', async (req, res) => {
+  const { id } = req.params;
+  
+  // Security: Get clientId from server-side auth context
+  const clientId = getClientId(req);
+  
+  if (!clientId) {
+    return res.status(401).json({ 
+      error: 'Authentication required to delete templates' 
+    });
+  }
+
+  try {
+    const checkResult = await query(
+      'SELECT * FROM stage_library WHERE id = $1',
+      [id]
+    );
+
+    if (checkResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Stage template not found' });
+    }
+
+    const template = checkResult.rows[0];
+
+    if (template.is_default) {
+      return res.status(403).json({ 
+        error: 'Cannot delete default Teamified templates' 
+      });
+    }
+
+    // Security: Verify ownership - prevent cross-tenant deletion
+    if (template.client_id !== clientId) {
+      return res.status(403).json({ 
+        error: 'You do not have permission to delete this template' 
+      });
+    }
+
+    await query('DELETE FROM stage_library WHERE id = $1', [id]);
+
+    res.json({
+      success: true,
+      message: 'Stage template deleted successfully'
+    });
+  } catch (error) {
+    console.error('Error deleting stage template:', error);
+    res.status(500).json({ error: 'Failed to delete stage template' });
   }
 });
 

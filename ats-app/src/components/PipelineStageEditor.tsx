@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   DndContext,
   closestCenter,
@@ -16,6 +16,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+import { useAuth } from '../contexts/AuthContext';
 
 interface PipelineStage {
   name: string;
@@ -37,15 +38,18 @@ interface SortableStageItemProps {
   isFixedPosition: boolean;
 }
 
+interface StageTemplate {
+  id: string;
+  name: string;
+  description: string;
+  category: string;
+  icon: string;
+  client_id: string | null;
+  is_default: boolean;
+}
+
 const FIXED_TOP_STAGES = ['Screening', 'Shortlist', 'Client Endorsement'];
 const FIXED_BOTTOM_STAGES = ['Offer', 'Offer Accepted'];
-
-const SUGGESTED_STAGES = [
-  'Assessment',
-  'Coding Round',
-  'Interview 1',
-  'Interview 2'
-];
 
 function SortableStageItem({ stage, index, onRemove, onRename, canRemove, isFixedPosition }: SortableStageItemProps) {
   const [isEditing, setIsEditing] = useState(false);
@@ -178,6 +182,9 @@ function SortableStageItem({ stage, index, onRemove, onRename, canRemove, isFixe
 export default function PipelineStageEditor({ stages, onChange }: PipelineStageEditorProps) {
   const [newStageName, setNewStageName] = useState('');
   const [error, setError] = useState('');
+  const [stageTemplates, setStageTemplates] = useState<StageTemplate[]>([]);
+  const [loadingTemplates, setLoadingTemplates] = useState(true);
+  const { user } = useAuth();
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -190,15 +197,44 @@ export default function PipelineStageEditor({ stages, onChange }: PipelineStageE
     })
   );
 
+  useEffect(() => {
+    const fetchStageTemplates = async () => {
+      try {
+        setLoadingTemplates(true);
+        const headers: HeadersInit = {};
+        
+        // Add client ID to headers for server-side authentication
+        if (user?.clientId) {
+          headers['X-Client-ID'] = user.clientId;
+        }
+        
+        const response = await fetch('/api/stage-library', { headers });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setStageTemplates(data.templates || []);
+        } else {
+          console.error('Failed to fetch stage templates');
+        }
+      } catch (error) {
+        console.error('Error fetching stage templates:', error);
+      } finally {
+        setLoadingTemplates(false);
+      }
+    };
+
+    fetchStageTemplates();
+  }, [user?.clientId]);
+
   const isFixedStage = (index: number): boolean => {
     return index < FIXED_TOP_STAGES.length || 
            index >= stages.length - FIXED_BOTTOM_STAGES.length;
   };
 
-  const getAvailableSuggestions = (): string[] => {
-    return SUGGESTED_STAGES.filter(
-      suggestion => !stages.some(
-        stage => stage.name.toLowerCase() === suggestion.toLowerCase()
+  const getAvailableSuggestions = (): StageTemplate[] => {
+    return stageTemplates.filter(
+      template => !stages.some(
+        stage => stage.name.toLowerCase() === template.name.toLowerCase()
       )
     );
   };
@@ -383,26 +419,44 @@ export default function PipelineStageEditor({ stages, onChange }: PipelineStageE
         </SortableContext>
       </DndContext>
 
-      {availableSuggestions.length > 0 && (
+      {loadingTemplates ? (
+        <div className="py-2 text-center">
+          <div className="inline-block animate-spin h-4 w-4 border-2 border-purple-600 border-t-transparent rounded-full"></div>
+          <span className="ml-2 text-xs text-gray-500">Loading stage templates...</span>
+        </div>
+      ) : availableSuggestions.length > 0 ? (
         <div className="space-y-2">
-          <p className="text-xs font-medium text-gray-600">💡 Suggested Stages (Added to Middle):</p>
+          <p className="text-xs font-medium text-gray-600">
+            💡 Suggested Stages (Added to Middle):
+            <span className="ml-2 text-gray-500 font-normal">
+              {availableSuggestions.filter(t => t.is_default).length} default • {availableSuggestions.filter(t => !t.is_default).length} custom
+            </span>
+          </p>
           <div className="flex flex-wrap gap-2">
-            {availableSuggestions.map((suggestion) => (
+            {availableSuggestions.map((template) => (
               <button
-                key={suggestion}
+                key={template.id}
                 type="button"
-                onClick={() => handleAddStage(suggestion)}
-                className="px-3 py-1.5 bg-gradient-to-r from-purple-50 to-blue-50 text-purple-700 border border-purple-200 rounded-lg hover:from-purple-100 hover:to-blue-100 hover:border-purple-300 transition-all text-xs font-medium flex items-center gap-1"
+                onClick={() => handleAddStage(template.name)}
+                className={`px-3 py-1.5 border rounded-lg hover:border-purple-300 transition-all text-xs font-medium flex items-center gap-1.5 ${
+                  template.is_default
+                    ? 'bg-gradient-to-r from-purple-50 to-blue-50 text-purple-700 border-purple-200 hover:from-purple-100 hover:to-blue-100'
+                    : 'bg-gradient-to-r from-green-50 to-teal-50 text-green-700 border-green-200 hover:from-green-100 hover:to-teal-100'
+                }`}
+                title={template.description || template.name}
               >
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                {suggestion}
+                <span>{template.icon || '📋'}</span>
+                <span>{template.name}</span>
+                {!template.is_default && (
+                  <span className="text-[10px] bg-green-200 text-green-800 px-1 py-0.5 rounded">
+                    Custom
+                  </span>
+                )}
               </button>
             ))}
           </div>
         </div>
-      )}
+      ) : null}
 
       <div className="flex gap-2">
         <input

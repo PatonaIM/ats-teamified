@@ -57,7 +57,39 @@ The system utilizes an Azure-native, microservices-based architecture.
 ## Planned Features
 - **Interview Scheduling System (MVP Implemented):** Self-service interview slot booking for candidates with recruiter-created availability, timezone handling, and booking management. Full specifications in docs/user-stories-interview-scheduling.md. Setup guide in docs/interview-scheduling-setup.md
 
-## Interview Scheduling Implementation (MVP - Ready for Testing)
+## Recent Feature Additions
+
+### Client-Specific Stage Library (November 2025)
+
+**Status:** Implemented, ready for database migration
+
+**What it does:**
+- Replaces hardcoded stage suggestions with dynamic, client-specific stage library
+- Teamified provides 17 default stage templates across 5 categories (Technical, HR, Management, Assessment, Administrative)
+- Each client can create unlimited custom stage templates specific to their organization
+- Default templates are read-only, custom templates are fully editable/deletable
+
+**Implementation:**
+- **Database:** `stage_library` table with `client_id` (nullable for defaults) and `is_default` flag
+- **API:** 5 REST endpoints (GET list, GET by ID, POST create, PUT update, DELETE)
+- **Components:**
+  - Updated `PipelineStageEditor` to fetch templates from API with icons and categories
+  - New `StageLibraryManager` modal for creating and managing custom templates
+  - Icon picker with 15 emoji options
+  - Category selection (Technical, HR, Management, Assessment, Administrative, Custom)
+
+**Security Notes:**
+- ⚠️ Current implementation uses `X-Client-ID` header for tenant isolation
+- This is a DEMO/DEV approach - production requires JWT-based authentication
+- All endpoints include ownership validation to prevent cross-tenant access
+- See migration file for detailed security requirements
+
+**Files:**
+- Migration: `ats-app/database/migrations/008_stage_library.sql`
+- Backend: Stage Library endpoints in `ats-app/server/index.js`
+- Frontend: `ats-app/src/components/PipelineStageEditor.tsx`, `ats-app/src/components/StageLibraryManager.tsx`
+
+### Interview Scheduling Implementation (MVP - Ready for Testing)
 
 **Status:** MVP implementation complete, pending database migration
 
