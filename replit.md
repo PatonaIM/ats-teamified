@@ -44,3 +44,15 @@ The system utilizes an Azure-native, microservices-based architecture.
 - **OpenAI GPT-4 / Anthropic Claude:** For Large Language Model (LLM) capabilities.
 - **Azure Cloud Services:** Azure Database for PostgreSQL, Azure Blob Storage, Azure Kubernetes Service (AKS), Azure Key Vault, Azure Monitor, Log Analytics, Application Insights.
 - **Teamified Accounts SSO:** OAuth 2.0 provider for authentication (teamified-accounts.replit.app).
+
+## Recent Changes
+- Implemented comprehensive ATS system with job management, AI-powered features, candidate pipeline, and analytics dashboard
+- Built context-aware stage configuration modal that dynamically shows different settings based on stage type (AI interview, human interview, assessment, general)
+- Added detailed configuration options for interview stages: video interview (platform selection, recording, waiting room), panel interview (interviewer count, scoring method), and AI-assisted questions
+- Implemented assessment-specific configurations for coding platforms (HackerRank, Codility, LeetCode), skills tests, background checks, and reference checks
+- Enhanced skills test with practical demonstration settings including task type, required tools, evaluation criteria, observation methods, and time limits
+- Optimized Workflow Builder UI: rebalanced grid layout (4/3/5 columns), full-width stage cards, reduced padding, improved Custom Stage flow with inline name editing in Stage Configuration panel
+- Created comprehensive user story document for Interview Scheduling feature (docs/user-stories-interview-scheduling.md) covering 12 user stories including slot creation, booking, rescheduling, cancellation, automated reminders, calendar integration, and templates
+
+## Planned Features
+- **Interview Scheduling System (Q1 2025):** Self-service interview slot booking for candidates with recruiter-created availability, timezone handling, automated reminders, calendar integration, and reschedule/cancel capabilities. Full specifications in docs/user-stories-interview-scheduling.md
