@@ -3021,6 +3021,7 @@ app.get('/api/stage-library', async (req, res) => {
   try {
     // Security: Get clientId from server-side auth context, NOT from client input
     const clientId = getClientId(req);
+    console.log('[Stage Library] Fetching templates for clientId:', clientId);
 
     // Only return client-specific custom stages (no default templates)
     // Default templates are hidden unless client explicitly creates them
@@ -3035,12 +3036,15 @@ app.get('/api/stage-library', async (req, res) => {
         name ASC
     `, [clientId]);
 
+    console.log('[Stage Library] Query returned', result.rows.length, 'templates');
+    console.log('[Stage Library] Templates:', result.rows.map(r => r.name).join(', ') || '(none)');
+
     res.json({
       success: true,
       templates: result.rows
     });
   } catch (error) {
-    console.error('Error fetching stage library:', error);
+    console.error('[Stage Library] Error fetching stage library:', error);
     res.status(500).json({ error: 'Failed to fetch stage library' });
   }
 });
