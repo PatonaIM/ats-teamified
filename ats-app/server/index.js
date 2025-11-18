@@ -2156,10 +2156,10 @@ app.delete('/api/pipeline-templates/:id', requireWorkflowBuilder, async (req, re
 
 // POST /api/pipeline-templates/:id/stages - Add a stage to template
 app.post('/api/pipeline-templates/:id/stages', requireWorkflowBuilder, async (req, res) => {
+  const { id } = req.params;
+  const { stage_name, stage_type, stage_config, stage_order } = req.body;
+  
   try {
-    const { id } = req.params;
-    const { stage_name, stage_type, stage_config, stage_order } = req.body;
-    
     console.log('[Pipeline Templates] Adding stage to template:', id, 'at position:', stage_order);
     
     await query('BEGIN');
