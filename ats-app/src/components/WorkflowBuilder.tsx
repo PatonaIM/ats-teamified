@@ -547,11 +547,11 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
       } else {
         // Updating existing stage
         const url = isTemplateMode
-          ? `/api/pipeline-templates/${templateId}/stages/${configuringStage.id}`
+          ? `/api/pipeline-templates/${templateId}/stages/${configuringStage.id}/config`
           : `/api/jobs/${jobId}/pipeline-stages/${configuringStage.id}`;
 
         const response = await fetch(url, {
-          method: 'PATCH',
+          method: isTemplateMode ? 'PUT' : 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             stage_config: config
