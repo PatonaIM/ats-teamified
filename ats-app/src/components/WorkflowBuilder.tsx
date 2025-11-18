@@ -352,14 +352,15 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
           setConfiguringStage(null);
         }
       }
-    } else if (!configuringStage && stages.length > 0) {
+    } else if (!configuringStage && !configuringLibraryTemplate && stages.length > 0) {
       // Auto-select first configurable (non-fixed) stage on initial load
+      // Only if no library template is selected
       const firstConfigurable = stages.find(s => !FIXED_BOTTOM_STAGES.includes(s.stageName));
       if (firstConfigurable) {
         setConfiguringStage(firstConfigurable);
       }
     }
-  }, [stages]);
+  }, [stages, configuringLibraryTemplate]);
 
   useEffect(() => {
     console.log('[WorkflowBuilder] useEffect triggered, entityId:', entityId, 'isTemplateMode:', isTemplateMode);
