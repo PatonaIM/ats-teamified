@@ -41,13 +41,9 @@ interface StageTemplate {
 
 const FIXED_BOTTOM_STAGES = ['Offer', 'Offer Accepted'];
 
-const STAGE_TEMPLATES: StageTemplate[] = [
-  { id: 'tech-interview', name: 'Technical Interview', description: 'Technical assessment', icon: '💻', type: 'custom' },
-  { id: 'culture-fit', name: 'Culture Fit', description: 'Team culture assessment', icon: '🤝', type: 'custom' },
-  { id: 'panel-interview', name: 'Panel Interview', description: 'Multi-person interview', icon: '👥', type: 'custom' },
-  { id: 'skill-test', name: 'Skills Test', description: 'Practical skills assessment', icon: '✍️', type: 'custom' },
-  { id: 'final-interview', name: 'Final Interview', description: 'Final decision interview', icon: '🎯', type: 'custom' },
-];
+// Stage Library is now completely empty - clients must create their own custom stages
+// No default stage templates are provided
+const STAGE_TEMPLATES: StageTemplate[] = [];
 
 interface PaletteItemProps {
   template: StageTemplate;
