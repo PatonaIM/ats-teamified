@@ -1164,24 +1164,34 @@ export function StageConfigModal({ stage, onClose, onSave }: StageConfigModalPro
 // Inline Panel Version (for WorkflowBuilder)
 interface StageConfigPanelProps {
   stage: PipelineStage;
-  onSave: (config: Record<string, any>) => void;
+  onSave: (config: Record<string, any>, stageName?: string) => void;
 }
 
 export function StageConfigPanel({ stage, onSave }: StageConfigPanelProps) {
   const [config, setConfig] = useState<Record<string, any>>(stage.config || {});
+  const [stageName, setStageName] = useState<string>(stage.stageName);
   const [saving, setSaving] = useState<boolean>(false);
   const stageCategory = determineStageCategory(stage);
+  const isNewStage = stage.id === -1;
 
-  // Reset config when stage changes
+  // Reset config and stage name when stage changes
   useEffect(() => {
     setConfig(stage.config || {});
-  }, [stage.id, stage.config]);
+    setStageName(stage.stageName);
+  }, [stage.id, stage.config, stage.stageName]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    
+    // Validate stage name for new stages
+    if (isNewStage && (!stageName || stageName.trim() === '')) {
+      alert('Please enter a stage name');
+      return;
+    }
+    
     setSaving(true);
     try {
-      await onSave(config);
+      await onSave(config, isNewStage ? stageName : undefined);
     } finally {
       setSaving(false);
     }
@@ -1193,19 +1203,38 @@ export function StageConfigPanel({ stage, onSave }: StageConfigPanelProps) {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* Stage Name Header - Compact */}
+      {/* Stage Name - Editable for new stages */}
       <div className="pb-3 border-b border-gray-200 dark:border-gray-700">
-        <div className="flex items-center justify-between gap-2">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white truncate">
-            {stage.stageName}
-          </h3>
-          <span className="text-xs text-gray-500 dark:text-gray-400 shrink-0">
-            {stageCategory === 'ai-interview' && 'AI'}
-            {stageCategory === 'human-interview' && 'Interview'}
-            {stageCategory === 'assessment' && 'Assessment'}
-            {stageCategory === 'general' && 'General'}
-          </span>
-        </div>
+        {isNewStage ? (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+              Stage Name *
+            </label>
+            <input
+              type="text"
+              value={stageName}
+              onChange={(e) => setStageName(e.target.value)}
+              placeholder="Enter stage name (e.g., Technical Interview, Background Check)"
+              className="w-full px-3 py-2 text-sm bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-md text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-purple-500"
+              autoFocus
+            />
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Name this stage to identify it in your workflow
+            </p>
+          </div>
+        ) : (
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+              {stage.stageName}
+            </h3>
+            <span className="text-xs text-gray-500 dark:text-gray-400 shrink-0">
+              {stageCategory === 'ai-interview' && 'AI'}
+              {stageCategory === 'human-interview' && 'Interview'}
+              {stageCategory === 'assessment' && 'Assessment'}
+              {stageCategory === 'general' && 'General'}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* AI Interview Configuration */}

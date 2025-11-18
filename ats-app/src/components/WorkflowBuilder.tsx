@@ -442,17 +442,12 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
   };
 
   const handleAddStageFromTemplate = async (template: StageTemplate) => {
-    // For custom stages, prompt for a name
+    // For custom stages, open configuration with empty/placeholder name
     if (template.id === 'custom') {
-      const customName = prompt('Enter a name for your custom stage:', 'New Stage');
-      if (!customName || customName.trim() === '') {
-        return; // User cancelled or entered empty name
-      }
-      
       setConfiguringStage({
         id: -1,
         jobId: 0,
-        stageName: customName.trim(),
+        stageName: 'New Stage',
         stageOrder: -1,
         isDefault: false,
         config: { description: 'Custom workflow stage' },
@@ -476,7 +471,7 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
     setConfiguringStage(stage);
   };
 
-  const handleUpdateStageConfig = async (config: Record<string, any>) => {
+  const handleUpdateStageConfig = async (config: Record<string, any>, stageName?: string) => {
     if (!configuringStage) {
       return;
     }
@@ -489,6 +484,9 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
         );
         const newOrder = firstBottomStageIndex !== -1 ? firstBottomStageIndex : stages.length;
 
+        // Use the provided stage name or fall back to the configuring stage name
+        const finalStageName = stageName?.trim() || configuringStage.stageName;
+
         const url = isTemplateMode
           ? `/api/pipeline-templates/${templateId}/stages`
           : `/api/jobs/${jobId}/pipeline-stages`;
@@ -497,7 +495,7 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            stage_name: configuringStage.stageName,
+            stage_name: finalStageName,
             stage_order: newOrder,
             stage_type: 'custom',
             stage_config: config
