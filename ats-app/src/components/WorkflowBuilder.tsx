@@ -595,10 +595,10 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
       {/* Header */}
       {!hideBackButton && (
         <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-          <div className="max-w-[1280px] mx-auto px-6 py-4">
+          <div className="px-6 py-3">
             <button
               onClick={() => navigate(-1)}
-              className="text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 mb-2 inline-flex items-center text-sm font-medium"
+              className="text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 mb-1.5 inline-flex items-center text-sm font-medium"
             >
               ← Back
             </button>
