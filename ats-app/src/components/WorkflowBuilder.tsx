@@ -20,6 +20,7 @@ import {
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { StageConfigPanel } from './workflow-builder/StageConfigModal';
+import { StageLibraryModal } from './workflow-builder/StageLibraryModal';
 
 interface PipelineStage {
   id: number;
@@ -43,10 +44,9 @@ const FIXED_BOTTOM_STAGES = ['Offer', 'Offer Accepted'];
 
 interface PaletteItemProps {
   template: StageTemplate;
-  onClick: (template: StageTemplate) => void;
 }
 
-function PaletteItem({ template, onClick }: PaletteItemProps) {
+function PaletteItem({ template }: PaletteItemProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `palette-${template.id}`,
     data: { type: 'palette-item', template }
@@ -58,13 +58,12 @@ function PaletteItem({ template, onClick }: PaletteItemProps) {
   };
 
   return (
-    <button
+    <div
       ref={setNodeRef}
       style={style}
       {...attributes}
       {...listeners}
-      onClick={() => !isDragging && onClick(template)}
-      className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md p-3 cursor-grab active:cursor-grabbing hover:border-purple-400 dark:hover:border-purple-600 hover:shadow-sm transition-all text-left group"
+      className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md p-3 cursor-grab active:cursor-grabbing hover:border-purple-400 dark:hover:border-purple-600 hover:shadow-sm transition-all group"
     >
       <div className="flex items-start gap-2">
         <div className="text-2xl shrink-0">{template.icon}</div>
@@ -82,7 +81,7 @@ function PaletteItem({ template, onClick }: PaletteItemProps) {
           </svg>
         </div>
       </div>
-    </button>
+    </div>
   );
 }
 
@@ -236,6 +235,7 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
   const [templateName, setTemplateName] = useState<string>('');
   const [stageLibrary, setStageLibrary] = useState<StageTemplate[]>([]);
   const [libraryLoading, setLibraryLoading] = useState<boolean>(true);
+  const [showLibraryModal, setShowLibraryModal] = useState<boolean>(false);
   
   const isTemplateMode = !!templateId;
   const entityId = templateId || jobId;
@@ -465,28 +465,37 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
   };
 
   const handleAddStageFromTemplate = async (template: StageTemplate) => {
-    // For custom stages, open configuration with empty/placeholder name
-    if (template.id === 'custom') {
-      setConfiguringStage({
-        id: -1,
-        jobId: 0,
-        stageName: 'New Stage',
-        stageOrder: -1,
-        isDefault: false,
-        config: { description: 'Custom workflow stage' },
-        createdAt: ''
+    // When dragging a library template and dropping it, add it to the workflow
+    const firstBottomStageIndex = stages.findIndex(s => 
+      FIXED_BOTTOM_STAGES.includes(s.stageName)
+    );
+    const newOrder = firstBottomStageIndex !== -1 ? firstBottomStageIndex : stages.length;
+
+    const url = isTemplateMode
+      ? `/api/pipeline-templates/${templateId}/stages`
+      : `/api/jobs/${jobId}/pipeline-stages`;
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          stage_name: template.name,
+          stage_order: newOrder,
+          stage_type: 'custom',
+          stage_config: { description: template.description }
+        })
       });
-    } else {
-      // For template stages, use the template name
-      setConfiguringStage({
-        id: -1,
-        jobId: 0,
-        stageName: template.name,
-        stageOrder: -1,
-        isDefault: false,
-        config: { description: template.description },
-        createdAt: ''
-      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || errorData.error || 'Failed to add stage');
+      }
+
+      await fetchStages();
+    } catch (err: any) {
+      console.error('[Workflow Builder] Error adding stage from library:', err);
+      setError(err.message);
     }
   };
 
@@ -494,73 +503,27 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
     setConfiguringStage(stage);
   };
 
-  const handleUpdateStageConfig = async (config: Record<string, any>, stageName?: string) => {
+  const handleUpdateStageConfig = async (config: Record<string, any>) => {
     if (!configuringStage) {
       return;
     }
 
     try {
-      if (configuringStage.id === -1) {
-        // Adding a new stage
-        const firstBottomStageIndex = stages.findIndex(s => 
-          FIXED_BOTTOM_STAGES.includes(s.stageName)
-        );
-        const newOrder = firstBottomStageIndex !== -1 ? firstBottomStageIndex : stages.length;
+      // Only handle updates to existing stages
+      const url = isTemplateMode
+        ? `/api/pipeline-templates/${templateId}/stages/${configuringStage.id}/config`
+        : `/api/jobs/${jobId}/pipeline-stages/${configuringStage.id}`;
 
-        // Use the provided stage name or fall back to the configuring stage name
-        const finalStageName = stageName?.trim() || configuringStage.stageName;
+      const response = await fetch(url, {
+        method: isTemplateMode ? 'PUT' : 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          stage_config: config
+        })
+      });
 
-        const url = isTemplateMode
-          ? `/api/pipeline-templates/${templateId}/stages`
-          : `/api/jobs/${jobId}/pipeline-stages`;
-
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            stage_name: finalStageName,
-            stage_order: newOrder,
-            stage_type: 'custom',
-            stage_config: config
-          })
-        });
-
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || errorData.error || 'Failed to add stage');
-        }
-        
-        // Get the created stage from response and select it immediately
-        const responseData = await response.json();
-        const createdStage: PipelineStage = {
-          id: responseData.id,
-          jobId: responseData.job_id || 0,
-          stageName: responseData.stage_name,
-          stageOrder: responseData.stage_order,
-          isDefault: responseData.stage_type === 'fixed',
-          config: responseData.stage_config || {},
-          createdAt: responseData.created_at || ''
-        };
-        
-        // Update selection to the newly created stage immediately
-        setConfiguringStage(createdStage);
-      } else {
-        // Updating existing stage
-        const url = isTemplateMode
-          ? `/api/pipeline-templates/${templateId}/stages/${configuringStage.id}/config`
-          : `/api/jobs/${jobId}/pipeline-stages/${configuringStage.id}`;
-
-        const response = await fetch(url, {
-          method: isTemplateMode ? 'PUT' : 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            stage_config: config
-          })
-        });
-
-        if (!response.ok) {
-          throw new Error('Failed to update stage');
-        }
+      if (!response.ok) {
+        throw new Error('Failed to update stage');
       }
 
       await fetchStages();
@@ -672,30 +635,26 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
                 <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 px-4 py-3 border-b border-gray-200 dark:border-gray-700">
                   <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Stage Library</h2>
                   <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
-                    {libraryLoading ? 'Loading...' : `${stageLibrary.length} available stages`}
+                    {libraryLoading ? 'Loading...' : stageLibrary.length > 0 
+                      ? `${stageLibrary.length} available stages · Drag to add to workflow`
+                      : 'Create reusable stage templates'}
                   </p>
                 </div>
                 
                 <div className="p-4 space-y-2 max-h-[calc(100vh-200px)] overflow-y-auto">
                   {/* Add Custom Stage Button */}
                   <button
-                    onClick={() => handleAddStageFromTemplate({
-                      id: 'custom',
-                      name: 'Custom Stage',
-                      description: 'Create a custom workflow stage',
-                      icon: '⚙️',
-                      type: 'custom'
-                    })}
+                    onClick={() => setShowLibraryModal(true)}
                     className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 border border-purple-500 dark:border-purple-600 rounded-md p-3 cursor-pointer transition-all text-left group shadow-sm"
                   >
                     <div className="flex items-start gap-2">
                       <div className="text-2xl shrink-0">➕</div>
                       <div className="flex-1 min-w-0">
                         <h3 className="font-semibold text-white text-sm truncate">
-                          Add Custom Stage
+                          Create New Stage
                         </h3>
                         <p className="text-xs text-purple-100 line-clamp-1">
-                          Create your own workflow stage
+                          Add a stage template to your library
                         </p>
                       </div>
                     </div>
@@ -709,14 +668,13 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
                   ) : stageLibrary.length === 0 ? (
                     <div className="text-center text-sm text-gray-500 dark:text-gray-400 py-4 bg-gray-50 dark:bg-gray-900/20 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700">
                       <p className="mb-1 font-medium">No saved stages yet</p>
-                      <p className="text-xs">Create a custom stage and check <strong>"💾 Save to Library"</strong> to reuse it later</p>
+                      <p className="text-xs">Click <strong>"Create New Stage"</strong> above to build your library</p>
                     </div>
                   ) : (
                     stageLibrary.map((template) => (
                       <PaletteItem 
                         key={template.id} 
-                        template={template} 
-                        onClick={handleAddStageFromTemplate}
+                        template={template}
                       />
                     ))
                   )}
@@ -839,6 +797,14 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
         </div>
 
       </DndContext>
+
+      {/* Stage Library Creation Modal */}
+      {showLibraryModal && (
+        <StageLibraryModal
+          onClose={() => setShowLibraryModal(false)}
+          onSaved={fetchStageLibrary}
+        />
+      )}
     </div>
   );
 }
