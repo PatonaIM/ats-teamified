@@ -3039,6 +3039,11 @@ app.get('/api/stage-library', async (req, res) => {
     console.log('[Stage Library] Query returned', result.rows.length, 'templates');
     console.log('[Stage Library] Templates:', result.rows.map(r => r.name).join(', ') || '(none)');
 
+    // Prevent browser caching to ensure fresh data
+    res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.setHeader('Expires', '0');
+
     res.json({
       success: true,
       templates: result.rows
