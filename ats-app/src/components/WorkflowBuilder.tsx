@@ -50,13 +50,12 @@ interface PaletteItemProps {
 function PaletteItem({ template, isDisabled = false }: PaletteItemProps) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: `palette-${template.id}`,
-    data: { type: 'palette-item', template },
-    disabled: isDisabled
+    data: { type: 'palette-item', template }
   });
 
   const style = {
     transform: transform ? `translate3d(${transform.x}px, ${transform.y}px, 0)` : undefined,
-    opacity: isDragging ? 0.5 : isDisabled ? 0.6 : 1,
+    opacity: isDragging ? 0.5 : 1,
   };
 
   return (
@@ -65,36 +64,22 @@ function PaletteItem({ template, isDisabled = false }: PaletteItemProps) {
       style={style}
       {...attributes}
       {...listeners}
-      className={`bg-white dark:bg-gray-800 border rounded-md p-3 transition-all group ${
-        isDisabled 
-          ? 'border-gray-200 dark:border-gray-700 cursor-not-allowed opacity-60' 
-          : 'border-gray-200 dark:border-gray-700 cursor-grab active:cursor-grabbing hover:border-purple-400 dark:hover:border-purple-600 hover:shadow-sm'
-      }`}
+      className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md p-3 cursor-grab active:cursor-grabbing hover:border-purple-400 dark:hover:border-purple-600 hover:shadow-sm transition-all group"
     >
       <div className="flex items-start gap-2">
         <div className="text-2xl shrink-0">{template.icon}</div>
         <div className="flex-1 min-w-0">
-          <h3 className={`font-medium text-sm truncate ${
-            isDisabled ? 'text-gray-400 dark:text-gray-600' : 'text-gray-900 dark:text-white'
-          }`}>
+          <h3 className="font-medium text-gray-900 dark:text-white text-sm truncate">
             {template.name}
-            {isDisabled && <span className="ml-1.5 text-xs bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 px-1.5 py-0.5 rounded">In Workflow</span>}
+            {isDisabled && <span className="ml-1.5 text-xs bg-purple-100 dark:bg-purple-900/40 text-purple-700 dark:text-purple-300 px-1.5 py-0.5 rounded">In Workflow</span>}
           </h3>
           <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-1">
             {template.description}
           </p>
         </div>
-        <div className={`transition-colors shrink-0 ${
-          isDisabled 
-            ? 'text-gray-300 dark:text-gray-700' 
-            : 'text-gray-300 dark:text-gray-600 group-hover:text-purple-500 dark:group-hover:text-purple-400'
-        }`}>
+        <div className="text-gray-300 dark:text-gray-600 group-hover:text-purple-500 dark:group-hover:text-purple-400 transition-colors shrink-0">
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            {isDisabled ? (
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            ) : (
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            )}
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
           </svg>
         </div>
       </div>
@@ -258,7 +243,11 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
   const entityId = templateId || jobId;
 
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
@@ -482,6 +471,13 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
   };
 
   const handleAddStageFromTemplate = async (template: StageTemplate) => {
+    // Check for duplicates - prevent adding stages that already exist in the workflow
+    const isDuplicate = stages.some(s => s.stageName === template.name);
+    if (isDuplicate) {
+      console.log(`[WorkflowBuilder] Prevented duplicate stage: ${template.name}`);
+      return;
+    }
+
     // When dragging a library template and dropping it, add it to the workflow
     const firstBottomStageIndex = stages.findIndex(s => 
       FIXED_BOTTOM_STAGES.includes(s.stageName)
