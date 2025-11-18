@@ -686,7 +686,7 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
                 items={stages.map(s => s.id)}
                 strategy={verticalListSortingStrategy}
               >
-                <div className="flex flex-col items-center space-y-0">
+                <div className="flex flex-col items-center">
                   {stages.length === 0 ? (
                     <div className="text-center py-16">
                       <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center mx-auto mb-3">
@@ -703,14 +703,23 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
                     </div>
                   ) : (
                     stages.map((stage, index) => (
-                      <SortableWorkflowStage
-                        key={stage.id}
-                        stage={stage}
-                        index={index}
-                        onConfigure={handleConfigureStage}
-                        onDelete={handleDeleteStage}
-                        isSelected={configuringStage?.id === stage.id}
-                      />
+                      <div key={stage.id} className="w-full flex flex-col items-center">
+                        <SortableWorkflowStage
+                          stage={stage}
+                          index={index}
+                          onConfigure={handleConfigureStage}
+                          onDelete={handleDeleteStage}
+                          isSelected={configuringStage?.id === stage.id}
+                        />
+                        {/* Arrow between stages */}
+                        {index < stages.length - 1 && (
+                          <div className="py-2 flex items-center justify-center">
+                            <svg className="w-5 h-5 text-purple-400 dark:text-purple-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                            </svg>
+                          </div>
+                        )}
+                      </div>
                     ))
                   )}
                 </div>
