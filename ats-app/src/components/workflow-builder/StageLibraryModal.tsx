@@ -14,6 +14,15 @@ export function StageLibraryModal({ onClose, onSaved }: StageLibraryModalProps) 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const mapCategoryToDb = (cat: StageCategory): string => {
+    switch (cat) {
+      case 'ai-interview': return 'Technical';
+      case 'human-interview': return 'HR';
+      case 'assessment': return 'Assessment';
+      case 'general': return 'Custom';
+    }
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -31,7 +40,7 @@ export function StageLibraryModal({ onClose, onSaved }: StageLibraryModalProps) 
         body: JSON.stringify({
           name: stageName.trim(),
           description: description.trim() || `Custom ${category} stage`,
-          category,
+          category: mapCategoryToDb(category),
           icon: category === 'ai-interview' ? '🤖' : 
                 category === 'human-interview' ? '🎤' :
                 category === 'assessment' ? '📝' : '⚙️'

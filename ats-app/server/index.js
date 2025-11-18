@@ -3020,9 +3020,9 @@ const getClientId = (req) => {
   const clientId = req.headers['x-client-id'];
   
   if (!clientId) {
-    // For demo/dev mode, use a demo UUID so users can test the Stage Library
-    // This is a fixed UUID for demo purposes: '00000000-0000-0000-0000-000000000001'
-    return '00000000-0000-0000-0000-000000000001';
+    // For demo/dev mode, return null to create client-agnostic stages
+    // NULL client_id creates stages that are accessible to all clients
+    return null;
   }
   
   return clientId;
@@ -3037,12 +3037,13 @@ app.get('/api/stage-library', async (req, res) => {
 
     // Only return client-specific custom stages (no default templates)
     // Default templates are hidden unless client explicitly creates them
+    // Use IS NOT DISTINCT FROM to properly handle NULL client_id
     const result = await query(`
       SELECT 
         id, name, description, category, icon,
         client_id, is_default, created_at
       FROM stage_library
-      WHERE client_id = $1
+      WHERE client_id IS NOT DISTINCT FROM $1
       ORDER BY 
         category ASC,
         name ASC
