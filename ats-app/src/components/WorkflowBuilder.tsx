@@ -41,10 +41,6 @@ interface StageTemplate {
 
 const FIXED_BOTTOM_STAGES = ['Offer', 'Offer Accepted'];
 
-// Stage Library is now completely empty - clients must create their own custom stages
-// No default stage templates are provided
-const STAGE_TEMPLATES: StageTemplate[] = [];
-
 interface PaletteItemProps {
   template: StageTemplate;
   onClick: (template: StageTemplate) => void;
@@ -238,6 +234,8 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
   const [configuringStage, setConfiguringStage] = useState<PipelineStage | null>(null);
   const [candidateCounts, setCandidateCounts] = useState<Record<number, number>>({});
   const [templateName, setTemplateName] = useState<string>('');
+  const [stageLibrary, setStageLibrary] = useState<StageTemplate[]>([]);
+  const [libraryLoading, setLibraryLoading] = useState<boolean>(true);
   
   const isTemplateMode = !!templateId;
   const entityId = templateId || jobId;
@@ -355,6 +353,35 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
 
     fetchStages();
   }, [entityId, isTemplateMode, fetchStages]);
+
+  // Fetch Stage Library function (can be called to refresh)
+  const fetchStageLibrary = useCallback(async () => {
+    try {
+      setLibraryLoading(true);
+      const response = await fetch('/api/stage-library');
+      if (response.ok) {
+        const data = await response.json();
+        const templates: StageTemplate[] = (data.templates || []).map((template: any) => ({
+          id: template.id.toString(),
+          name: template.name,
+          category: template.category || 'general',
+          icon: template.icon || '📋',
+          description: template.description || ''
+        }));
+        setStageLibrary(templates);
+        console.log('[Stage Library] Loaded', templates.length, 'custom stages');
+      }
+    } catch (error) {
+      console.error('[Stage Library] Failed to load:', error);
+    } finally {
+      setLibraryLoading(false);
+    }
+  }, []);
+
+  // Fetch Stage Library on component mount
+  useEffect(() => {
+    fetchStageLibrary();
+  }, [fetchStageLibrary]);
 
   const handleDragStart = (_event: DragStartEvent) => {
     // Track active drag item if needed for visual feedback
@@ -644,7 +671,9 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
               <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
                 <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 px-4 py-3 border-b border-gray-200 dark:border-gray-700">
                   <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Stage Library</h2>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">{STAGE_TEMPLATES.length} available stages</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                    {libraryLoading ? 'Loading...' : `${stageLibrary.length} available stages`}
+                  </p>
                 </div>
                 
                 <div className="p-4 space-y-2 max-h-[calc(100vh-200px)] overflow-y-auto">
@@ -672,14 +701,25 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
                     </div>
                   </button>
                   
-                  {/* Stage Templates */}
-                  {STAGE_TEMPLATES.map((template) => (
-                    <PaletteItem 
-                      key={template.id} 
-                      template={template} 
-                      onClick={handleAddStageFromTemplate}
-                    />
-                  ))}
+                  {/* Stage Library Templates */}
+                  {libraryLoading ? (
+                    <div className="text-center text-sm text-gray-500 dark:text-gray-400 py-4">
+                      Loading stage library...
+                    </div>
+                  ) : stageLibrary.length === 0 ? (
+                    <div className="text-center text-sm text-gray-500 dark:text-gray-400 py-4 bg-gray-50 dark:bg-gray-900/20 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-700">
+                      <p className="mb-1 font-medium">No saved stages yet</p>
+                      <p className="text-xs">Create a custom stage and check <strong>"💾 Save to Library"</strong> to reuse it later</p>
+                    </div>
+                  ) : (
+                    stageLibrary.map((template) => (
+                      <PaletteItem 
+                        key={template.id} 
+                        template={template} 
+                        onClick={handleAddStageFromTemplate}
+                      />
+                    ))
+                  )}
                 </div>
               </div>
             </div>
@@ -774,6 +814,7 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
                       key={configuringStage.id === -1 ? `draft-${configuringStage.stageName}` : configuringStage.id}
                       stage={configuringStage}
                       onSave={handleUpdateStageConfig}
+                      onLibrarySaved={fetchStageLibrary}
                     />
                   </div>
                 ) : (

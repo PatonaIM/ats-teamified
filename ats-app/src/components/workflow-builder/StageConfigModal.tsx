@@ -1165,14 +1165,17 @@ export function StageConfigModal({ stage, onClose, onSave }: StageConfigModalPro
 interface StageConfigPanelProps {
   stage: PipelineStage;
   onSave: (config: Record<string, any>, stageName?: string) => void;
+  onLibrarySaved?: () => void; // Callback to refresh Stage Library after saving
 }
 
-export function StageConfigPanel({ stage, onSave }: StageConfigPanelProps) {
+export function StageConfigPanel({ stage, onSave, onLibrarySaved }: StageConfigPanelProps) {
   const [config, setConfig] = useState<Record<string, any>>(stage.config || {});
   const [stageName, setStageName] = useState<string>(stage.stageName);
   const [saving, setSaving] = useState<boolean>(false);
+  const [saveToLibrary, setSaveToLibrary] = useState<boolean>(false);
   const stageCategory = determineStageCategory(stage);
   const isNewStage = stage.id === -1;
+  const isFixedStage = ['Screening', 'Shortlist', 'Client Endorsement', 'Offer', 'Offer Accepted'].includes(stage.stageName);
 
   // Reset config and stage name when stage changes
   useEffect(() => {
@@ -1191,18 +1194,63 @@ export function StageConfigPanel({ stage, onSave }: StageConfigPanelProps) {
     
     setSaving(true);
     try {
+      // Save the stage to workflow
       await onSave(config, isNewStage ? stageName : undefined);
+      
+      // Save to Stage Library if checked
+      if (saveToLibrary && !isFixedStage) {
+        try {
+          const response = await fetch('/api/stage-library', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              name: stageName,
+              description: config.description || `Custom ${stageCategory} stage`,
+              category: stageCategory,
+              icon: stageCategory === 'ai-interview' ? '🤖' : 
+                    stageCategory === 'human-interview' ? '👤' :
+                    stageCategory === 'assessment' ? '✍️' : '📋'
+            })
+          });
+          
+          if (response.ok) {
+            console.log('[Stage Library] Stage saved to library:', stageName);
+            // Notify parent to refresh the Stage Library list
+            if (onLibrarySaved) {
+              onLibrarySaved();
+            }
+          }
+        } catch (error) {
+          console.error('[Stage Library] Failed to save to library:', error);
+          // Don't block the main save operation
+        }
+      }
     } finally {
       setSaving(false);
     }
   };
 
   const updateConfig = (key: string, value: any) => {
+    if (isFixedStage) return; // Prevent changes to fixed stages
     setConfig(prev => ({ ...prev, [key]: value }));
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Fixed Stage Notice */}
+      {isFixedStage && (
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+          <div className="flex items-start gap-2">
+            <svg className="w-5 h-5 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+            <div className="text-sm text-blue-800 dark:text-blue-200">
+              <strong>Fixed Workflow Stage:</strong> This is a core stage and cannot be modified or deleted. Configuration is view-only.
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Stage Name - Editable for new stages */}
       <div className="pb-3 border-b border-gray-200 dark:border-gray-700">
         {isNewStage ? (
@@ -1632,12 +1680,28 @@ export function StageConfigPanel({ stage, onSave }: StageConfigPanelProps) {
         </div>
       </div>
 
-      {/* Save Button */}
-      <div className="pt-4 border-t border-gray-200 dark:border-gray-700 sticky bottom-0 bg-white dark:bg-gray-800">
+      {/* Save to Library & Save Button */}
+      <div className="pt-4 border-t border-gray-200 dark:border-gray-700 sticky bottom-0 bg-white dark:bg-gray-800 space-y-3">
+        {/* Save to Library Checkbox - Only show for custom stages */}
+        {!isFixedStage && (
+          <div className="flex items-center gap-2 px-1">
+            <input
+              type="checkbox"
+              id="saveToLibrary"
+              checked={saveToLibrary}
+              onChange={(e) => setSaveToLibrary(e.target.checked)}
+              className="w-4 h-4 text-purple-600 rounded focus:ring-2 focus:ring-purple-500"
+            />
+            <label htmlFor="saveToLibrary" className="text-sm text-gray-700 dark:text-gray-300 cursor-pointer select-none">
+              💾 Save to Stage Library for reuse
+            </label>
+          </div>
+        )}
+        
         <button
           type="submit"
-          disabled={saving}
-          className="w-full px-4 py-2.5 text-sm font-semibold bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+          disabled={saving || isFixedStage}
+          className="w-full px-4 py-2.5 text-sm font-semibold bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
         >
           {saving && (
             <svg className="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
@@ -1645,7 +1709,7 @@ export function StageConfigPanel({ stage, onSave }: StageConfigPanelProps) {
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
           )}
-          {saving ? 'Saving...' : 'Save Changes'}
+          {isFixedStage ? 'Fixed Stage (Read Only)' : (saving ? 'Saving...' : 'Save Changes')}
         </button>
       </div>
     </form>
