@@ -57,11 +57,24 @@ The system utilizes an Azure-native, microservices-based architecture.
 ## Planned Features
 - **Interview Scheduling System (MVP Implemented):** Self-service interview slot booking for candidates with recruiter-created availability, timezone handling, and booking management. Full specifications in docs/user-stories-interview-scheduling.md. Setup guide in docs/interview-scheduling-setup.md
 
+## Deployment Status
+
+**⚠️ PENDING DATABASE MIGRATIONS:**
+The following features are implemented in code but require database migrations to be run on your Azure PostgreSQL database:
+
+1. **Migration 006** - Pipeline Template System (`pipeline_templates`, `pipeline_template_stages` tables)
+2. **Migration 007** - Interview Scheduling (`interview_slots`, `interview_bookings` tables)
+3. **Migration 008** - Stage Library (`stage_library` table)
+
+**To deploy:** Run all migration files in order against your Azure PostgreSQL database.
+
+---
+
 ## Recent Feature Additions
 
 ### Client-Specific Stage Library (November 2025)
 
-**Status:** Implemented, ready for database migration
+**Status:** ✅ Code complete, ⏳ Pending migration 008
 
 **What it does:**
 - Replaces hardcoded stage suggestions with dynamic, client-specific stage library
