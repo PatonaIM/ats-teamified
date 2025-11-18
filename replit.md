@@ -55,4 +55,33 @@ The system utilizes an Azure-native, microservices-based architecture.
 - Created comprehensive user story document for Interview Scheduling feature (docs/user-stories-interview-scheduling.md) covering 12 user stories including slot creation, booking, rescheduling, cancellation, automated reminders, calendar integration, and templates
 
 ## Planned Features
-- **Interview Scheduling System (Q1 2025):** Self-service interview slot booking for candidates with recruiter-created availability, timezone handling, automated reminders, calendar integration, and reschedule/cancel capabilities. Full specifications in docs/user-stories-interview-scheduling.md
+- **Interview Scheduling System (MVP Implemented):** Self-service interview slot booking for candidates with recruiter-created availability, timezone handling, and booking management. Full specifications in docs/user-stories-interview-scheduling.md. Setup guide in docs/interview-scheduling-setup.md
+
+## Interview Scheduling Implementation (MVP - Ready for Testing)
+
+**Status:** MVP implementation complete, pending database migration
+
+**What's Implemented:**
+- **Database Schema:** Two tables (interview_slots, interview_bookings) with triggers for auto-updating booking counts
+- **Backend API:** 10 REST endpoints for slot creation, booking management, and viewing schedules
+- **Frontend Components:**
+  - SlotCreationModal: Recruiter interface to create time slots with date/time pickers
+  - CandidateBookingPage: Public booking page for candidates to select and book interview times
+  - BookingDashboard: Recruiter view of all scheduled interviews with filtering
+- **Email Service:** Stub implementation ready for provider integration (SendGrid/SES)
+- **Validation & Security:** UUID validation, transaction safety, relationship checks, concurrency protection
+
+**Next Steps to Deploy:**
+1. Run database migration: `ats-app/database/migrations/007_interview_scheduling.sql`
+2. Configure email provider (see docs/interview-scheduling-setup.md)
+3. Test slot creation and booking flow
+4. Integrate "Schedule Interview" button into pipeline stage cards
+
+**Files Changed:**
+- Database: `ats-app/database/migrations/007_interview_scheduling.sql`
+- Backend: Added interview scheduling endpoints to `ats-app/server/index.js`
+- Frontend: `ats-app/src/components/interview-scheduling/` (3 components)
+- Routing: Added `/book-interview/:candidateId/:jobId` route
+- Email: `ats-app/server/services/email.js`
+- Auth: Fixed demo user ID to valid UUID
+- Docs: `docs/interview-scheduling-setup.md`, `docs/user-stories-interview-scheduling.md`

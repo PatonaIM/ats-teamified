@@ -2456,6 +2456,534 @@ app.post('/api/jobs/:jobId/assign-template', requireWorkflowBuilder, async (req,
   }
 });
 
+// ============================================
+// INTERVIEW SCHEDULING ENDPOINTS
+// ============================================
+
+// Utility function to generate time slots
+function generateTimeSlots(config) {
+  const {
+    startDate,
+    endDate,
+    startTime,
+    endTime,
+    durationMinutes,
+    breakMinutes = 0,
+    excludeDates = [],
+    excludeDays = []
+  } = config;
+
+  const slots = [];
+  const current = new Date(startDate);
+  const end = new Date(endDate);
+
+  while (current <= end) {
+    const dateStr = current.toISOString().split('T')[0];
+    const dayOfWeek = current.getDay();
+    
+    if (excludeDates.includes(dateStr) || excludeDays.includes(dayOfWeek)) {
+      current.setDate(current.getDate() + 1);
+      continue;
+    }
+
+    const [startHour, startMinute] = startTime.split(':').map(Number);
+    const [endHour, endMinute] = endTime.split(':').map(Number);
+
+    const dayStart = new Date(current);
+    dayStart.setHours(startHour, startMinute, 0, 0);
+
+    const dayEnd = new Date(current);
+    dayEnd.setHours(endHour, endMinute, 0, 0);
+
+    let slotStart = new Date(dayStart);
+    while (slotStart < dayEnd) {
+      const slotEnd = new Date(slotStart.getTime() + durationMinutes * 60000);
+      
+      if (slotEnd <= dayEnd) {
+        slots.push({
+          start_time: slotStart.toISOString(),
+          end_time: slotEnd.toISOString()
+        });
+      }
+
+      slotStart = new Date(slotEnd.getTime() + breakMinutes * 60000);
+    }
+
+    current.setDate(current.getDate() + 1);
+  }
+
+  return slots;
+}
+
+// POST /api/jobs/:jobId/stages/:stageId/slots - Create interview slots
+app.post('/api/jobs/:jobId/stages/:stageId/slots', async (req, res) => {
+  const { jobId, stageId } = req.params;
+  const {
+    slotConfig,
+    interviewType,
+    videoLink,
+    location,
+    timezone = 'UTC',
+    maxBookings = 1,
+    interviewerIds = [],
+    bufferBefore = 0,
+    bufferAfter = 0,
+    createdBy
+  } = req.body;
+
+  try {
+    if (!slotConfig || !interviewType || !createdBy) {
+      return res.status(400).json({ 
+        error: 'Missing required fields: slotConfig, interviewType, createdBy' 
+      });
+    }
+
+    if (!['phone', 'video', 'onsite'].includes(interviewType)) {
+      return res.status(400).json({ 
+        error: 'Invalid interview type. Must be: phone, video, or onsite' 
+      });
+    }
+
+    const stageCheck = await query(
+      'SELECT id FROM job_pipeline_stages WHERE id = $1 AND job_id = $2',
+      [stageId, jobId]
+    );
+
+    if (stageCheck.rows.length === 0) {
+      return res.status(404).json({ error: 'Stage not found for this job' });
+    }
+
+    const timeSlots = generateTimeSlots(slotConfig);
+
+    if (timeSlots.length === 0) {
+      return res.status(400).json({ error: 'No slots generated from configuration' });
+    }
+
+    await query('BEGIN');
+    const insertedSlots = [];
+
+    try {
+      for (const slot of timeSlots) {
+        const result = await query(`
+          INSERT INTO interview_slots (
+            job_id, stage_id, interviewer_ids, start_time, end_time,
+            duration_minutes, buffer_before_minutes, buffer_after_minutes,
+            interview_type, video_link, location, timezone, max_bookings,
+            created_by
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+          RETURNING *
+        `, [
+          jobId, stageId, JSON.stringify(interviewerIds),
+          slot.start_time, slot.end_time, slotConfig.durationMinutes,
+          bufferBefore, bufferAfter, interviewType, videoLink, location,
+          timezone, maxBookings, createdBy
+        ]);
+
+        insertedSlots.push(result.rows[0]);
+      }
+
+      await query('COMMIT');
+      
+      res.status(201).json({
+        success: true,
+        message: `Created ${insertedSlots.length} interview slots`,
+        slots: insertedSlots
+      });
+    } catch (error) {
+      await query('ROLLBACK');
+      throw error;
+    }
+  } catch (error) {
+    console.error('Error creating interview slots:', error);
+    res.status(500).json({ error: 'Failed to create interview slots' });
+  }
+});
+
+// GET /api/jobs/:jobId/stages/:stageId/slots - Get all slots for a job/stage
+app.get('/api/jobs/:jobId/stages/:stageId/slots', async (req, res) => {
+  const { jobId, stageId } = req.params;
+  const { status } = req.query;
+
+  try {
+    let queryText = `
+      SELECT s.*, 
+        COALESCE(
+          json_agg(
+            json_build_object(
+              'id', b.id,
+              'candidate_id', b.candidate_id,
+              'status', b.status,
+              'booked_at', b.booked_at,
+              'confirmed_email', b.confirmed_email
+            )
+          ) FILTER (WHERE b.id IS NOT NULL), '[]'
+        ) as bookings
+      FROM interview_slots s
+      LEFT JOIN interview_bookings b ON b.slot_id = s.id
+      WHERE s.job_id = $1 AND s.stage_id = $2
+    `;
+
+    const params = [jobId, stageId];
+
+    if (status) {
+      queryText += ` AND s.status = $3`;
+      params.push(status);
+    }
+
+    queryText += ` GROUP BY s.id ORDER BY s.start_time ASC`;
+
+    const result = await query(queryText, params);
+    
+    res.json({
+      success: true,
+      slots: result.rows
+    });
+  } catch (error) {
+    console.error('Error fetching slots:', error);
+    res.status(500).json({ error: 'Failed to fetch slots' });
+  }
+});
+
+// GET /api/candidates/:candidateId/jobs/:jobId/available-slots - Get available slots (public)
+app.get('/api/candidates/:candidateId/jobs/:jobId/available-slots', async (req, res) => {
+  const { candidateId, jobId } = req.params;
+  const { stageId } = req.query;
+
+  try {
+    let queryText = `
+      SELECT 
+        s.id, s.start_time, s.end_time, s.duration_minutes,
+        s.interview_type, s.video_link, s.location, s.timezone,
+        s.max_bookings, s.current_bookings,
+        (s.max_bookings - s.current_bookings) as available_spots
+      FROM interview_slots s
+      WHERE s.job_id = $1
+        AND s.status = 'available'
+        AND s.current_bookings < s.max_bookings
+        AND s.start_time > NOW()
+    `;
+
+    const params = [jobId];
+
+    if (stageId) {
+      queryText += ` AND s.stage_id = $2`;
+      params.push(stageId);
+    }
+
+    queryText += ` ORDER BY s.start_time ASC`;
+
+    const result = await query(queryText, params);
+    
+    res.json({
+      success: true,
+      availableSlots: result.rows
+    });
+  } catch (error) {
+    console.error('Error fetching available slots:', error);
+    res.status(500).json({ error: 'Failed to fetch available slots' });
+  }
+});
+
+// POST /api/slots/:slotId/book - Book an interview slot
+app.post('/api/slots/:slotId/book', async (req, res) => {
+  const { slotId } = req.params;
+  const { candidateId, confirmedEmail, candidateTimezone = 'UTC', notes } = req.body;
+
+  if (!candidateId || !confirmedEmail) {
+    return res.status(400).json({ 
+      error: 'Missing required fields: candidateId, confirmedEmail' 
+    });
+  }
+
+  try {
+    await query('BEGIN');
+
+    // Lock and validate the slot
+    const slotResult = await query(
+      `SELECT s.*, j.id as job_id_check 
+       FROM interview_slots s
+       JOIN job_pipeline_stages ps ON ps.id = s.stage_id
+       JOIN jobs j ON j.id = ps.job_id
+       WHERE s.id = $1 FOR UPDATE`,
+      [slotId]
+    );
+
+    if (slotResult.rows.length === 0) {
+      await query('ROLLBACK');
+      return res.status(404).json({ error: 'Interview slot not found' });
+    }
+
+    const slot = slotResult.rows[0];
+
+    // Verify slot is still available (check again after lock)
+    if (slot.current_bookings >= slot.max_bookings) {
+      await query('ROLLBACK');
+      return res.status(409).json({ 
+        error: 'This slot is no longer available. Please select another time.' 
+      });
+    }
+
+    // Verify slot is in the future (at least 4 hours from now)
+    const slotTime = new Date(slot.start_time);
+    const minBookingTime = new Date(Date.now() + 4 * 60 * 60 * 1000);
+    
+    if (slotTime < minBookingTime) {
+      await query('ROLLBACK');
+      return res.status(400).json({ 
+        error: 'Cannot book slots less than 4 hours in advance' 
+      });
+    }
+
+    // Verify candidate exists and belongs to the same job
+    const candidateCheck = await query(
+      `SELECT id FROM candidates WHERE id = $1 AND job_id = $2`,
+      [candidateId, slot.job_id]
+    );
+
+    if (candidateCheck.rows.length === 0) {
+      await query('ROLLBACK');
+      return res.status(403).json({ 
+        error: 'Candidate not found or does not belong to this job' 
+      });
+    }
+
+    // Verify stage belongs to the same job
+    const stageCheck = await query(
+      `SELECT id FROM job_pipeline_stages WHERE id = $1 AND job_id = $2`,
+      [slot.stage_id, slot.job_id]
+    );
+
+    if (stageCheck.rows.length === 0) {
+      await query('ROLLBACK');
+      return res.status(400).json({ 
+        error: 'Invalid stage configuration' 
+      });
+    }
+
+    // Check for existing confirmed booking for this candidate and stage
+    const existingBooking = await query(
+      `SELECT id FROM interview_bookings 
+       WHERE candidate_id = $1 AND stage_id = $2 AND status = 'confirmed'`,
+      [candidateId, slot.stage_id]
+    );
+
+    if (existingBooking.rows.length > 0) {
+      await query('ROLLBACK');
+      return res.status(409).json({ 
+        error: 'You already have a confirmed interview for this stage' 
+      });
+    }
+
+    // Create the booking
+    const bookingResult = await query(`
+      INSERT INTO interview_bookings (
+        slot_id, candidate_id, job_id, stage_id,
+        confirmed_email, candidate_timezone, notes
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      RETURNING *
+    `, [
+      slotId, candidateId, slot.job_id, slot.stage_id,
+      confirmedEmail, candidateTimezone, notes
+    ]);
+
+    // The trigger update_slot_booking_count will auto-increment current_bookings
+
+    await query('COMMIT');
+
+    const booking = bookingResult.rows[0];
+
+    res.status(201).json({
+      success: true,
+      message: 'Interview booked successfully',
+      booking: {
+        ...booking,
+        slot: slot
+      }
+    });
+  } catch (error) {
+    await query('ROLLBACK');
+    console.error('Error booking slot:', error);
+    res.status(500).json({ error: 'Failed to book interview slot' });
+  }
+});
+
+// GET /api/bookings/:bookingToken - Get booking details by token
+app.get('/api/bookings/:bookingToken', async (req, res) => {
+  const { bookingToken } = req.params;
+
+  try {
+    const result = await query(`
+      SELECT 
+        b.*,
+        s.start_time, s.end_time, s.duration_minutes,
+        s.interview_type, s.video_link, s.location, s.timezone as slot_timezone,
+        j.title as job_title, j.department as company_name,
+        c.first_name, c.last_name, c.email
+      FROM interview_bookings b
+      JOIN interview_slots s ON s.id = b.slot_id
+      JOIN jobs j ON j.id = b.job_id
+      JOIN candidates c ON c.id = b.candidate_id
+      WHERE b.booking_token = $1
+    `, [bookingToken]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+
+    res.json({
+      success: true,
+      booking: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Error fetching booking:', error);
+    res.status(500).json({ error: 'Failed to fetch booking details' });
+  }
+});
+
+// POST /api/bookings/:bookingToken/cancel - Cancel booking
+app.post('/api/bookings/:bookingToken/cancel', async (req, res) => {
+  const { bookingToken } = req.params;
+  const { cancellationReason } = req.body;
+
+  try {
+    await query('BEGIN');
+
+    const result = await query(
+      `UPDATE interview_bookings 
+       SET status = 'cancelled', 
+           cancellation_reason = $1,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE booking_token = $2 AND status = 'confirmed'
+       RETURNING *`,
+      [cancellationReason, bookingToken]
+    );
+
+    if (result.rows.length === 0) {
+      await query('ROLLBACK');
+      return res.status(404).json({ 
+        error: 'Booking not found or already cancelled' 
+      });
+    }
+
+    await query('COMMIT');
+
+    res.json({
+      success: true,
+      message: 'Interview cancelled successfully',
+      booking: result.rows[0]
+    });
+  } catch (error) {
+    await query('ROLLBACK');
+    console.error('Error cancelling booking:', error);
+    res.status(500).json({ error: 'Failed to cancel booking' });
+  }
+});
+
+// GET /api/jobs/:jobId/bookings - Get all bookings for a job
+app.get('/api/jobs/:jobId/bookings', async (req, res) => {
+  const { jobId } = req.params;
+  const { status, stageId, startDate, endDate } = req.query;
+
+  try {
+    let queryText = `
+      SELECT 
+        b.*,
+        s.start_time, s.end_time, s.duration_minutes,
+        s.interview_type, s.video_link, s.location,
+        c.first_name, c.last_name, c.email, c.phone_number,
+        ps.stage_name
+      FROM interview_bookings b
+      JOIN interview_slots s ON s.id = b.slot_id
+      JOIN candidates c ON c.id = b.candidate_id
+      JOIN job_pipeline_stages ps ON ps.id = b.stage_id
+      WHERE b.job_id = $1
+    `;
+
+    const params = [jobId];
+    let paramIndex = 2;
+
+    if (status) {
+      queryText += ` AND b.status = $${paramIndex}`;
+      params.push(status);
+      paramIndex++;
+    }
+
+    if (stageId) {
+      queryText += ` AND b.stage_id = $${paramIndex}`;
+      params.push(stageId);
+      paramIndex++;
+    }
+
+    if (startDate) {
+      queryText += ` AND s.start_time >= $${paramIndex}`;
+      params.push(startDate);
+      paramIndex++;
+    }
+
+    if (endDate) {
+      queryText += ` AND s.start_time <= $${paramIndex}`;
+      params.push(endDate);
+      paramIndex++;
+    }
+
+    queryText += ` ORDER BY s.start_time ASC`;
+
+    const result = await query(queryText, params);
+    
+    res.json({
+      success: true,
+      bookings: result.rows
+    });
+  } catch (error) {
+    console.error('Error fetching bookings:', error);
+    res.status(500).json({ error: 'Failed to fetch bookings' });
+  }
+});
+
+// DELETE /api/slots/:slotId - Delete a slot (only if no confirmed bookings)
+app.delete('/api/slots/:slotId', async (req, res) => {
+  const { slotId } = req.params;
+
+  try {
+    await query('BEGIN');
+
+    const bookingCheck = await query(
+      `SELECT COUNT(*) as count FROM interview_bookings 
+       WHERE slot_id = $1 AND status = 'confirmed'`,
+      [slotId]
+    );
+
+    if (parseInt(bookingCheck.rows[0].count) > 0) {
+      await query('ROLLBACK');
+      return res.status(409).json({ 
+        error: 'Cannot delete slot with confirmed bookings' 
+      });
+    }
+
+    const result = await query(
+      'DELETE FROM interview_slots WHERE id = $1 RETURNING *',
+      [slotId]
+    );
+
+    if (result.rows.length === 0) {
+      await query('ROLLBACK');
+      return res.status(404).json({ error: 'Slot not found' });
+    }
+
+    await query('COMMIT');
+
+    res.json({
+      success: true,
+      message: 'Slot deleted successfully'
+    });
+  } catch (error) {
+    await query('ROLLBACK');
+    console.error('Error deleting slot:', error);
+    res.status(500).json({ error: 'Failed to delete slot' });
+  }
+});
+
 // GET /api/feature-flags - Public endpoint to check enabled features (no auth required)
 app.get('/api/feature-flags', (req, res) => {
   res.json({

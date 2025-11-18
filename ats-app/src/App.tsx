@@ -10,6 +10,7 @@ import { DashboardHome } from './components/DashboardHome';
 import { JobsPageDashboard } from './components/JobsPageDashboard';
 import ApprovalsPage from './components/ApprovalsPage';
 import { AuthCallback } from './components/AuthCallback';
+import { CandidateBookingPage } from './components/interview-scheduling';
 import './App.css';
 
 function App() {
@@ -20,6 +21,9 @@ function App() {
           {/* Public Routes */}
           <Route path="/" element={<><Navigation /><LandingPage /></>} />
           <Route path="/jobs" element={<><Navigation /><JobsPage /></>} />
+          
+          {/* Interview Booking Route (Public) */}
+          <Route path="/book-interview/:candidateId/:jobId" element={<CandidateBookingPage />} />
           
           {/* Workflow Builder Route */}
           <Route path="/jobs/:jobId/workflow-builder" element={<WorkflowBuilder />} />

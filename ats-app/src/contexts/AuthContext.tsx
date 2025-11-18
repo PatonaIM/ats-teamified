@@ -87,7 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
    */
   const loginDemo = () => {
     const demoUser: UserProfile = {
-      id: 'demo-user-123',
+      id: '00000000-0000-0000-0000-000000000001',
       email: 'demo@ats-platform.com',
       name: 'Demo User',
       role: 'recruiter',
