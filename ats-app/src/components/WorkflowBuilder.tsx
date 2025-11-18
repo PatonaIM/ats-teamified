@@ -730,7 +730,7 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
                         No stages yet
                       </p>
                       <p className="text-xs text-gray-400 dark:text-gray-500">
-                        Click stages from library to add
+                        Drag stages from library to add
                       </p>
                     </div>
                   ) : (
