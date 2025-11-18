@@ -442,15 +442,34 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
   };
 
   const handleAddStageFromTemplate = async (template: StageTemplate) => {
-    setConfiguringStage({
-      id: -1,
-      jobId: 0,
-      stageName: template.name,
-      stageOrder: -1,
-      isDefault: false,
-      config: { description: template.description },
-      createdAt: ''
-    });
+    // For custom stages, prompt for a name
+    if (template.id === 'custom') {
+      const customName = prompt('Enter a name for your custom stage:', 'New Stage');
+      if (!customName || customName.trim() === '') {
+        return; // User cancelled or entered empty name
+      }
+      
+      setConfiguringStage({
+        id: -1,
+        jobId: 0,
+        stageName: customName.trim(),
+        stageOrder: -1,
+        isDefault: false,
+        config: { description: 'Custom workflow stage' },
+        createdAt: ''
+      });
+    } else {
+      // For template stages, use the template name
+      setConfiguringStage({
+        id: -1,
+        jobId: 0,
+        stageName: template.name,
+        stageOrder: -1,
+        isDefault: false,
+        config: { description: template.description },
+        createdAt: ''
+      });
+    }
   };
 
   const handleConfigureStage = (stage: PipelineStage) => {
@@ -627,7 +646,7 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
             
             {/* LEFT PANEL: Stage Library */}
-            <div className="lg:col-span-3">
+            <div className="lg:col-span-4">
               <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
                 <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 px-4 py-3 border-b border-gray-200 dark:border-gray-700">
                   <h2 className="text-sm font-semibold text-gray-900 dark:text-white">Stage Library</h2>
@@ -672,7 +691,7 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
             </div>
 
             {/* MIDDLE PANEL: Workflow Canvas */}
-            <div className="lg:col-span-4">
+            <div className="lg:col-span-3">
               <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
                 <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 px-4 py-3 border-b border-gray-200 dark:border-gray-700">
                   <div className="flex items-center justify-between">
