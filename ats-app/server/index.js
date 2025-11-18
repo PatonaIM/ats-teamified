@@ -2191,6 +2191,16 @@ app.post('/api/pipeline-templates/:id/stages', requireWorkflowBuilder, async (re
     }
   } catch (error) {
     console.error('[Pipeline Templates] Error adding stage:', error);
+    
+    // Handle duplicate stage name error
+    if (error.code === '23505' && error.constraint === 'unique_template_stage_name') {
+      return res.status(400).json({ 
+        error: 'Duplicate stage name', 
+        message: `A stage named "${stage_name}" already exists in this template. Please use a different name.`,
+        field: 'stage_name'
+      });
+    }
+    
     return res.status(500).json({ error: 'Failed to add stage', details: error.message });
   }
 });

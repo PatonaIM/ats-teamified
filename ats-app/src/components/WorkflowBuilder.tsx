@@ -500,7 +500,7 @@ export function WorkflowBuilder({ templateId: propTemplateId, jobId: propJobId, 
 
         if (!response.ok) {
           const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to add stage');
+          throw new Error(errorData.message || errorData.error || 'Failed to add stage');
         }
         
         // Get the created stage from response and select it immediately
