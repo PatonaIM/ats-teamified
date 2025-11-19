@@ -1485,12 +1485,10 @@ app.put('/api/candidates/:id/stage', async (req, res) => {
 });
 
 // Role-based stage restrictions (view-only for clients)
+// Clients can only VIEW these stages, but can interact with Client Endorsement onwards
 const CLIENT_VIEW_ONLY_STAGES = [
   'Screening',
-  'Shortlist',
-  'Client Endorsement',
-  'Offer',
-  'Offer Accepted'
+  'Shortlist'
 ];
 
 // PATCH /api/candidates/:id/stage - Move candidate (with role validation)
