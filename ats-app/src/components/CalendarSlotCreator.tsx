@@ -122,7 +122,9 @@ export default function CalendarSlotCreator({
 
   const calendarEvents: CalendarEvent[] = useMemo(() => {
     return existingSlots.map(slot => ({
-      title: `${slot.job_title} - ${slot.stage_name}`,
+      title: slot.job_title && slot.stage_name 
+        ? `${slot.job_title} - ${slot.stage_name}` 
+        : 'General Availability',
       start: new Date(slot.start_time),
       end: new Date(slot.end_time),
       slot,
@@ -309,11 +311,13 @@ export default function CalendarSlotCreator({
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <h3 className="font-semibold text-gray-900 dark:text-white">
-                        {slot.job_title}
+                        {slot.job_title || 'General Availability'}
                       </h3>
-                      <span className="text-sm text-gray-500 dark:text-gray-400">
-                        • {slot.stage_name}
-                      </span>
+                      {slot.stage_name && (
+                        <span className="text-sm text-gray-500 dark:text-gray-400">
+                          • {slot.stage_name}
+                        </span>
+                      )}
                       <span className={`px-2 py-1 text-xs rounded-full ${
                         slot.status === 'available' 
                           ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'

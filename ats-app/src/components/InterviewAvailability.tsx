@@ -48,26 +48,18 @@ export function InterviewAvailability() {
     try {
       setCreateLoading(true);
       
-      const data = await apiRequest(`/api/jobs/${slotData.job_id}/stages/${slotData.stage_id}/slots`, {
+      const data = await apiRequest('/api/interview-slots', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          slotConfig: {
-            startDate: slotData.start_time.split('T')[0],
-            endDate: slotData.end_time.split('T')[0],
-            startHour: new Date(slotData.start_time).getHours(),
-            startMinute: new Date(slotData.start_time).getMinutes(),
-            endHour: new Date(slotData.end_time).getHours(),
-            endMinute: new Date(slotData.end_time).getMinutes(),
-            durationMinutes: slotData.duration_minutes,
-            breakMinutes: 0,
-            daysOfWeek: [new Date(slotData.start_time).getDay()]
-          },
-          interviewType: slotData.interview_type,
-          videoLink: slotData.video_link,
+          start_time: slotData.start_time,
+          end_time: slotData.end_time,
+          duration_minutes: slotData.duration_minutes,
+          interview_type: slotData.interview_type,
+          video_link: slotData.video_link,
           location: slotData.location,
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          maxBookings: slotData.max_bookings || 1
+          max_bookings: slotData.max_bookings || 1
         })
       });
 
@@ -76,6 +68,9 @@ export function InterviewAvailability() {
       }
       
       await fetchSlots();
+    } catch (error: any) {
+      setCreateLoading(false);
+      throw error;
     } finally {
       setCreateLoading(false);
     }
@@ -90,11 +85,11 @@ export function InterviewAvailability() {
       if (data.success) {
         await fetchSlots();
       } else {
-        alert(data.message || 'Failed to delete slot');
+        throw new Error(data.message || 'Failed to delete slot');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting slot:', error);
-      alert('Failed to delete slot');
+      throw error;
     }
   };
 

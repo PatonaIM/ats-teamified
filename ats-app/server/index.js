@@ -3030,6 +3030,72 @@ app.post('/api/jobs/:jobId/stages/:stageId/slots', authenticateRequest, async (r
   }
 });
 
+// POST /api/interview-slots - Create general availability interview slots (not tied to specific job/stage)
+// Optional authentication: If authenticated, uses req.user.id; otherwise requires createdBy in body
+app.post('/api/interview-slots', authenticateRequest, async (req, res) => {
+  const {
+    start_time,
+    end_time,
+    duration_minutes,
+    interview_type,
+    video_link,
+    location,
+    timezone = 'UTC',
+    max_bookings = 1,
+    interviewer_ids = [],
+    buffer_before = 0,
+    buffer_after = 0,
+    job_id = null,
+    stage_id = null,
+    createdBy
+  } = req.body;
+
+  try {
+    // Use authenticated user ID if available via middleware, otherwise fall back to body parameter
+    const effectiveCreatedBy = req.user?.id || createdBy;
+    
+    if (!start_time || !end_time || !duration_minutes || !interview_type || !effectiveCreatedBy) {
+      return res.status(400).json({ 
+        error: 'Missing required fields: start_time, end_time, duration_minutes, interview_type' + (!effectiveCreatedBy ? ', createdBy (or authentication required)' : '')
+      });
+    }
+
+    if (!['phone', 'video', 'onsite'].includes(interview_type)) {
+      return res.status(400).json({ 
+        error: 'Invalid interview type. Must be: phone, video, or onsite' 
+      });
+    }
+
+    const result = await query(`
+      INSERT INTO interview_slots (
+        job_id, stage_id, interviewer_ids, start_time, end_time,
+        duration_minutes, buffer_before_minutes, buffer_after_minutes,
+        interview_type, video_link, location, timezone, max_bookings,
+        created_by
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+      RETURNING *
+    `, [
+      job_id, stage_id, JSON.stringify(interviewer_ids),
+      start_time, end_time, duration_minutes,
+      buffer_before, buffer_after, interview_type, video_link, location,
+      timezone, max_bookings, effectiveCreatedBy
+    ]);
+
+    res.status(201).json({
+      success: true,
+      message: 'Created interview slot',
+      slot: result.rows[0]
+    });
+  } catch (error) {
+    console.error('Error creating interview slot:', error);
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to create interview slot',
+      message: error.message 
+    });
+  }
+});
+
 // GET /api/jobs/:jobId/stages/:stageId/slots - Get all slots for a job/stage
 app.get('/api/jobs/:jobId/stages/:stageId/slots', async (req, res) => {
   const { jobId, stageId } = req.params;
@@ -3087,8 +3153,8 @@ app.get('/api/interview-slots/my-slots', authenticateRequest, async (req, res) =
         j.title as job_title,
         jps.stage_name
       FROM interview_slots s
-      JOIN jobs j ON j.id = s.job_id
-      JOIN job_pipeline_stages jps ON jps.id = s.stage_id
+      LEFT JOIN jobs j ON j.id = s.job_id
+      LEFT JOIN job_pipeline_stages jps ON jps.id = s.stage_id
       WHERE s.created_by = $1
       ORDER BY s.start_time DESC
     `, [userId]);
