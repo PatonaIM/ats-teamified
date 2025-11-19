@@ -236,27 +236,10 @@ app.post('/api/jobs', async (req, res) => {
         status,
         source,
         created_by_role,
-        contract_duration,
-        contract_value,
-        service_scope,
-        deliverable_milestones,
-        payment_schedule,
-        hourly_rate,
-        hours_per_week,
-        max_budget,
-        cost_center,
-        annual_salary,
-        benefits_package,
-        total_compensation,
-        headcount_impact,
-        local_salary,
-        eor_service_fee,
-        compliance_costs,
-        timezone,
-        remote_capabilities,
+        benefits,
         created_at,
         updated_at
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
       RETURNING *
     `;
     
@@ -265,40 +248,19 @@ app.post('/api/jobs', async (req, res) => {
       generateSlug(jobData.title), // Auto-generate URL-safe slug
       employmentTypeMap[jobData.employmentType] || 'Full-time',
       jobData.description || '',
-      jobData.keySkills || '',
+      jobData.requirements || '',
       finalDepartment || 'Engineering',
       jobData.experienceLevel || 'mid',
       jobData.city || 'Remote',
       jobData.country || 'Global',
-      jobData.remoteOk || false,
-      jobData.salaryMin ? parseInt(jobData.salaryMin) : null,
-      jobData.salaryMax ? parseInt(jobData.salaryMax) : null,
+      jobData.remoteFlag || false,
+      jobData.salaryFrom ? parseInt(jobData.salaryFrom) : null,
+      jobData.salaryTo ? parseInt(jobData.salaryTo) : null,
       jobData.salaryCurrency || 'USD',
       jobStatus,
       'internal_ats', // source: internal ATS system
       createdByRole,
-      // Contract fields
-      jobData.contractDuration || null,
-      jobData.contractValue ? parseFloat(jobData.contractValue.replace(/[^0-9.]/g, '')) : null,
-      jobData.serviceScope || null,
-      jobData.deliverableMilestones || null,
-      jobData.paymentSchedule || null,
-      // Part-time fields
-      jobData.hourlyRate ? parseFloat(jobData.hourlyRate.replace(/[^0-9.]/g, '')) : null,
-      jobData.hoursPerWeek ? parseInt(jobData.hoursPerWeek) : null,
-      jobData.maxBudget ? parseFloat(jobData.maxBudget.replace(/[^0-9.]/g, '')) : null,
-      jobData.costCenter || null,
-      // Full-time fields
-      jobData.annualSalary ? parseFloat(jobData.annualSalary.replace(/[^0-9.]/g, '')) : null,
-      jobData.benefitsPackage || null,
-      jobData.totalCompensation ? parseFloat(jobData.totalCompensation.replace(/[^0-9.]/g, '')) : null,
-      jobData.headcountImpact || null,
-      // EOR fields
-      jobData.localSalary ? parseFloat(jobData.localSalary.replace(/[^0-9.]/g, '')) : null,
-      jobData.eorServiceFee ? parseFloat(jobData.eorServiceFee.replace(/[^0-9.]/g, '')) : null,
-      jobData.complianceCosts ? parseFloat(jobData.complianceCosts.replace(/[^0-9.]/g, '')) : null,
-      jobData.timezone || null,
-      jobData.remoteCapabilities || null
+      jobData.benefits || ''
     ];
     
     console.log('[Backend] Inserting new job:', jobData.title, '| Status:', jobStatus, '| Role:', createdByRole);
