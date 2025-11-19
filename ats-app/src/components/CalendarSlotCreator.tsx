@@ -1,9 +1,9 @@
 import { useState, useCallback, useMemo } from 'react';
-import { Calendar, dateFnsLocalizer, type Event, Views, type ToolbarProps } from 'react-big-calendar';
+import { Calendar, dateFnsLocalizer, type Event, Views, type ToolbarProps, type SlotInfo } from 'react-big-calendar';
 import { format, parse, startOfWeek, getDay } from 'date-fns';
 import { enUS } from 'date-fns/locale';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
-import { Calendar as CalendarIcon, Clock, Video, MapPin, Trash2, Grid3x3, List, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, Video, MapPin, Trash2, Grid3x3, List, ChevronLeft, ChevronRight, AlertCircle, X } from 'lucide-react';
 
 const locales = {
   'en-US': enUS
@@ -107,6 +107,18 @@ export default function CalendarSlotCreator({
   const [location, setLocation] = useState('');
   const [showSlotModal, setShowSlotModal] = useState(false);
   const [pendingSlot, setPendingSlot] = useState<{ start: Date; end: Date } | null>(null);
+  const [alertModal, setAlertModal] = useState<{ show: boolean; title: string; message: string; type: 'error' | 'warning' | 'info' }>({
+    show: false,
+    title: '',
+    message: '',
+    type: 'info'
+  });
+  const [confirmModal, setConfirmModal] = useState<{ show: boolean; title: string; message: string; onConfirm: () => void }>({
+    show: false,
+    title: '',
+    message: '',
+    onConfirm: () => {}
+  });
 
   const calendarEvents: CalendarEvent[] = useMemo(() => {
     return existingSlots.map(slot => ({
@@ -118,9 +130,12 @@ export default function CalendarSlotCreator({
     }));
   }, [existingSlots]);
 
-  const handleSelectSlot = useCallback(() => {
-    alert('Interview slot creation will be available once you are assigned to specific job requests. Contact your recruiter manager for job assignments.');
-    return;
+  const handleSelectSlot = useCallback((slotInfo: SlotInfo) => {
+    setPendingSlot({
+      start: slotInfo.start as Date,
+      end: slotInfo.end as Date
+    });
+    setShowSlotModal(true);
   }, []);
 
   const handleCreateSlot = async () => {
@@ -145,14 +160,25 @@ export default function CalendarSlotCreator({
       setVideoLink('');
       setLocation('');
     } catch (error: any) {
-      alert(error?.message || 'Failed to create slot. Please try again.');
+      setAlertModal({
+        show: true,
+        title: 'Slot Creation Failed',
+        message: error?.message || 'Failed to create slot. Please try again.',
+        type: 'error'
+      });
     }
   };
 
   const handleDeleteSlot = async (slotId: string) => {
-    if (confirm('Are you sure you want to delete this slot?')) {
-      await onDeleteSlot(slotId);
-    }
+    setConfirmModal({
+      show: true,
+      title: 'Delete Interview Slot',
+      message: 'Are you sure you want to delete this slot? This action cannot be undone.',
+      onConfirm: async () => {
+        setConfirmModal({ ...confirmModal, show: false });
+        await onDeleteSlot(slotId);
+      }
+    });
   };
 
   const eventStyleGetter = (event: CalendarEvent) => {
@@ -221,9 +247,9 @@ export default function CalendarSlotCreator({
 
       {view === 'calendar' ? (
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700">
-          <div className="mb-4 p-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg">
-            <p className="text-sm text-purple-800 dark:text-purple-200">
-              <strong>Note:</strong> Interview slot creation is based on your assigned job requests. View your existing slots below, or contact your recruiter manager for job assignments.
+          <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+            <p className="text-sm text-blue-800 dark:text-blue-200">
+              <strong>Tip:</strong> Click and drag on the calendar to create interview slots. Your slots will be visible to candidates for booking.
             </p>
           </div>
           
@@ -239,7 +265,12 @@ export default function CalendarSlotCreator({
               onSelectEvent={(event: any) => {
                 if (event.slot) {
                   if (event.slot.current_bookings > 0) {
-                    alert(`Cannot delete this slot - it has ${event.slot.current_bookings} booking(s)`);
+                    setAlertModal({
+                      show: true,
+                      title: 'Cannot Delete Slot',
+                      message: `Cannot delete this slot - it has ${event.slot.current_bookings} booking(s).`,
+                      type: 'warning'
+                    });
                   } else {
                     handleDeleteSlot(event.slot.id);
                   }
@@ -428,6 +459,78 @@ export default function CalendarSlotCreator({
                 className="flex-1 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-500 text-white rounded-lg hover:from-purple-700 hover:to-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
                 {loading ? 'Creating...' : 'Create Slot'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {alertModal.show && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-md p-6 relative">
+            <button
+              onClick={() => setAlertModal({ ...alertModal, show: false })}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
+            >
+              <X size={20} />
+            </button>
+            
+            <div className="flex items-start gap-4 mb-4">
+              <div className={`p-2 rounded-full ${
+                alertModal.type === 'error' ? 'bg-red-100 dark:bg-red-900/30' :
+                alertModal.type === 'warning' ? 'bg-yellow-100 dark:bg-yellow-900/30' :
+                'bg-blue-100 dark:bg-blue-900/30'
+              }`}>
+                <AlertCircle className={`${
+                  alertModal.type === 'error' ? 'text-red-600 dark:text-red-400' :
+                  alertModal.type === 'warning' ? 'text-yellow-600 dark:text-yellow-400' :
+                  'text-blue-600 dark:text-blue-400'
+                }`} size={24} />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
+                  {alertModal.title}
+                </h3>
+                <p className="text-gray-600 dark:text-gray-400">
+                  {alertModal.message}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex justify-end">
+              <button
+                onClick={() => setAlertModal({ ...alertModal, show: false })}
+                className="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-500 text-white rounded-lg hover:from-purple-700 hover:to-blue-600 transition-all"
+              >
+                OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmModal.show && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg w-full max-w-md p-6">
+            <h3 className="text-xl font-bold text-gray-900 dark:text-white mb-4">
+              {confirmModal.title}
+            </h3>
+            <p className="text-gray-600 dark:text-gray-400 mb-6">
+              {confirmModal.message}
+            </p>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmModal({ ...confirmModal, show: false })}
+                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-all"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmModal.onConfirm}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all"
+              >
+                Delete
               </button>
             </div>
           </div>
