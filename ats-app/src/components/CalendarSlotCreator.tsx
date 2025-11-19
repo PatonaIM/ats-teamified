@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
-import { Calendar, dateFnsLocalizer, type SlotInfo, type Event } from 'react-big-calendar';
+import { Calendar as BigCalendar, dateFnsLocalizer, type SlotInfo, type Event } from 'react-big-calendar';
 import { format, parse, startOfWeek, getDay } from 'date-fns';
 import { enUS } from 'date-fns/locale';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
@@ -114,11 +114,15 @@ export default function CalendarSlotCreator({
       max_bookings: 1
     };
 
-    await onCreateSlot(slotData);
-    setShowSlotModal(false);
-    setPendingSlot(null);
-    setVideoLink('');
-    setLocation('');
+    try {
+      await onCreateSlot(slotData);
+      setShowSlotModal(false);
+      setPendingSlot(null);
+      setVideoLink('');
+      setLocation('');
+    } catch (error: any) {
+      alert(error?.message || 'Failed to create slot. Please try again.');
+    }
   };
 
   const handleDeleteSlot = async (slotId: string) => {
@@ -238,16 +242,21 @@ export default function CalendarSlotCreator({
           </div>
           
           <div className="calendar-container" style={{ height: '600px' }}>
-            <Calendar
+            {/* @ts-expect-error - react-big-calendar has React 18 type compatibility issues */}
+            <BigCalendar
               localizer={localizer}
               events={calendarEvents}
               startAccessor="start"
               endAccessor="end"
               selectable
               onSelectSlot={handleSelectSlot}
-              onSelectEvent={(event: CalendarEvent) => {
+              onSelectEvent={(event: any) => {
                 if (event.slot) {
-                  handleDeleteSlot(event.slot.id);
+                  if (event.slot.current_bookings > 0) {
+                    alert(`Cannot delete this slot - it has ${event.slot.current_bookings} booking(s)`);
+                  } else {
+                    handleDeleteSlot(event.slot.id);
+                  }
                 }
               }}
               eventPropGetter={eventStyleGetter}
@@ -257,8 +266,7 @@ export default function CalendarSlotCreator({
               views={['month', 'week', 'day']}
               style={{ height: '100%' }}
             />
-          </div>
-        </div>
+          </div>        </div>
       ) : (
         <div className="space-y-4">
           {existingSlots.length === 0 ? (
