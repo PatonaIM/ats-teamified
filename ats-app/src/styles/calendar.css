@@ -1,0 +1,323 @@
+/* Custom styles for react-big-calendar with purple/blue gradient theme */
+
+.rbc-calendar {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+}
+
+.rbc-header {
+  padding: 12px 8px;
+  font-weight: 600;
+  color: #6B7280;
+  background: linear-gradient(to right, #F9FAFB, #F3F4F6);
+  border-bottom: 2px solid #E5E7EB;
+}
+
+.dark .rbc-header {
+  color: #D1D5DB;
+  background: linear-gradient(to right, #374151, #1F2937);
+  border-bottom-color: #4B5563;
+}
+
+.rbc-today {
+  background-color: #EDE9FE !important;
+}
+
+.dark .rbc-today {
+  background-color: #5B21B6 !important;
+  background-opacity: 0.1;
+}
+
+.rbc-time-view {
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.dark .rbc-time-view {
+  border-color: #4B5563;
+}
+
+.rbc-time-header-content {
+  border-left: 1px solid #E5E7EB;
+}
+
+.dark .rbc-time-header-content {
+  border-left-color: #4B5563;
+}
+
+.rbc-time-content {
+  border-top: 2px solid #E5E7EB;
+}
+
+.dark .rbc-time-content {
+  border-top-color: #4B5563;
+}
+
+.rbc-time-slot {
+  color: #6B7280;
+}
+
+.dark .rbc-time-slot {
+  color: #9CA3AF;
+}
+
+.rbc-day-slot .rbc-time-slot {
+  border-top: 1px solid #F3F4F6;
+}
+
+.dark .rbc-day-slot .rbc-time-slot {
+  border-top-color: #374151;
+}
+
+.rbc-current-time-indicator {
+  background-color: #A16AE8;
+  height: 2px;
+}
+
+.rbc-event {
+  background-color: #8096FD;
+  border-radius: 6px;
+  border: none;
+  color: white;
+  font-size: 0.875rem;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.rbc-event:hover {
+  background: linear-gradient(135deg, #A16AE8, #8096FD);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px rgba(161, 106, 232, 0.3);
+}
+
+.rbc-event-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.rbc-event-content {
+  font-size: 0.875rem;
+}
+
+.rbc-selected {
+  background: linear-gradient(135deg, #A16AE8, #8096FD) !important;
+}
+
+.rbc-slot-selection {
+  background-color: rgba(161, 106, 232, 0.2);
+  border: 2px dashed #A16AE8;
+}
+
+.dark .rbc-slot-selection {
+  background-color: rgba(161, 106, 232, 0.3);
+  border-color: #A16AE8;
+}
+
+.rbc-toolbar {
+  padding: 16px;
+  margin-bottom: 16px;
+  background: linear-gradient(to right, #F9FAFB, #F3F4F6);
+  border-radius: 8px;
+  border: 1px solid #E5E7EB;
+}
+
+.dark .rbc-toolbar {
+  background: linear-gradient(to right, #374151, #1F2937);
+  border-color: #4B5563;
+}
+
+.rbc-toolbar button {
+  color: #374151;
+  border: 1px solid #D1D5DB;
+  background-color: white;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.dark .rbc-toolbar button {
+  color: #D1D5DB;
+  border-color: #4B5563;
+  background-color: #1F2937;
+}
+
+.rbc-toolbar button:hover {
+  background: linear-gradient(to right, #EDE9FE, #DBEAFE);
+  border-color: #A16AE8;
+  color: #6B21B6;
+}
+
+.dark .rbc-toolbar button:hover {
+  background: linear-gradient(to right, #5B21B6, #1E40AF);
+  border-color: #8096FD;
+  color: #DBEAFE;
+}
+
+.rbc-toolbar button.rbc-active {
+  background: linear-gradient(to right, #A16AE8, #8096FD);
+  color: white;
+  border-color: transparent;
+  box-shadow: 0 2px 4px rgba(161, 106, 232, 0.3);
+}
+
+.rbc-toolbar button.rbc-active:hover {
+  background: linear-gradient(to right, #9155D9, #6B7FFF);
+}
+
+.rbc-off-range {
+  color: #D1D5DB;
+}
+
+.dark .rbc-off-range {
+  color: #4B5563;
+}
+
+.rbc-off-range-bg {
+  background-color: #F9FAFB;
+}
+
+.dark .rbc-off-range-bg {
+  background-color: #111827;
+}
+
+.rbc-month-view {
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.dark .rbc-month-view {
+  border-color: #4B5563;
+}
+
+.rbc-month-row {
+  border-top: 1px solid #E5E7EB;
+}
+
+.dark .rbc-month-row {
+  border-top-color: #4B5563;
+}
+
+.rbc-day-bg {
+  border-left: 1px solid #E5E7EB;
+}
+
+.dark .rbc-day-bg {
+  border-left-color: #4B5563;
+}
+
+.rbc-date-cell {
+  padding: 8px;
+  text-align: right;
+}
+
+.rbc-now {
+  font-weight: 700;
+  color: #A16AE8;
+}
+
+.rbc-agenda-view {
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.dark .rbc-agenda-view {
+  border-color: #4B5563;
+}
+
+.rbc-agenda-date-cell {
+  padding: 12px;
+  background: linear-gradient(to right, #F9FAFB, #F3F4F6);
+  border-bottom: 1px solid #E5E7EB;
+  font-weight: 600;
+  color: #374151;
+}
+
+.dark .rbc-agenda-date-cell {
+  background: linear-gradient(to right, #374151, #1F2937);
+  border-bottom-color: #4B5563;
+  color: #D1D5DB;
+}
+
+.rbc-agenda-time-cell {
+  padding: 12px;
+  color: #6B7280;
+  font-weight: 500;
+}
+
+.dark .rbc-agenda-time-cell {
+  color: #9CA3AF;
+}
+
+.rbc-agenda-event-cell {
+  padding: 12px;
+}
+
+.rbc-show-more {
+  background-color: rgba(161, 106, 232, 0.1);
+  color: #A16AE8;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 4px;
+  margin: 2px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.rbc-show-more:hover {
+  background-color: rgba(161, 106, 232, 0.2);
+  transform: translateY(-1px);
+}
+
+.rbc-overlay {
+  background-color: white;
+  border: 1px solid #E5E7EB;
+  border-radius: 8px;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  padding: 12px;
+}
+
+.dark .rbc-overlay {
+  background-color: #1F2937;
+  border-color: #4B5563;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+}
+
+.rbc-overlay-header {
+  padding: 8px;
+  border-bottom: 1px solid #E5E7EB;
+  margin-bottom: 8px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.dark .rbc-overlay-header {
+  border-bottom-color: #4B5563;
+  color: #D1D5DB;
+}
+
+/* Custom scrollbar for calendar */
+.rbc-time-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.rbc-time-content::-webkit-scrollbar-track {
+  background: #F3F4F6;
+  border-radius: 4px;
+}
+
+.dark .rbc-time-content::-webkit-scrollbar-track {
+  background: #374151;
+}
+
+.rbc-time-content::-webkit-scrollbar-thumb {
+  background: linear-gradient(to bottom, #A16AE8, #8096FD);
+  border-radius: 4px;
+}
+
+.rbc-time-content::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(to bottom, #9155D9, #6B7FFF);
+}
