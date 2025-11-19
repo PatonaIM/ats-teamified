@@ -26,7 +26,7 @@ outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd ats-app && node server/dev-server.js"
+args = "cd ats-app && (PORT=3001 node server/index.js &) && sleep 3 && npx vite"
 waitForPort = 5000
 
 [[ports]]
@@ -36,34 +36,6 @@ externalPort = 3001
 [[ports]]
 localPort = 5000
 externalPort = 80
-
-[[ports]]
-localPort = 24678
-externalPort = 3000
-
-[[ports]]
-localPort = 32997
-externalPort = 5000
-
-[[ports]]
-localPort = 37241
-externalPort = 4200
-
-[[ports]]
-localPort = 40491
-externalPort = 5173
-
-[[ports]]
-localPort = 41097
-externalPort = 3003
-
-[[ports]]
-localPort = 41611
-externalPort = 6000
-
-[[ports]]
-localPort = 43043
-externalPort = 3002
 
 [deployment]
 deploymentTarget = "autoscale"

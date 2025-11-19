@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
-import { Calendar as BigCalendar, dateFnsLocalizer, type SlotInfo, type Event } from 'react-big-calendar';
+import { Calendar, dateFnsLocalizer, type SlotInfo, type Event, Views } from 'react-big-calendar';
 import { format, parse, startOfWeek, getDay } from 'date-fns';
 import { enUS } from 'date-fns/locale';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
@@ -242,8 +242,8 @@ export default function CalendarSlotCreator({
           </div>
           
           <div className="calendar-container" style={{ height: '600px' }}>
-            {/* @ts-expect-error - react-big-calendar has React 18 type compatibility issues */}
-            <BigCalendar
+            {/* @ts-ignore - react-big-calendar has React 18 type incompatibility */}
+            <Calendar
               localizer={localizer}
               events={calendarEvents}
               startAccessor="start"
@@ -262,8 +262,8 @@ export default function CalendarSlotCreator({
               eventPropGetter={eventStyleGetter}
               step={15}
               timeslots={4}
-              defaultView="week"
-              views={['month', 'week', 'day']}
+              defaultView={Views.WEEK}
+              views={[Views.MONTH, Views.WEEK, Views.DAY]}
               style={{ height: '100%' }}
             />
           </div>        </div>
