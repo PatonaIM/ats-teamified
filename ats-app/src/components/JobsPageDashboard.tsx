@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Search, Plus, Briefcase, MapPin, DollarSign, Users, Calendar, CheckCircle, Clock, XCircle, Pause, AlertCircle } from 'lucide-react';
 import JobForm from './JobForm';
+import ConfirmationModal from './ConfirmationModal';
 import { getEmploymentTypeColors, getEmploymentTypeLabel } from '../utils/employmentTypes';
 import { apiRequest } from '../utils/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -75,6 +76,23 @@ export function JobsPageDashboard() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [publishingJobId, setPublishingJobId] = useState<string | null>(null);
+  
+  // Confirmation modal state
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmText: string;
+    variant: 'danger' | 'warning' | 'success' | 'primary';
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    confirmText: 'Confirm',
+    variant: 'primary',
+    onConfirm: () => {}
+  });
   
   // Check for action=create in URL query params
   useEffect(() => {
@@ -174,85 +192,119 @@ export function JobsPageDashboard() {
   const handlePublishJob = async (jobId: string, event: React.MouseEvent) => {
     event.stopPropagation();
     
-    const confirmed = window.confirm('Are you sure you want to publish this job? It will become visible to candidates immediately.');
-    if (!confirmed) return;
+    setConfirmModal({
+      isOpen: true,
+      title: 'Publish Job',
+      message: 'Are you sure you want to publish this job? It will become visible to candidates immediately.',
+      confirmText: 'Publish',
+      variant: 'success',
+      onConfirm: async () => {
+        setConfirmModal({ ...confirmModal, isOpen: false });
 
-    try {
-      setPublishingJobId(jobId);
-      console.log('[UI] Publishing job:', jobId);
+        try {
+          setPublishingJobId(jobId);
+          console.log('[UI] Publishing job:', jobId);
 
-      const response = await apiRequest<{ success: boolean; job: Job }>(`/api/jobs/${jobId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ job_status: 'published' })
-      });
+          const response = await apiRequest<{ success: boolean; job: Job }>(`/api/jobs/${jobId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ job_status: 'published' })
+          });
 
-      console.log('[UI] Publish response:', response);
+          console.log('[UI] Publish response:', response);
 
-      if (response.success) {
-        setJobs(prev => prev.map(job => 
-          job.id === jobId 
-            ? { ...response.job, status: normalizeStatus(response.job.status) }
-            : job
-        ));
-        
-        alert('✅ Job published successfully!');
+          if (response.success) {
+            setJobs(prev => prev.map(job => 
+              job.id === jobId 
+                ? { ...response.job, status: normalizeStatus(response.job.status) }
+                : job
+            ));
+            
+            alert('✅ Job published successfully!');
+          }
+        } catch (err) {
+          const message = err instanceof Error ? err.message : 'Failed to publish job';
+          console.error('[UI] Publish error:', message);
+          
+          if (message.includes('403') || message.includes('approval')) {
+            alert('⚠️ This job requires approval before publishing. Please use the approval workflow.');
+          } else {
+            alert('❌ Error: ' + message);
+          }
+        } finally {
+          setPublishingJobId(null);
+        }
       }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to publish job';
-      console.error('[UI] Publish error:', message);
-      
-      if (message.includes('403') || message.includes('approval')) {
-        alert('⚠️ This job requires approval before publishing. Please use the approval workflow.');
-      } else {
-        alert('❌ Error: ' + message);
-      }
-    } finally {
-      setPublishingJobId(null);
-    }
+    });
   };
 
   const handleStatusChange = async (jobId: string, newStatus: string, confirmMessage: string, event: React.MouseEvent) => {
     event.stopPropagation();
     
-    const confirmed = window.confirm(confirmMessage);
-    if (!confirmed) return;
-
-    try {
-      setPublishingJobId(jobId);
-      console.log('[UI] Changing job status to:', newStatus);
-
-      const response = await apiRequest<{ success: boolean; job: Job }>(`/api/jobs/${jobId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ job_status: newStatus })
-      });
-
-      console.log('[UI] Status change response:', response);
-
-      if (response.success) {
-        setJobs(prev => prev.map(job => 
-          job.id === jobId 
-            ? { ...response.job, status: normalizeStatus(response.job.status) }
-            : job
-        ));
-        
-        const statusMessages: Record<string, string> = {
-          paused: '⏸️ Job paused successfully!',
-          published: '▶️ Job resumed successfully!',
-          filled: '✅ Job marked as filled!',
-          closed: '🔒 Job closed successfully!'
-        };
-        
-        alert(statusMessages[newStatus] || '✅ Job status updated!');
+    // Determine the variant and title based on the status
+    const getModalConfig = () => {
+      switch (newStatus) {
+        case 'paused':
+          return { title: 'Pause Job', variant: 'warning' as const, confirmText: 'Pause' };
+        case 'published':
+          return { title: 'Resume Job', variant: 'success' as const, confirmText: 'Resume' };
+        case 'filled':
+          return { title: 'Mark as Filled', variant: 'success' as const, confirmText: 'Mark Filled' };
+        case 'closed':
+          return { title: 'Close Job', variant: 'danger' as const, confirmText: 'Close' };
+        default:
+          return { title: 'Confirm Action', variant: 'primary' as const, confirmText: 'Confirm' };
       }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to update job status';
-      console.error('[UI] Status change error:', message);
-      alert('❌ Error: ' + message);
-    } finally {
-      setPublishingJobId(null);
-    }
+    };
+
+    const config = getModalConfig();
+    
+    setConfirmModal({
+      isOpen: true,
+      title: config.title,
+      message: confirmMessage,
+      confirmText: config.confirmText,
+      variant: config.variant,
+      onConfirm: async () => {
+        setConfirmModal({ ...confirmModal, isOpen: false });
+
+        try {
+          setPublishingJobId(jobId);
+          console.log('[UI] Changing job status to:', newStatus);
+
+          const response = await apiRequest<{ success: boolean; job: Job }>(`/api/jobs/${jobId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ job_status: newStatus })
+          });
+
+          console.log('[UI] Status change response:', response);
+
+          if (response.success) {
+            setJobs(prev => prev.map(job => 
+              job.id === jobId 
+                ? { ...response.job, status: normalizeStatus(response.job.status) }
+                : job
+            ));
+            
+            const statusMessages: Record<string, string> = {
+              paused: '⏸️ Job paused successfully!',
+              published: '▶️ Job resumed successfully!',
+              filled: '✅ Job marked as filled!',
+              closed: '🔒 Job closed successfully!'
+            };
+            
+            alert(statusMessages[newStatus] || '✅ Job status updated!');
+          }
+        } catch (err) {
+          const message = err instanceof Error ? err.message : 'Failed to update job status';
+          console.error('[UI] Status change error:', message);
+          alert('❌ Error: ' + message);
+        } finally {
+          setPublishingJobId(null);
+        }
+      }
+    });
   };
 
   return (
@@ -578,6 +630,16 @@ export function JobsPageDashboard() {
         onClose={() => setIsCreateModalOpen(false)}
         onSubmit={handleCreateJob}
         isSubmitting={isSubmitting}
+      />
+
+      <ConfirmationModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmText={confirmModal.confirmText}
+        confirmVariant={confirmModal.variant}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal({ ...confirmModal, isOpen: false })}
       />
     </div>
   );
