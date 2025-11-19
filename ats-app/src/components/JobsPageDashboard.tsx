@@ -559,7 +559,10 @@ export function JobsPageDashboard() {
                     )}
 
                     {/* Always show View Details button */}
-                    <button className="px-4 py-2 bg-gradient-to-r from-brand-purple to-brand-blue text-white rounded-lg font-semibold opacity-0 group-hover:opacity-100 transition-all duration-300 hover:shadow-lg text-sm">
+                    <button 
+                      onClick={() => navigate(`/dashboard/jobs/${job.id}`)}
+                      className="px-4 py-2 bg-gradient-to-r from-brand-purple to-brand-blue text-white rounded-lg font-semibold opacity-0 group-hover:opacity-100 transition-all duration-300 hover:shadow-lg text-sm"
+                    >
                       View Details
                     </button>
                   </div>

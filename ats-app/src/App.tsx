@@ -8,6 +8,7 @@ import { WorkflowBuilderList } from './components/WorkflowBuilderList';
 import { DashboardLayout } from './components/DashboardLayout';
 import { DashboardHome } from './components/DashboardHome';
 import { JobsPageDashboard } from './components/JobsPageDashboard';
+import JobDetails from './components/JobDetails';
 import ApprovalsPage from './components/ApprovalsPage';
 import { AuthCallback } from './components/AuthCallback';
 import { CandidateBookingPage } from './components/interview-scheduling';
@@ -35,6 +36,7 @@ function App() {
           <Route path="/dashboard" element={<DashboardLayout />}>
             <Route index element={<DashboardHome />} />
             <Route path="jobs" element={<JobsPageDashboard />} />
+            <Route path="jobs/:jobId" element={<JobDetails />} />
             <Route path="approvals" element={<ApprovalsPage />} />
             <Route path="workflow-builder" element={<WorkflowBuilderList />} />
             <Route path="pipeline-templates" element={<WorkflowBuilderList />} />
