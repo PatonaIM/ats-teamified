@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Clock, CheckCircle2, XCircle, AlertTriangle, Search, Calendar } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Clock, CheckCircle2, XCircle, AlertTriangle, Search, Calendar, Eye, X, DollarSign, MapPin, Building2, Briefcase } from 'lucide-react';
 import { getEmploymentTypeConfig } from '../utils/employmentTypes';
 import { apiRequest } from '../utils/api';
 
@@ -29,22 +29,25 @@ export default function ApprovalsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterPriority, setFilterPriority] = useState('all');
   const [selectedApprovals, setSelectedApprovals] = useState<Set<string>>(new Set());
+  const [selectedJobDetail, setSelectedJobDetail] = useState<Approval | null>(null);
 
-  useEffect(() => {
-    fetchApprovals();
-  }, []);
-
-  const fetchApprovals = async () => {
+  const fetchApprovals = useCallback(async () => {
     try {
       setLoading(true);
       const data = await apiRequest<Approval[]>('/api/approvals?status=pending');
-      setApprovals(data);
+      console.log('[Approvals] Fetched', data.length, 'pending approvals');
+      setApprovals(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error('Error fetching approvals:', error);
+      setApprovals([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchApprovals();
+  }, [fetchApprovals]);
 
   const handleApprove = async (approvalId: string) => {
     const confirmation = window.confirm('Are you sure you want to approve this job?');
@@ -300,6 +303,14 @@ export default function ApprovalsPage() {
                     <td className="px-6 py-4 text-sm font-medium">
                       <div className="flex gap-2">
                         <button
+                          onClick={() => setSelectedJobDetail(approval)}
+                          className="text-purple-600 hover:text-purple-900 flex items-center gap-1"
+                          title="View job details"
+                        >
+                          <Eye className="w-4 h-4" />
+                          Details
+                        </button>
+                        <button
                           onClick={() => handleApprove(approval.approval_id)}
                           className="text-green-600 hover:text-green-900 flex items-center gap-1"
                         >
@@ -342,6 +353,116 @@ export default function ApprovalsPage() {
           </div>
         </div>
       </div>
+
+      {selectedJobDetail && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="sticky top-0 bg-gradient-to-r from-purple-600 to-blue-500 text-white p-6 flex justify-between items-start">
+              <div className="flex-1">
+                <h2 className="text-2xl font-bold mb-2">{selectedJobDetail.title}</h2>
+                <div className="flex items-center gap-4 text-sm">
+                  <span className="flex items-center gap-1">
+                    <Building2 className="w-4 h-4" />
+                    {selectedJobDetail.department}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <MapPin className="w-4 h-4" />
+                    {selectedJobDetail.city}, {selectedJobDetail.country}
+                    {selectedJobDetail.remote_flag && ' • Remote'}
+                  </span>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedJobDetail(null)}
+                className="text-white hover:bg-white/20 rounded-lg p-2 transition"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg">
+                  <Briefcase className="w-5 h-5 text-purple-600 mt-0.5" />
+                  <div>
+                    <div className="text-sm text-gray-500 mb-1">Employment Type</div>
+                    <div className="font-medium">
+                      {getEmploymentTypeConfig(selectedJobDetail.employment_type)?.label || selectedJobDetail.employment_type}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg">
+                  <DollarSign className="w-5 h-5 text-green-600 mt-0.5" />
+                  <div>
+                    <div className="text-sm text-gray-500 mb-1">Salary Range</div>
+                    <div className="font-medium">
+                      {selectedJobDetail.salary_currency} {selectedJobDetail.salary_from?.toLocaleString()} - {selectedJobDetail.salary_to?.toLocaleString()}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg">
+                  <Clock className="w-5 h-5 text-orange-600 mt-0.5" />
+                  <div>
+                    <div className="text-sm text-gray-500 mb-1">SLA Deadline</div>
+                    <div className="font-medium">
+                      {getTimeRemaining(selectedJobDetail.sla_deadline)}
+                    </div>
+                    <div className="text-xs text-gray-400 mt-1">
+                      {new Date(selectedJobDetail.sla_deadline).toLocaleString()}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-lg">
+                  <Calendar className="w-5 h-5 text-blue-600 mt-0.5" />
+                  <div>
+                    <div className="text-sm text-gray-500 mb-1">Submitted</div>
+                    <div className="font-medium">
+                      {new Date(selectedJobDetail.submitted_at).toLocaleDateString()}
+                    </div>
+                    <div className="text-xs text-gray-400 mt-1">
+                      by {selectedJobDetail.created_by_role}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <h3 className="text-lg font-semibold mb-3 text-gray-900">Job Description</h3>
+                <div 
+                  className="prose max-w-none text-gray-700 bg-gray-50 p-4 rounded-lg"
+                  dangerouslySetInnerHTML={{ __html: selectedJobDetail.description || '<p class="text-gray-400 italic">No description provided</p>' }}
+                />
+              </div>
+
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
+                <button
+                  onClick={() => {
+                    handleReject(selectedJobDetail.approval_id);
+                    setSelectedJobDetail(null);
+                  }}
+                  className="px-6 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 transition flex items-center gap-2"
+                >
+                  <XCircle className="w-4 h-4" />
+                  Reject
+                </button>
+                <button
+                  onClick={() => {
+                    handleApprove(selectedJobDetail.approval_id);
+                    setSelectedJobDetail(null);
+                  }}
+                  className="px-6 py-2 bg-gradient-to-r from-green-600 to-green-500 text-white rounded-lg hover:opacity-90 transition flex items-center gap-2"
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  Approve Job
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
