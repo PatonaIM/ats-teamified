@@ -56,6 +56,12 @@ const normalizeStatus = (status: string): string => {
   return status;
 };
 
+// Denormalize frontend status filter to backend status
+const denormalizeStatus = (status: string): string => {
+  if (status === 'active') return 'published';
+  return status;
+};
+
 export function JobsPageDashboard() {
   const { user } = useAuth();
   const location = useLocation();
@@ -93,7 +99,7 @@ export function JobsPageDashboard() {
       setLoading(true);
       const params = new URLSearchParams();
       if (employmentTypeFilter !== 'all') params.append('employmentType', employmentTypeFilter);
-      if (statusFilter !== 'all') params.append('status', statusFilter);
+      if (statusFilter !== 'all') params.append('status', denormalizeStatus(statusFilter));
       if (searchTerm) params.append('search', searchTerm);
 
       const endpoint = `/api/jobs?${params}`;
@@ -201,6 +207,49 @@ export function JobsPageDashboard() {
       } else {
         alert('❌ Error: ' + message);
       }
+    } finally {
+      setPublishingJobId(null);
+    }
+  };
+
+  const handleStatusChange = async (jobId: string, newStatus: string, confirmMessage: string, event: React.MouseEvent) => {
+    event.stopPropagation();
+    
+    const confirmed = window.confirm(confirmMessage);
+    if (!confirmed) return;
+
+    try {
+      setPublishingJobId(jobId);
+      console.log('[UI] Changing job status to:', newStatus);
+
+      const response = await apiRequest<{ success: boolean; job: Job }>(`/api/jobs/${jobId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ job_status: newStatus })
+      });
+
+      console.log('[UI] Status change response:', response);
+
+      if (response.success) {
+        setJobs(prev => prev.map(job => 
+          job.id === jobId 
+            ? { ...response.job, status: normalizeStatus(response.job.status) }
+            : job
+        ));
+        
+        const statusMessages: Record<string, string> = {
+          paused: '⏸️ Job paused successfully!',
+          published: '▶️ Job resumed successfully!',
+          filled: '✅ Job marked as filled!',
+          closed: '🔒 Job closed successfully!'
+        };
+        
+        alert(statusMessages[newStatus] || '✅ Job status updated!');
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to update job status';
+      console.error('[UI] Status change error:', message);
+      alert('❌ Error: ' + message);
     } finally {
       setPublishingJobId(null);
     }
@@ -454,17 +503,63 @@ export function JobsPageDashboard() {
                     </div>
                   </div>
 
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
+                    {/* Publish button for draft recruiter jobs */}
                     {job.status === 'draft' && job.created_by_role === 'recruiter' && (
                       <button 
                         onClick={(e) => handlePublishJob(job.id, e)}
                         disabled={publishingJobId === job.id}
-                        className="px-5 py-2.5 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg font-semibold opacity-0 group-hover:opacity-100 transition-all duration-300 hover:shadow-lg whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg font-semibold opacity-0 group-hover:opacity-100 transition-all duration-300 hover:shadow-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {publishingJobId === job.id ? 'Publishing...' : '✓ Publish Job'}
+                        {publishingJobId === job.id ? 'Processing...' : '✓ Publish'}
                       </button>
                     )}
-                    <button className="px-5 py-2.5 bg-gradient-to-r from-brand-purple to-brand-blue text-white rounded-lg font-semibold opacity-0 group-hover:opacity-100 transition-all duration-300 hover:shadow-lg whitespace-nowrap">
+
+                    {/* Pause/Resume button for active/paused jobs */}
+                    {job.status === 'active' && (
+                      <button 
+                        onClick={(e) => handleStatusChange(job.id, 'paused', 'Pause this job? It will be hidden from candidates.', e)}
+                        disabled={publishingJobId === job.id}
+                        className="px-4 py-2 bg-gradient-to-r from-yellow-500 to-yellow-600 text-white rounded-lg font-semibold opacity-0 group-hover:opacity-100 transition-all duration-300 hover:shadow-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {publishingJobId === job.id ? 'Processing...' : '⏸ Pause'}
+                      </button>
+                    )}
+
+                    {job.status === 'paused' && (
+                      <button 
+                        onClick={(e) => handleStatusChange(job.id, 'published', 'Resume this job? It will become visible to candidates again.', e)}
+                        disabled={publishingJobId === job.id}
+                        className="px-4 py-2 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg font-semibold opacity-0 group-hover:opacity-100 transition-all duration-300 hover:shadow-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {publishingJobId === job.id ? 'Processing...' : '▶ Resume'}
+                      </button>
+                    )}
+
+                    {/* Mark as Filled button for active/paused jobs */}
+                    {(job.status === 'active' || job.status === 'paused') && (
+                      <button 
+                        onClick={(e) => handleStatusChange(job.id, 'filled', 'Mark this job as filled? This indicates you have found a candidate.', e)}
+                        disabled={publishingJobId === job.id}
+                        className="px-4 py-2 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg font-semibold opacity-0 group-hover:opacity-100 transition-all duration-300 hover:shadow-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {publishingJobId === job.id ? 'Processing...' : '✓ Mark Filled'}
+                      </button>
+                    )}
+
+                    {/* Close button for active/paused jobs */}
+                    {(job.status === 'active' || job.status === 'paused') && (
+                      <button 
+                        onClick={(e) => handleStatusChange(job.id, 'closed', 'Close this job permanently? This cannot be undone.', e)}
+                        disabled={publishingJobId === job.id}
+                        className="px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg font-semibold opacity-0 group-hover:opacity-100 transition-all duration-300 hover:shadow-lg text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {publishingJobId === job.id ? 'Processing...' : '🔒 Close'}
+                      </button>
+                    )}
+
+                    {/* Always show View Details button */}
+                    <button className="px-4 py-2 bg-gradient-to-r from-brand-purple to-brand-blue text-white rounded-lg font-semibold opacity-0 group-hover:opacity-100 transition-all duration-300 hover:shadow-lg text-sm">
                       View Details
                     </button>
                   </div>

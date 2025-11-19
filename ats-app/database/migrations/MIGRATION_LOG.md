@@ -1,5 +1,35 @@
 # Database Migration Log
 
+## Migration 010: Add Job Status Values (paused, filled)
+
+**Date:** November 19, 2025
+
+**Change:** Extended job_status enum to support additional workflow states
+
+**Actions Taken:**
+1. Added `paused` value to job_status enum - allows recruiters to temporarily hide jobs
+2. Added `filled` value to job_status enum - marks jobs where candidate was hired
+
+**Current job_status Values:**
+- `draft` - Job created but not published
+- `published` - Job active and visible to candidates
+- `paused` - Job temporarily hidden from candidates (can be resumed)
+- `filled` - Job position has been filled
+- `closed` - Job permanently closed
+- `archived` - Job archived for record-keeping
+
+**Rationale:**
+- Support pause/resume workflow for active jobs
+- Track filled positions separately from closed jobs
+- Enable more granular job lifecycle management
+
+**UI Impact:**
+- Active jobs show Pause, Mark Filled, and Close buttons
+- Paused jobs show Resume, Mark Filled, and Close buttons
+- All transitions validated via PUT /api/jobs/:id endpoint
+
+---
+
 ## Migration 008: Stage Library (Cleaned - No Default Templates)
 
 **Date:** November 18, 2025
