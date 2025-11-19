@@ -254,6 +254,7 @@ export default function JobDetailsKanban() {
     try {
       await apiRequest(`/api/candidates/${candidateId}/stage`, {
         method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           stage: nextStage,
           userId: null,
