@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Briefcase, MapPin, DollarSign, Users, Mail, Phone, Calendar, ChevronRight, Download } from 'lucide-react';
+import { ArrowLeft, Briefcase, MapPin, DollarSign, Users, Mail, Phone, Calendar, ChevronRight, Download, ChevronDown, FileText } from 'lucide-react';
 import { apiRequest } from '../utils/api';
 import ConfirmationModal from './ConfirmationModal';
 
@@ -48,7 +48,7 @@ export default function JobDetailsKanban() {
   const [stages, setStages] = useState<PipelineStage[]>([]);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedStage, setSelectedStage] = useState<string | null>(null);
+  const [expandedStages, setExpandedStages] = useState<Set<string>>(new Set());
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   
   const [confirmModal, setConfirmModal] = useState<{
@@ -72,10 +72,16 @@ export default function JobDetailsKanban() {
   }, [jobId]);
 
   useEffect(() => {
-    if (stages.length > 0 && !selectedStage) {
-      setSelectedStage(stages[0].stageName);
+    if (stages.length > 0 && expandedStages.size === 0) {
+      setExpandedStages(new Set([stages[0].stageName]));
     }
   }, [stages]);
+
+  useEffect(() => {
+    if (selectedCandidate && selectedCandidate.current_stage) {
+      setExpandedStages(prev => new Set([...prev, selectedCandidate.current_stage]));
+    }
+  }, [selectedCandidate]);
 
   const fetchJobData = async () => {
     console.log('[JobDetailsKanban] fetchJobData called for jobId:', jobId);
@@ -117,6 +123,18 @@ export default function JobDetailsKanban() {
     
     console.log('[JobDetailsKanban] Setting loading = false');
     setLoading(false);
+  };
+
+  const toggleStage = (stageName: string) => {
+    setExpandedStages(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(stageName)) {
+        newSet.delete(stageName);
+      } else {
+        newSet.add(stageName);
+      }
+      return newSet;
+    });
   };
 
   const getCandidatesForStage = (stageName: string) => {
@@ -230,10 +248,6 @@ export default function JobDetailsKanban() {
     );
   }
 
-  const filteredCandidates = selectedStage 
-    ? getCandidatesForStage(selectedStage)
-    : candidates;
-
   const totalCandidates = candidates.length;
 
   return (
@@ -282,101 +296,91 @@ export default function JobDetailsKanban() {
 
       {/* Main Content */}
       <div className="flex flex-1 overflow-hidden">
-        {/* Left Sidebar - Pipeline Stages */}
-        <div className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 overflow-y-auto">
+        {/* Left Sidebar - Pipeline Stages with Accordion */}
+        <div className="w-[420px] bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 overflow-y-auto">
           <div className="p-4">
             <h3 className="text-xs uppercase font-semibold text-gray-500 dark:text-gray-400 mb-3">
               Pipeline Stages
             </h3>
             
-            <div className="space-y-1">
+            <div className="space-y-2">
               {stages.map((stage) => {
-                const stageCount = getCandidatesForStage(stage.stageName).length;
-                const isSelected = selectedStage === stage.stageName;
+                const stageCandidates = getCandidatesForStage(stage.stageName);
+                const isExpanded = expandedStages.has(stage.stageName);
                 
                 return (
-                  <button
-                    key={stage.id}
-                    onClick={() => {
-                      setSelectedStage(stage.stageName);
-                      setSelectedCandidate(null);
-                    }}
-                    className={`
-                      w-full flex items-center justify-between px-3 py-2 rounded-lg
-                      transition-all duration-150
-                      ${isSelected 
-                        ? 'bg-gradient-to-r from-purple-500 to-blue-500 text-white shadow-md' 
-                        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'
-                      }
-                    `}
-                  >
-                    <span className="font-medium text-sm">{stage.stageName}</span>
-                    <span className={`
-                      text-xs font-bold px-2 py-0.5 rounded-full
-                      ${isSelected 
-                        ? 'bg-white/20 text-white' 
-                        : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
-                      }
-                    `}>
-                      {stageCount}
-                    </span>
-                  </button>
+                  <div key={stage.id} className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+                    {/* Stage Header */}
+                    <button
+                      onClick={() => toggleStage(stage.stageName)}
+                      aria-expanded={isExpanded}
+                      aria-controls={`stage-${stage.id}`}
+                      className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        {isExpanded ? (
+                          <ChevronDown size={18} className="text-gray-500 dark:text-gray-400" />
+                        ) : (
+                          <ChevronRight size={18} className="text-gray-500 dark:text-gray-400" />
+                        )}
+                        <span className="font-semibold text-sm text-gray-900 dark:text-white">
+                          {stage.stageName}
+                        </span>
+                      </div>
+                      <span className="text-xs font-bold px-2 py-1 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 text-white">
+                        {stageCandidates.length}
+                      </span>
+                    </button>
+
+                    {/* Collapsible Candidate List */}
+                    {isExpanded && (
+                      <div id={`stage-${stage.id}`} className="bg-white dark:bg-gray-800">
+                        {stageCandidates.length === 0 ? (
+                          <div className="px-4 py-6 text-center text-sm text-gray-400">
+                            No candidates in this stage
+                          </div>
+                        ) : (
+                          <div className="divide-y divide-gray-200 dark:divide-gray-700">
+                            {stageCandidates.map((candidate) => (
+                              <button
+                                key={candidate.id}
+                                onClick={() => setSelectedCandidate(candidate)}
+                                className={`
+                                  w-full text-left px-4 py-3 transition-colors
+                                  ${selectedCandidate?.id === candidate.id
+                                    ? 'bg-purple-50 dark:bg-purple-900/20'
+                                    : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                                  }
+                                `}
+                              >
+                                <div className="flex items-center justify-between mb-1">
+                                  <div className="font-semibold text-sm text-gray-900 dark:text-white">
+                                    {candidate.first_name} {candidate.last_name}
+                                  </div>
+                                  {selectedCandidate?.id === candidate.id && (
+                                    <ChevronRight size={16} className="text-purple-500" />
+                                  )}
+                                </div>
+                                <div className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                                  {candidate.email}
+                                </div>
+                                <div className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                                  Applied {new Date(candidate.created_at).toLocaleDateString()}
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 );
               })}
             </div>
           </div>
         </div>
 
-        {/* Center - Candidates List */}
-        <div className="w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 overflow-y-auto">
-          <div className="p-4">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
-                {selectedStage || 'All Candidates'}
-              </h3>
-              <span className="text-xs text-gray-500 dark:text-gray-400">
-                {filteredCandidates.length} {filteredCandidates.length === 1 ? 'applicant' : 'applicants'}
-              </span>
-            </div>
-            
-            <div className="space-y-2">
-              {filteredCandidates.length === 0 ? (
-                <div className="text-center py-8 text-gray-400 text-sm">
-                  No candidates in this stage
-                </div>
-              ) : (
-                filteredCandidates.map((candidate) => (
-                  <button
-                    key={candidate.id}
-                    onClick={() => setSelectedCandidate(candidate)}
-                    className={`
-                      w-full text-left p-3 rounded-lg border transition-all
-                      ${selectedCandidate?.id === candidate.id
-                        ? 'bg-purple-50 dark:bg-purple-900/20 border-purple-400'
-                        : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 hover:border-purple-300'
-                      }
-                    `}
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="font-semibold text-sm text-gray-900 dark:text-white">
-                        {candidate.first_name} {candidate.last_name}
-                      </div>
-                      <ChevronRight size={16} className="text-gray-400" />
-                    </div>
-                    <div className="text-xs text-gray-600 dark:text-gray-400">
-                      {candidate.email}
-                    </div>
-                    <div className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                      Applied {new Date(candidate.created_at).toLocaleDateString()}
-                    </div>
-                  </button>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Right - Candidate Details */}
+        {/* Right - Candidate Details with Resume Preview */}
         <div className="flex-1 bg-gray-50 dark:bg-gray-900 overflow-y-auto">
           {selectedCandidate ? (
             <div className="p-8 max-w-4xl">
@@ -479,7 +483,57 @@ export default function JobDetailsKanban() {
                 )}
               </div>
 
-              {/* Additional sections can be added here (Salary & Availability, Work Experience, etc.) */}
+              {/* Resume Preview */}
+              {selectedCandidate.resume_url && (
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
+                  <div className="px-6 py-4 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-200 dark:border-gray-700">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <FileText size={20} className="text-purple-500" />
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Resume Preview</h3>
+                      </div>
+                      <a
+                        href={selectedCandidate.resume_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm text-purple-600 hover:text-purple-700 dark:text-purple-400 dark:hover:text-purple-300 flex items-center gap-1"
+                      >
+                        <Download size={14} />
+                        Download
+                      </a>
+                    </div>
+                  </div>
+                  
+                  <div className="p-4">
+                    {selectedCandidate.resume_url.toLowerCase().endsWith('.pdf') ? (
+                      <div className="relative w-full" style={{ height: '800px' }}>
+                        <iframe
+                          src={`${selectedCandidate.resume_url}#toolbar=0`}
+                          className="w-full h-full border border-gray-200 dark:border-gray-700 rounded"
+                          title="Resume Preview"
+                          sandbox="allow-same-origin"
+                        />
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-12 text-center">
+                        <FileText size={48} className="text-gray-300 dark:text-gray-600 mb-4" />
+                        <p className="text-gray-600 dark:text-gray-400 mb-4">
+                          Preview not available for this file type
+                        </p>
+                        <a
+                          href={selectedCandidate.resume_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white rounded-lg transition-all"
+                        >
+                          <Download size={16} />
+                          Download Resume
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-gray-400 p-6 text-center">
