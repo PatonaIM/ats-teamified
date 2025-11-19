@@ -304,6 +304,64 @@ app.post('/api/jobs', async (req, res) => {
       console.log('[Backend] Pipeline stages inserted successfully');
     }
     
+    // Create approval request if job submitted by Client (not saved as draft)
+    if (createdByRole === 'client' && !saveAsDraft) {
+      console.log('[Approval] Creating approval request for client job:', newJob.title);
+      
+      // Calculate SLA deadline (48 hours from now)
+      const slaDeadline = new Date();
+      slaDeadline.setHours(slaDeadline.getHours() + 48);
+      
+      try {
+        const approvalInsert = `
+          INSERT INTO job_approvals (
+            job_id,
+            submitter_id,
+            status,
+            sla_deadline,
+            created_at
+          ) VALUES ($1, $2, $3, $4, CURRENT_TIMESTAMP)
+          RETURNING id
+        `;
+        
+        const approvalResult = await query(approvalInsert, [
+          newJob.id,
+          'demo-user', // Since we don't have auth, use demo user
+          'pending',
+          slaDeadline
+        ]);
+        
+        const approvalId = approvalResult.rows[0].id;
+        
+        // Log approval creation in history
+        await query(`
+          INSERT INTO approval_history (
+            approval_id,
+            job_id,
+            action,
+            user_id,
+            details
+          ) VALUES ($1, $2, $3, $4, $5)
+        `, [
+          approvalId,
+          newJob.id,
+          'submitted',
+          'demo-user',
+          JSON.stringify({ 
+            jobTitle: newJob.title,
+            employmentType: newJob.employment_type,
+            submittedAt: new Date().toISOString()
+          })
+        ]);
+        
+        console.log('[Approval] Approval request created with ID:', approvalId);
+        newJob.requiresApproval = true;
+        newJob.approvalId = approvalId;
+      } catch (approvalError) {
+        console.error('[Approval] Failed to create approval request:', approvalError.message);
+      }
+    }
+    
     // Automatic LinkedIn posting based on approval workflow
     if (shouldAutoPostToLinkedIn(newJob)) {
       console.log('[LinkedIn] Auto-posting job to LinkedIn:', newJob.title);
