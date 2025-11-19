@@ -1,7 +1,7 @@
 # ATS Pipeline Substage Integration Guide
 
 ## Overview
-This document provides the complete reference for all pipeline stages and their substages in the Multi-Employment ATS system. Use this for integrating with the candidate portal.
+This document provides the complete reference for all pipeline stages and their substages in the Multi-Employment ATS system. **Substages are now stored in the PostgreSQL database** for flexible management.
 
 ---
 
@@ -12,6 +12,29 @@ This document provides the complete reference for all pipeline stages and their 
 - **Type:** `VARCHAR(100)` (nullable)
 - **Description:** Stores the current substage ID for granular progress tracking
 
+### Pipeline Substages Table
+```sql
+CREATE TABLE pipeline_substages (
+  id SERIAL PRIMARY KEY,
+  stage_name VARCHAR(100) NOT NULL,
+  substage_id VARCHAR(100) NOT NULL,
+  substage_label VARCHAR(255) NOT NULL,
+  substage_order INTEGER NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  CONSTRAINT unique_stage_substage UNIQUE(stage_name, substage_id),
+  CONSTRAINT unique_stage_order UNIQUE(stage_name, substage_order)
+);
+
+CREATE INDEX idx_substages_stage_name ON pipeline_substages(stage_name);
+CREATE INDEX idx_substages_order ON pipeline_substages(stage_name, substage_order);
+```
+
+**Key Fields:**
+- `stage_name`: The pipeline stage this substage belongs to
+- `substage_id`: Unique identifier (snake_case, e.g., "resume_review")
+- `substage_label`: Display label (e.g., "Resume Review")
+- `substage_order`: Order within the stage (1-5)
+
 ---
 
 ## API Endpoints
@@ -20,6 +43,8 @@ This document provides the complete reference for all pipeline stages and their 
 ```
 GET /api/substages/:stageName
 ```
+**Example:** `GET /api/substages/Screening`
+
 **Response:**
 ```json
 {
@@ -27,8 +52,18 @@ GET /api/substages/:stageName
   "substages": [
     { "id": "application_received", "label": "Application Received", "order": 1 },
     { "id": "resume_review", "label": "Resume Review", "order": 2 },
-    ...
+    { "id": "initial_assessment", "label": "Initial Assessment", "order": 3 },
+    { "id": "phone_screen_scheduled", "label": "Phone Screen Scheduled", "order": 4 },
+    { "id": "phone_screen_completed", "label": "Phone Screen Completed", "order": 5 }
   ]
+}
+```
+
+**Note:** Stages without substages (e.g., Client Endorsement) return an empty array:
+```json
+{
+  "stageName": "Client Endorsement",
+  "substages": []
 }
 ```
 
@@ -45,6 +80,66 @@ PATCH /api/candidates/:id/substage
 }
 ```
 **Response:** Updated candidate object with `candidate_substage` field
+
+**Validation:** Backend validates that the substage exists in the database for the candidate's current stage.
+
+---
+
+## Database Management
+
+### Query All Substages
+```sql
+SELECT stage_name, substage_id, substage_label, substage_order
+FROM pipeline_substages
+ORDER BY stage_name, substage_order;
+```
+
+### Add New Substage
+```sql
+INSERT INTO pipeline_substages (stage_name, substage_id, substage_label, substage_order)
+VALUES ('Screening', 'new_substage_id', 'New Substage Label', 6)
+ON CONFLICT (stage_name, substage_id) DO NOTHING;
+```
+
+### Update Substage Label
+```sql
+UPDATE pipeline_substages
+SET substage_label = 'Updated Label'
+WHERE stage_name = 'Screening' AND substage_id = 'resume_review';
+```
+
+### Delete Substage
+```sql
+DELETE FROM pipeline_substages
+WHERE stage_name = 'Screening' AND substage_id = 'old_substage_id';
+```
+
+### Get Substages Count Per Stage
+```sql
+SELECT stage_name, COUNT(*) as substage_count
+FROM pipeline_substages
+GROUP BY stage_name
+ORDER BY stage_name;
+```
+
+---
+
+## Current Stage & Substage Configuration
+
+### Stages WITH Substages (7 stages, 5 substages each)
+
+| Stage | Total Substages |
+|-------|-----------------|
+| Screening | 5 |
+| Shortlist | 5 |
+| Technical Assessment | 5 |
+| Human Interview | 5 |
+| Final Interview | 5 |
+| AI Interview | 5 |
+| Offer | 5 |
+
+### Stages WITHOUT Substages
+- **Client Endorsement** - No substage tracking
 
 ---
 
@@ -115,14 +210,6 @@ PATCH /api/candidates/:id/substage
 
 ---
 
-## Stages WITHOUT Substages
-
-The following stages do not have substage tracking:
-- **Client Endorsement** - No substages (standard stage progression only)
-- **Offer Accepted** - Stage removed from pipeline
-
----
-
 ## Role-Based Permissions
 
 ### View-Only Stages (Clients)
@@ -138,15 +225,16 @@ Recruiters and Recruiter Managers have full read/write access to all substages.
 
 ## Integration Best Practices
 
-### 1. Fetching Substages
+### 1. Fetching Substages (Database-Backed)
 ```javascript
 // Fetch substages when displaying a stage
 const response = await fetch(`/api/substages/${stageName}`);
 const { substages } = await response.json();
 
-// Note: Some stages may return empty array if no substages defined
+// Handle stages without substages
 if (substages.length === 0) {
-  // Handle stages without substages (e.g., Client Endorsement)
+  // This stage doesn't have substage tracking
+  console.log('No substages for', stageName);
 }
 ```
 
@@ -172,34 +260,33 @@ const progressPercent = (currentOrder / substages.length) * 100;
 ```
 
 ### 4. Error Handling
-- **403 Forbidden:** User doesn't have permission to update substage (client role in restricted stage)
+- **403 Forbidden:** User doesn't have permission to update substage
 - **400 Bad Request:** Invalid substage ID for the given stage
 - **404 Not Found:** Candidate not found
 
 ---
 
-## Example Workflow
+## Benefits of Database Storage
 
-### Candidate Journey in "Human Interview" Stage:
-1. **interviewer_assigned** → Interviewer assigned to candidate
-2. **interview_scheduled** → Interview scheduled with date/time
-3. **interview_in_progress** → Interview currently happening
-4. **interview_completed** → Interview finished
-5. **feedback_submitted** → Interviewer feedback recorded → Move to next stage
+✅ **Dynamic Management:** Add/update substages without code deployment  
+✅ **Data Integrity:** Database constraints ensure data consistency  
+✅ **Flexibility:** Can customize substages per client in the future  
+✅ **Audit Trail:** Timestamps track when substages were created  
+✅ **Scalability:** Easy to query and analyze substage usage  
 
 ---
 
 ## Notes
-- All substages are **static and predefined** - they cannot be modified or created dynamically
+- Substages are stored in PostgreSQL `pipeline_substages` table
 - Most stages have exactly **5 substages**
 - **Client Endorsement** has NO substages (returns empty array)
-- **Offer Accepted** stage has been removed from the system
 - Substage IDs use **snake_case** format
 - Display labels use **Title Case** format
 - The `order` field indicates progression sequence (1-5)
+- Unique constraints prevent duplicate substages per stage
 
 ---
 
 **Last Updated:** November 2025  
-**Version:** 1.2  
+**Version:** 2.0 (Database-Backed)  
 **Contact:** ATS Development Team

@@ -1597,14 +1597,20 @@ app.patch('/api/candidates/:id/disqualify', async (req, res) => {
   }
 });
 
-// Import substage definitions
-import { getSubstagesForStage, isValidSubstage, getNextSubstage } from './substage-definitions.js';
-
-// GET /api/substages/:stageName - Get available substages for a stage
-app.get('/api/substages/:stageName', (req, res) => {
+// GET /api/substages/:stageName - Get available substages for a stage (from database)
+app.get('/api/substages/:stageName', async (req, res) => {
   try {
     const { stageName } = req.params;
-    const substages = getSubstagesForStage(stageName);
+    
+    const result = await query(
+      `SELECT substage_id as id, substage_label as label, substage_order as "order"
+       FROM pipeline_substages 
+       WHERE stage_name = $1 
+       ORDER BY substage_order ASC`,
+      [stageName]
+    );
+    
+    const substages = result.rows;
     res.json({ stageName, substages });
   } catch (error) {
     console.error('[Substages API] Error getting substages:', error);
@@ -1639,12 +1645,19 @@ app.patch('/api/candidates/:id/substage', async (req, res) => {
       });
     }
     
-    // Validate substage belongs to current stage
-    if (substage && !isValidSubstage(currentStage, substage)) {
-      return res.status(400).json({ 
-        error: 'Invalid substage', 
-        message: `Substage "${substage}" is not valid for stage "${currentStage}"`
-      });
+    // Validate substage belongs to current stage (check database)
+    if (substage) {
+      const validationResult = await query(
+        'SELECT COUNT(*) as count FROM pipeline_substages WHERE stage_name = $1 AND substage_id = $2',
+        [currentStage, substage]
+      );
+      
+      if (validationResult.rows[0].count === 0) {
+        return res.status(400).json({ 
+          error: 'Invalid substage', 
+          message: `Substage "${substage}" is not valid for stage "${currentStage}"`
+        });
+      }
     }
     
     // Update substage
