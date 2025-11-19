@@ -520,7 +520,8 @@ app.put('/api/jobs/:id', async (req, res) => {
     }
 
     // LINKEDIN SYNC TRIGGER - Update existing LinkedIn posting
-    if (updatedJob.linkedin_synced && currentJob.job_status === 'published' && updates.job_status === 'published') {
+    // Sync when updating an already-published job (not the initial draft→published transition)
+    if (updatedJob.linkedin_synced && updatedJob.job_status === 'published' && currentJob.job_status === 'published') {
       console.log('[LinkedIn] Job already on LinkedIn - triggering sync for updates');
       if (LINKEDIN_ENABLED) {
         try {

@@ -68,6 +68,7 @@ export function JobsPageDashboard() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [publishingJobId, setPublishingJobId] = useState<string | null>(null);
   
   // Check for action=create in URL query params
   useEffect(() => {
@@ -161,6 +162,47 @@ export function JobsPageDashboard() {
       alert('Error: ' + message);
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handlePublishJob = async (jobId: string, event: React.MouseEvent) => {
+    event.stopPropagation();
+    
+    const confirmed = window.confirm('Are you sure you want to publish this job? It will become visible to candidates immediately.');
+    if (!confirmed) return;
+
+    try {
+      setPublishingJobId(jobId);
+      console.log('[UI] Publishing job:', jobId);
+
+      const response = await apiRequest<{ success: boolean; job: Job }>(`/api/jobs/${jobId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ job_status: 'published' })
+      });
+
+      console.log('[UI] Publish response:', response);
+
+      if (response.success) {
+        setJobs(prev => prev.map(job => 
+          job.id === jobId 
+            ? { ...response.job, status: normalizeStatus(response.job.status) }
+            : job
+        ));
+        
+        alert('✅ Job published successfully!');
+      }
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to publish job';
+      console.error('[UI] Publish error:', message);
+      
+      if (message.includes('403') || message.includes('approval')) {
+        alert('⚠️ This job requires approval before publishing. Please use the approval workflow.');
+      } else {
+        alert('❌ Error: ' + message);
+      }
+    } finally {
+      setPublishingJobId(null);
     }
   };
 
@@ -412,9 +454,20 @@ export function JobsPageDashboard() {
                     </div>
                   </div>
 
-                  <button className="px-5 py-2.5 bg-gradient-to-r from-brand-purple to-brand-blue text-white rounded-lg font-semibold opacity-0 group-hover:opacity-100 transition-all duration-300 hover:shadow-lg whitespace-nowrap">
-                    View Details
-                  </button>
+                  <div className="flex gap-2">
+                    {job.status === 'draft' && job.created_by_role === 'recruiter' && (
+                      <button 
+                        onClick={(e) => handlePublishJob(job.id, e)}
+                        disabled={publishingJobId === job.id}
+                        className="px-5 py-2.5 bg-gradient-to-r from-green-500 to-green-600 text-white rounded-lg font-semibold opacity-0 group-hover:opacity-100 transition-all duration-300 hover:shadow-lg whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        {publishingJobId === job.id ? 'Publishing...' : '✓ Publish Job'}
+                      </button>
+                    )}
+                    <button className="px-5 py-2.5 bg-gradient-to-r from-brand-purple to-brand-blue text-white rounded-lg font-semibold opacity-0 group-hover:opacity-100 transition-all duration-300 hover:shadow-lg whitespace-nowrap">
+                      View Details
+                    </button>
+                  </div>
                 </div>
               </div>
             );
