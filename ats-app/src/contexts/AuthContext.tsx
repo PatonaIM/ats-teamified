@@ -89,14 +89,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const demoUser: UserProfile = {
       id: '00000000-0000-0000-0000-000000000001',
       email: 'demo@ats-platform.com',
-      name: 'Demo User',
-      role: 'recruiter',
+      name: 'Demo Client',
+      role: 'client',
       avatar: undefined,
     };
     
     setUser(demoUser);
     storeUserProfile(demoUser);
     sessionStorage.setItem('demo_mode', 'true');
+    sessionStorage.setItem('auth_access_token', 'demo-token'); // For backend auth middleware
     console.log('[AuthContext] Demo mode activated');
   };
 

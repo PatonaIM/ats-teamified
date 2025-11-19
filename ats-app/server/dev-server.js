@@ -1,3 +1,6 @@
+// Set development environment for authentication middleware
+process.env.NODE_ENV = 'development';
+
 import express from 'express';
 import { app } from './index.js';
 import path from 'path';

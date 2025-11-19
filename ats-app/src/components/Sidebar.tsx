@@ -11,9 +11,11 @@ import {
   UserCircle,
   LogOut,
   CheckCircle2,
-  Workflow
+  Workflow,
+  Calendar
 } from 'lucide-react';
 import { useWorkflowBuilder } from '../hooks/useWorkflowBuilder';
+import { useAuth } from '../contexts/AuthContext';
 
 const menuItems = [
   { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -32,6 +34,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { enabled: workflowBuilderEnabled } = useWorkflowBuilder();
+  const { user } = useAuth();
 
   const isActive = (path: string) => {
     if (path === '/dashboard') {
@@ -87,6 +90,24 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 </li>
               );
             })}
+            
+            {/* Interview Availability Menu Item (Client Role Only) */}
+            {user?.role === 'client' && (
+              <li>
+                <Link
+                  to="/dashboard/interview-availability"
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all duration-200 ${
+                    isActive('/dashboard/interview-availability')
+                      ? 'bg-purple-600 text-white'
+                      : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                  }`}
+                  title={collapsed ? 'Interview Availability' : ''}
+                >
+                  <Calendar className="w-5 h-5 flex-shrink-0" />
+                  {!collapsed && <span>Interview Availability</span>}
+                </Link>
+              </li>
+            )}
             
             {/* Workflow Builder Menu Item (Feature-Flagged) */}
             {workflowBuilderEnabled && (

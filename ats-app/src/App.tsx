@@ -13,6 +13,7 @@ import CandidatesPage from './components/CandidatesPage';
 import ApprovalsPage from './components/ApprovalsPage';
 import { AuthCallback } from './components/AuthCallback';
 import { CandidateBookingPage } from './components/interview-scheduling';
+import { InterviewAvailability } from './components/InterviewAvailability';
 import './App.css';
 
 function App() {
@@ -39,6 +40,7 @@ function App() {
             <Route path="jobs" element={<JobsPageDashboard />} />
             <Route path="jobs/:jobId" element={<JobDetailsKanban />} />
             <Route path="approvals" element={<ApprovalsPage />} />
+            <Route path="interview-availability" element={<InterviewAvailability />} />
             <Route path="workflow-builder" element={<WorkflowBuilderList />} />
             <Route path="pipeline-templates" element={<WorkflowBuilderList />} />
             <Route path="pipeline-templates/:templateId/edit" element={<WorkflowBuilder />} />

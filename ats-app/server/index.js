@@ -9,6 +9,7 @@ import { postJobToLinkedIn, shouldAutoPostToLinkedIn, syncJobToLinkedIn, getLink
 import { getCandidates, getCandidateById, createCandidate, updateCandidate, addCandidateDocument, addCandidateCommunication, moveCandidateToStage, disqualifyCandidate, deleteCandidate } from './services/candidates.js';
 import sanitizeHtml from 'sanitize-html';
 import { randomUUID } from 'crypto';
+import { authenticateRequest, requireRole } from './middleware/auth.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -2942,7 +2943,8 @@ function generateTimeSlots(config) {
 }
 
 // POST /api/jobs/:jobId/stages/:stageId/slots - Create interview slots
-app.post('/api/jobs/:jobId/stages/:stageId/slots', async (req, res) => {
+// Optional authentication: If authenticated, uses req.user.id; otherwise requires createdBy in body
+app.post('/api/jobs/:jobId/stages/:stageId/slots', authenticateRequest, async (req, res) => {
   const { jobId, stageId } = req.params;
   const {
     slotConfig,
@@ -2958,9 +2960,12 @@ app.post('/api/jobs/:jobId/stages/:stageId/slots', async (req, res) => {
   } = req.body;
 
   try {
-    if (!slotConfig || !interviewType || !createdBy) {
+    // Use authenticated user ID if available via middleware, otherwise fall back to body parameter
+    const effectiveCreatedBy = req.user?.id || createdBy;
+    
+    if (!slotConfig || !interviewType || !effectiveCreatedBy) {
       return res.status(400).json({ 
-        error: 'Missing required fields: slotConfig, interviewType, createdBy' 
+        error: 'Missing required fields: slotConfig, interviewType' + (!effectiveCreatedBy ? ', createdBy (or authentication required)' : '')
       });
     }
 
@@ -3002,7 +3007,7 @@ app.post('/api/jobs/:jobId/stages/:stageId/slots', async (req, res) => {
           jobId, stageId, JSON.stringify(interviewerIds),
           slot.start_time, slot.end_time, slotConfig.durationMinutes,
           bufferBefore, bufferAfter, interviewType, videoLink, location,
-          timezone, maxBookings, createdBy
+          timezone, maxBookings, effectiveCreatedBy
         ]);
 
         insertedSlots.push(result.rows[0]);
@@ -3066,6 +3071,34 @@ app.get('/api/jobs/:jobId/stages/:stageId/slots', async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching slots:', error);
+    res.status(500).json({ error: 'Failed to fetch slots' });
+  }
+});
+
+// GET /api/interview-slots/my-slots - Get all slots created by current client
+// Protected endpoint: Requires authentication via Bearer token
+app.get('/api/interview-slots/my-slots', authenticateRequest, async (req, res) => {
+  try {
+    const userId = req.user.id; // Derived from validated auth token
+    
+    const result = await query(`
+      SELECT 
+        s.*, 
+        j.title as job_title,
+        jps.stage_name
+      FROM interview_slots s
+      JOIN jobs j ON j.id = s.job_id
+      JOIN job_pipeline_stages jps ON jps.id = s.stage_id
+      WHERE s.created_by = $1
+      ORDER BY s.start_time DESC
+    `, [userId]);
+    
+    res.json({
+      success: true,
+      slots: result.rows
+    });
+  } catch (error) {
+    console.error('Error fetching client slots:', error);
     res.status(500).json({ error: 'Failed to fetch slots' });
   }
 });
