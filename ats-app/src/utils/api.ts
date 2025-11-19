@@ -62,7 +62,10 @@ export async function apiRequest<T = any>(
     
     console.log('[API Request] Parsing JSON...');
     const data = await response.json();
-    console.log('[API Request] Success! Received data:', Object.keys(data), 'keys');
+    console.log('[API Request] Success! Data structure:', typeof data === 'object' ? Object.keys(data).join(', ') : typeof data);
+    if (data.jobs) {
+      console.log('[API Request] Received', data.jobs.length, 'jobs');
+    }
     return data;
   } catch (error) {
     clearTimeout(timeoutId);
