@@ -1,9 +1,9 @@
 import { useState, useCallback, useMemo } from 'react';
-import { Calendar, dateFnsLocalizer, type Event, Views } from 'react-big-calendar';
+import { Calendar, dateFnsLocalizer, type Event, Views, type ToolbarProps } from 'react-big-calendar';
 import { format, parse, startOfWeek, getDay } from 'date-fns';
 import { enUS } from 'date-fns/locale';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
-import { Calendar as CalendarIcon, Clock, Video, MapPin, Trash2, Grid3x3, List } from 'lucide-react';
+import { Calendar as CalendarIcon, Clock, Video, MapPin, Trash2, Grid3x3, List, ChevronLeft, ChevronRight } from 'lucide-react';
 
 const locales = {
   'en-US': enUS
@@ -16,6 +16,55 @@ const localizer = dateFnsLocalizer({
   getDay,
   locales,
 });
+
+const CustomToolbar = (props: ToolbarProps) => {
+  const goToBack = () => {
+    props.onNavigate('PREV');
+  };
+
+  const goToNext = () => {
+    props.onNavigate('NEXT');
+  };
+
+  const goToToday = () => {
+    props.onNavigate('TODAY');
+  };
+
+  const label = () => {
+    return props.label;
+  };
+
+  return (
+    <div className="rbc-toolbar">
+      <span className="rbc-btn-group">
+        <button type="button" onClick={goToToday}>
+          Today
+        </button>
+        <button type="button" onClick={goToBack} className="flex items-center justify-center">
+          <ChevronLeft size={20} />
+        </button>
+        <button type="button" onClick={goToNext} className="flex items-center justify-center">
+          <ChevronRight size={20} />
+        </button>
+      </span>
+
+      <span className="rbc-toolbar-label">{label()}</span>
+
+      <span className="rbc-btn-group">
+        {props.views && (props.views as string[]).map((name) => (
+          <button
+            key={name}
+            type="button"
+            className={props.view === name ? 'rbc-active' : ''}
+            onClick={() => props.onView(name as any)}
+          >
+            {name.charAt(0).toUpperCase() + name.slice(1)}
+          </button>
+        ))}
+      </span>
+    </div>
+  );
+};
 
 interface InterviewSlot {
   id: string;
@@ -201,6 +250,9 @@ export default function CalendarSlotCreator({
               timeslots={4}
               defaultView={Views.WEEK}
               views={[Views.MONTH, Views.WEEK, Views.DAY]}
+              components={{
+                toolbar: CustomToolbar
+              }}
               style={{ height: '100%' }}
             />
           </div>        </div>
