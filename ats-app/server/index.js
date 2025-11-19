@@ -395,6 +395,170 @@ app.get('/api/jobs/:id', async (req, res) => {
   }
 });
 
+// PUT /api/jobs/:id - Update job (status, details, etc.)
+app.put('/api/jobs/:id', async (req, res) => {
+  console.log('[Backend] Received PUT /api/jobs/:id request');
+  const { id } = req.params;
+  const updates = req.body;
+
+  try {
+    // Fetch current job
+    const jobResult = await query('SELECT * FROM jobs WHERE id = $1', [id]);
+    
+    if (jobResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Job not found' });
+    }
+    
+    const currentJob = jobResult.rows[0];
+    console.log('[Backend] Current job:', { id, title: currentJob.title, job_status: currentJob.job_status, created_by_role: currentJob.created_by_role });
+
+    // VALIDATION: Check if status change is allowed
+    if (updates.job_status && updates.job_status !== currentJob.job_status) {
+      console.log('[Backend] Status change requested:', currentJob.job_status, '→', updates.job_status);
+
+      // Client jobs cannot be published directly - must go through approval
+      if (currentJob.created_by_role === 'client' && updates.job_status === 'published') {
+        return res.status(403).json({ 
+          error: 'Client jobs require approval workflow. Cannot publish directly.',
+          details: 'Please submit this job for approval instead.'
+        });
+      }
+
+      // Only allow draft → published for recruiter jobs
+      if (currentJob.job_status === 'draft' && updates.job_status === 'published') {
+        if (!currentJob.created_by_role || currentJob.created_by_role === 'client') {
+          return res.status(403).json({ 
+            error: 'Only recruiter-created jobs can be published directly.',
+            details: 'Client jobs must go through the approval workflow.'
+          });
+        }
+      }
+    }
+
+    // Build dynamic UPDATE query
+    const allowedFields = [
+      'title', 'description', 'requirements', 'benefits',
+      'employment_type', 'department', 'city', 'country', 'remote_flag',
+      'salary_from', 'salary_to', 'salary_currency',
+      'contract_duration', 'hours_per_week', 'timezone',
+      'job_status'
+    ];
+
+    const updateFields = [];
+    const values = [];
+    let paramIndex = 1;
+
+    // Build SET clause dynamically
+    for (const field of allowedFields) {
+      if (updates[field] !== undefined) {
+        updateFields.push(`${field} = $${paramIndex}`);
+        values.push(updates[field]);
+        paramIndex++;
+      }
+    }
+
+    // Track who made the update and when
+    updateFields.push(`updated_at = NOW()`);
+
+    // If publishing, set published_at timestamp
+    if (updates.job_status === 'published' && currentJob.job_status === 'draft') {
+      updateFields.push(`published_at = NOW()`);
+      console.log('[Backend] Publishing job - setting published_at timestamp');
+    }
+
+    if (updateFields.length === 1) { // Only updated_at
+      return res.status(400).json({ error: 'No valid fields to update' });
+    }
+
+    values.push(id); // For WHERE clause
+    const updateQuery = `
+      UPDATE jobs 
+      SET ${updateFields.join(', ')}
+      WHERE id = $${paramIndex}
+      RETURNING *
+    `;
+
+    console.log('[Backend] Updating job with fields:', Object.keys(updates));
+    const result = await query(updateQuery, values);
+    const updatedJob = result.rows[0];
+
+    // AUDIT LOGGING - Track the update
+    const auditLog = {
+      job_id: id,
+      action: updates.job_status === 'published' && currentJob.job_status === 'draft' ? 'published' : 'updated',
+      previous_status: currentJob.job_status,
+      new_status: updatedJob.job_status,
+      updated_fields: Object.keys(updates),
+      timestamp: new Date().toISOString()
+    };
+    console.log('[Backend] Audit log:', auditLog);
+
+    // LINKEDIN POSTING TRIGGER - Auto-post when publishing
+    if (updates.job_status === 'published' && currentJob.job_status === 'draft') {
+      console.log('[Backend] Job published - checking LinkedIn posting eligibility');
+      
+      if (LINKEDIN_ENABLED && shouldAutoPostToLinkedIn(updatedJob)) {
+        console.log('[LinkedIn] Triggering LinkedIn posting for published job:', updatedJob.title);
+        try {
+          await postJobToLinkedIn(updatedJob);
+          updatedJob.linkedin_synced = true;
+          
+          // Update linkedin_synced flag in database
+          await query(
+            'UPDATE jobs SET linkedin_synced = true WHERE id = $1',
+            [id]
+          );
+          
+          console.log('[LinkedIn] Job posted to LinkedIn successfully');
+        } catch (linkedInError) {
+          console.error('[LinkedIn] Failed to post to LinkedIn:', linkedInError.message);
+          // Don't fail the entire request if LinkedIn posting fails
+        }
+      } else {
+        console.log('[LinkedIn] Job not eligible for auto-posting or LinkedIn disabled');
+      }
+    }
+
+    // LINKEDIN SYNC TRIGGER - Update existing LinkedIn posting
+    if (updatedJob.linkedin_synced && currentJob.job_status === 'published' && updates.job_status === 'published') {
+      console.log('[LinkedIn] Job already on LinkedIn - triggering sync for updates');
+      if (LINKEDIN_ENABLED) {
+        try {
+          await syncJobToLinkedIn(id);
+          console.log('[LinkedIn] Job synchronized with LinkedIn successfully');
+        } catch (syncError) {
+          console.error('[LinkedIn] Failed to sync with LinkedIn:', syncError.message);
+        }
+      }
+    }
+
+    // Return normalized job data
+    const normalizedJob = {
+      ...updatedJob,
+      employment_type: normalizeEmploymentType(updatedJob.employment_type),
+      company_name: updatedJob.department,
+      location: `${updatedJob.city}, ${updatedJob.country}`,
+      remote_ok: updatedJob.remote_flag,
+      salary_min: updatedJob.salary_from,
+      salary_max: updatedJob.salary_to,
+      salary_display: updatedJob.salary_currency
+    };
+
+    res.json({
+      success: true,
+      job: normalizedJob,
+      audit: auditLog
+    });
+
+  } catch (error) {
+    console.error('[Backend] Error updating job:', error);
+    res.status(500).json({ 
+      error: 'Failed to update job',
+      message: error.message 
+    });
+  }
+});
+
 // GET /api/dashboard/stats - Get dashboard statistics
 app.get('/api/dashboard/stats', async (req, res) => {
   console.log('[Backend] Received GET /api/dashboard/stats request');
