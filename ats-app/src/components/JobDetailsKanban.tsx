@@ -4,6 +4,7 @@ import { ArrowLeft, Briefcase, MapPin, DollarSign, Users, Mail, Phone, Calendar,
 import { apiRequest } from '../utils/api';
 import ConfirmationModal from './ConfirmationModal';
 import { useAuth } from '../contexts/AuthContext';
+import InterviewScheduling from './InterviewScheduling';
 
 interface Job {
   id: string;
@@ -710,6 +711,15 @@ export default function JobDetailsKanban() {
                   </div>
                 </div>
               )}
+
+              {/* Interview Scheduling */}
+              <InterviewScheduling
+                candidateId={selectedCandidate.id}
+                jobId={jobId!}
+                currentStage={selectedCandidate.current_stage}
+                stages={stages}
+                isViewOnly={isViewOnlyForUser(selectedCandidate.current_stage)}
+              />
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-gray-400 p-6 text-center">
