@@ -1597,6 +1597,71 @@ app.patch('/api/candidates/:id/disqualify', async (req, res) => {
   }
 });
 
+// Import substage definitions
+import { getSubstagesForStage, isValidSubstage, getNextSubstage } from './substage-definitions.js';
+
+// GET /api/substages/:stageName - Get available substages for a stage
+app.get('/api/substages/:stageName', (req, res) => {
+  try {
+    const { stageName } = req.params;
+    const substages = getSubstagesForStage(stageName);
+    res.json({ stageName, substages });
+  } catch (error) {
+    console.error('[Substages API] Error getting substages:', error);
+    res.status(500).json({ error: 'Failed to get substages', details: error.message });
+  }
+});
+
+// PATCH /api/candidates/:id/substage - Update candidate substage (with role validation)
+app.patch('/api/candidates/:id/substage', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { substage, userId, userRole } = req.body;
+    
+    // Get current candidate to check stage
+    const candidateResult = await query(
+      'SELECT current_stage, candidate_substage FROM candidates WHERE id = $1', 
+      [id]
+    );
+    
+    if (candidateResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Candidate not found' });
+    }
+    
+    const { current_stage: currentStage, candidate_substage: currentSubstage } = candidateResult.rows[0];
+    
+    // Enforce role-based permissions: clients cannot modify substages in restricted stages
+    if (userRole === 'client' && CLIENT_VIEW_ONLY_STAGES.includes(currentStage)) {
+      console.warn(`[Substages API] Client attempted to change substage in restricted stage: ${currentStage}`);
+      return res.status(403).json({ 
+        error: 'Forbidden', 
+        message: `Clients do not have permission to modify candidates in "${currentStage}" stage. This action requires recruiter access.`
+      });
+    }
+    
+    // Validate substage belongs to current stage
+    if (substage && !isValidSubstage(currentStage, substage)) {
+      return res.status(400).json({ 
+        error: 'Invalid substage', 
+        message: `Substage "${substage}" is not valid for stage "${currentStage}"`
+      });
+    }
+    
+    // Update substage
+    const result = await query(
+      'UPDATE candidates SET candidate_substage = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *',
+      [substage, id]
+    );
+    
+    console.log(`[Substages API] Updated candidate ${id} substage: ${currentSubstage} → ${substage} by ${userId || 'system'}`);
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('[Substages API] Error updating substage:', error);
+    res.status(500).json({ error: 'Failed to update substage', details: error.message });
+  }
+});
+
 // ===== EXTERNAL CANDIDATE PORTAL API ENDPOINTS =====
 
 // Middleware for API key validation (optional - can be enabled via env var)
