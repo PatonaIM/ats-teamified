@@ -6,7 +6,7 @@ import { fileURLToPath } from 'url';
 import { query } from './db.js';
 import OpenAI from 'openai';
 import { postJobToLinkedIn, shouldAutoPostToLinkedIn, syncJobToLinkedIn, getLinkedInSyncStatus, retryLinkedInSync } from './services/linkedin.js';
-import { getCandidates, getCandidateById, createCandidate, updateCandidate, addCandidateDocument, addCandidateCommunication, moveCandidateToStage, deleteCandidate } from './services/candidates.js';
+import { getCandidates, getCandidateById, createCandidate, updateCandidate, addCandidateDocument, addCandidateCommunication, moveCandidateToStage, disqualifyCandidate, deleteCandidate } from './services/candidates.js';
 import sanitizeHtml from 'sanitize-html';
 import { randomUUID } from 'crypto';
 
@@ -1341,7 +1341,7 @@ app.get('/api/candidates', async (req, res) => {
     const { jobId, status, source, search } = req.query;
     const filters = {};
     
-    if (jobId) filters.jobId = parseInt(jobId);
+    if (jobId) filters.jobId = jobId;
     if (status) filters.status = status;
     if (source) filters.source = source;
     if (search) filters.search = search;
@@ -1358,7 +1358,7 @@ app.get('/api/candidates', async (req, res) => {
 app.get('/api/candidates/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const candidate = await getCandidateById(parseInt(id));
+    const candidate = await getCandidateById(id);
     
     if (!candidate) {
       return res.status(404).json({ error: 'Candidate not found' });
@@ -1391,7 +1391,7 @@ app.post('/api/candidates', async (req, res) => {
 app.put('/api/candidates/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const candidate = await updateCandidate(parseInt(id), req.body);
+    const candidate = await updateCandidate(id, req.body);
     
     if (!candidate) {
       return res.status(404).json({ error: 'Candidate not found' });
@@ -1408,7 +1408,7 @@ app.put('/api/candidates/:id', async (req, res) => {
 app.delete('/api/candidates/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const result = await deleteCandidate(parseInt(id));
+    const result = await deleteCandidate(id);
     res.json(result);
   } catch (error) {
     console.error('[Candidates API] Error deleting candidate:', error);
@@ -1420,7 +1420,7 @@ app.delete('/api/candidates/:id', async (req, res) => {
 app.post('/api/candidates/:id/documents', async (req, res) => {
   try {
     const { id } = req.params;
-    const document = await addCandidateDocument(parseInt(id), req.body);
+    const document = await addCandidateDocument(id, req.body);
     res.status(201).json(document);
   } catch (error) {
     console.error('[Candidates API] Error adding document:', error);
@@ -1432,7 +1432,7 @@ app.post('/api/candidates/:id/documents', async (req, res) => {
 app.post('/api/candidates/:id/communications', async (req, res) => {
   try {
     const { id } = req.params;
-    const communication = await addCandidateCommunication(parseInt(id), req.body);
+    const communication = await addCandidateCommunication(id, req.body);
     res.status(201).json(communication);
   } catch (error) {
     console.error('[Candidates API] Error adding communication:', error);
@@ -1450,11 +1450,25 @@ app.put('/api/candidates/:id/stage', async (req, res) => {
       return res.status(400).json({ error: 'Stage is required' });
     }
     
-    const candidate = await moveCandidateToStage(parseInt(id), stage, userId, notes);
+    const candidate = await moveCandidateToStage(id, stage, userId, notes);
     res.json(candidate);
   } catch (error) {
     console.error('[Candidates API] Error moving candidate:', error);
     res.status(500).json({ error: 'Failed to move candidate', details: error.message });
+  }
+});
+
+// PATCH /api/candidates/:id/disqualify - Disqualify candidate
+app.patch('/api/candidates/:id/disqualify', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reason, userId } = req.body;
+    
+    const candidate = await disqualifyCandidate(id, reason, userId);
+    res.json(candidate);
+  } catch (error) {
+    console.error('[Candidates API] Error disqualifying candidate:', error);
+    res.status(500).json({ error: 'Failed to disqualify candidate', details: error.message });
   }
 });
 
@@ -1793,12 +1807,12 @@ app.get('/api/jobs/:jobId/pipeline-stages', requireWorkflowBuilder, async (req, 
       FROM job_pipeline_stages 
       WHERE job_id = $1 
       ORDER BY stage_order ASC`,
-      [parseInt(jobId)]
+      [jobId]
     );
     
     res.json({
       success: true,
-      jobId: parseInt(jobId),
+      jobId: jobId,
       stages: result.rows.map(stage => ({
         id: stage.id,
         jobId: stage.job_id,
@@ -1831,7 +1845,7 @@ app.post('/api/jobs/:jobId/pipeline-stages', requireWorkflowBuilder, async (req,
       `INSERT INTO job_pipeline_stages (job_id, stage_name, stage_order, is_default, stage_config)
        VALUES ($1, $2, $3, $4, $5)
        RETURNING id, job_id, stage_name, stage_order, is_default, stage_config, created_at`,
-      [parseInt(jobId), stageName, stageOrder, false, JSON.stringify(config || {})]
+      [jobId, stageName, stageOrder, false, JSON.stringify(config || {})]
     );
     
     const newStage = result.rows[0];
@@ -1871,7 +1885,7 @@ app.put('/api/jobs/:jobId/pipeline-stages/:stageId/config', requireWorkflowBuild
        SET stage_config = $1
        WHERE id = $2 AND job_id = $3
        RETURNING id, job_id, stage_name, stage_order, is_default, stage_config, created_at`,
-      [JSON.stringify(config), parseInt(stageId), parseInt(jobId)]
+      [JSON.stringify(config), stageId, jobId]
     );
     
     if (result.rows.length === 0) {
@@ -1905,7 +1919,7 @@ app.get('/api/jobs/:jobId/pipeline-stages/:stageId/candidate-count', requireWork
     
     const stageResult = await query(
       'SELECT stage_name FROM job_pipeline_stages WHERE id = $1 AND job_id = $2',
-      [parseInt(stageId), parseInt(jobId)]
+      [stageId, jobId]
     );
     
     if (stageResult.rows.length === 0) {
@@ -1916,7 +1930,7 @@ app.get('/api/jobs/:jobId/pipeline-stages/:stageId/candidate-count', requireWork
     
     const countResult = await query(
       'SELECT COUNT(*) as count FROM candidates WHERE job_id = $1 AND current_stage = $2',
-      [parseInt(jobId), stageName]
+      [jobId, stageName]
     );
     
     const candidateCount = parseInt(countResult.rows[0].count);
@@ -1926,8 +1940,8 @@ app.get('/api/jobs/:jobId/pipeline-stages/:stageId/candidate-count', requireWork
     
     res.json({
       success: true,
-      jobId: parseInt(jobId),
-      stageId: parseInt(stageId),
+      jobId: jobId,
+      stageId: stageId,
       stageName,
       candidateCount,
       canDelete,
@@ -1990,7 +2004,7 @@ app.put('/api/jobs/:jobId/pipeline-stages/reorder', requireWorkflowBuilder, asyn
     try {
       currentStagesResult = await query(
         'SELECT id, stage_name, stage_order FROM job_pipeline_stages WHERE job_id = $1 ORDER BY stage_order ASC FOR UPDATE',
-        [parseInt(jobId)]
+        [jobId]
       );
     } catch (error) {
       await query('ROLLBACK');
@@ -2073,7 +2087,7 @@ app.put('/api/jobs/:jobId/pipeline-stages/reorder', requireWorkflowBuilder, asyn
       for (const { stageId, newOrder } of stageOrders) {
         await query(
           'UPDATE job_pipeline_stages SET stage_order = $1 WHERE id = $2 AND job_id = $3',
-          [newOrder, stageId, parseInt(jobId)]
+          [newOrder, stageId, jobId]
         );
       }
       
@@ -2084,7 +2098,7 @@ app.put('/api/jobs/:jobId/pipeline-stages/reorder', requireWorkflowBuilder, asyn
          FROM job_pipeline_stages 
          WHERE job_id = $1 
          ORDER BY stage_order ASC`,
-        [parseInt(jobId)]
+        [jobId]
       );
       
       res.json({
@@ -2116,7 +2130,7 @@ app.delete('/api/jobs/:jobId/pipeline-stages/:stageId', requireWorkflowBuilder, 
     
     const stageResult = await query(
       'SELECT stage_name, is_default FROM job_pipeline_stages WHERE id = $1 AND job_id = $2',
-      [parseInt(stageId), parseInt(jobId)]
+      [stageId, jobId]
     );
     
     if (stageResult.rows.length === 0) {
@@ -2134,7 +2148,7 @@ app.delete('/api/jobs/:jobId/pipeline-stages/:stageId', requireWorkflowBuilder, 
     
     const countResult = await query(
       'SELECT COUNT(*) as count FROM candidates WHERE job_id = $1 AND current_stage = $2',
-      [parseInt(jobId), stage_name]
+      [jobId, stage_name]
     );
     
     const candidateCount = parseInt(countResult.rows[0].count);
@@ -2149,7 +2163,7 @@ app.delete('/api/jobs/:jobId/pipeline-stages/:stageId', requireWorkflowBuilder, 
     
     await query(
       'DELETE FROM job_pipeline_stages WHERE id = $1 AND job_id = $2',
-      [parseInt(stageId), parseInt(jobId)]
+      [stageId, jobId]
     );
     
     console.log('[Workflow Builder] Stage deleted:', { jobId, stageId, stageName: stage_name });
@@ -2416,7 +2430,7 @@ app.put('/api/pipeline-templates/:id/stages/:stageId/config', requireWorkflowBui
     
     const result = await query(
       'UPDATE pipeline_template_stages SET stage_config = $1 WHERE id = $2 AND template_id = $3 RETURNING id, stage_name, stage_order, stage_type, stage_config',
-      [stage_config || {}, parseInt(stageId), parseInt(id)]
+      [stage_config || {}, stageId, parseInt(id)]
     );
     
     if (result.rows.length === 0) {
@@ -2575,7 +2589,7 @@ app.delete('/api/pipeline-templates/:id/stages/:stageId', requireWorkflowBuilder
     // Check if stage exists and get its type
     const stageResult = await query(
       'SELECT stage_name, stage_type FROM pipeline_template_stages WHERE id = $1 AND template_id = $2',
-      [parseInt(stageId), parseInt(id)]
+      [stageId, parseInt(id)]
     );
     
     if (stageResult.rows.length === 0) {
@@ -2592,7 +2606,7 @@ app.delete('/api/pipeline-templates/:id/stages/:stageId', requireWorkflowBuilder
       });
     }
     
-    await query('DELETE FROM pipeline_template_stages WHERE id = $1 AND template_id = $2', [parseInt(stageId), parseInt(id)]);
+    await query('DELETE FROM pipeline_template_stages WHERE id = $1 AND template_id = $2', [stageId, parseInt(id)]);
     await query('UPDATE pipeline_templates SET updated_at = CURRENT_TIMESTAMP WHERE id = $1', [parseInt(id)]);
     
     res.json({ success: true, message: `Stage "${stage_name}" deleted successfully` });

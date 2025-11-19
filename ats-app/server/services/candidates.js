@@ -257,6 +257,39 @@ export async function moveCandidateToStage(candidateId, newStage, userId = null,
 }
 
 /**
+ * Disqualify candidate
+ */
+export async function disqualifyCandidate(candidateId, reason = null, userId = null) {
+  const currentCandidateResult = await query(
+    'SELECT status, current_stage FROM candidates WHERE id = $1',
+    [candidateId]
+  );
+
+  if (currentCandidateResult.rows.length === 0) {
+    throw new Error('Candidate not found');
+  }
+
+  const previousStatus = currentCandidateResult.rows[0].status;
+  const currentStage = currentCandidateResult.rows[0].current_stage;
+
+  const result = await query(
+    `UPDATE candidates 
+     SET status = 'disqualified', updated_at = CURRENT_TIMESTAMP
+     WHERE id = $1
+     RETURNING *`,
+    [candidateId]
+  );
+
+  await query(
+    `INSERT INTO candidate_stage_history (candidate_id, previous_stage, new_stage, changed_by_user_id, notes)
+     VALUES ($1, $2, $3, $4, $5)`,
+    [candidateId, currentStage, 'Disqualified', userId, reason || 'Candidate disqualified']
+  );
+
+  return result.rows[0];
+}
+
+/**
  * Delete candidate
  */
 export async function deleteCandidate(candidateId) {
