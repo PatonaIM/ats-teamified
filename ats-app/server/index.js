@@ -1440,14 +1440,40 @@ app.post('/api/candidates/:id/communications', async (req, res) => {
   }
 });
 
-// PUT /api/candidates/:id/stage - Move candidate to different pipeline stage
+// PUT /api/candidates/:id/stage - Move candidate to different pipeline stage (legacy - deprecated, use PATCH)
 app.put('/api/candidates/:id/stage', async (req, res) => {
   try {
     const { id } = req.params;
-    const { stage, userId, notes } = req.body;
+    const { stage, userId, notes, userRole } = req.body;
     
     if (!stage) {
       return res.status(400).json({ error: 'Stage is required' });
+    }
+    
+    // Get current candidate to check current stage
+    const candidateResult = await query('SELECT current_stage FROM candidates WHERE id = $1', [id]);
+    if (candidateResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Candidate not found' });
+    }
+    
+    const currentStage = candidateResult.rows[0].current_stage;
+    
+    // Enforce role-based permissions: clients cannot modify candidates in OR move to restricted stages
+    if (userRole === 'client') {
+      if (CLIENT_VIEW_ONLY_STAGES.includes(currentStage)) {
+        console.warn(`[Candidates API] Client attempted to move candidate FROM restricted stage: ${currentStage}`);
+        return res.status(403).json({ 
+          error: 'Forbidden', 
+          message: `Clients do not have permission to modify candidates in "${currentStage}" stage. This action requires recruiter access.`
+        });
+      }
+      if (CLIENT_VIEW_ONLY_STAGES.includes(stage)) {
+        console.warn(`[Candidates API] Client attempted to move candidate TO restricted stage: ${stage}`);
+        return res.status(403).json({ 
+          error: 'Forbidden', 
+          message: `Clients do not have permission to move candidates to "${stage}" stage. This action requires recruiter access.`
+        });
+      }
     }
     
     const candidate = await moveCandidateToStage(id, stage, userId, notes);
@@ -1477,13 +1503,30 @@ app.patch('/api/candidates/:id/stage', async (req, res) => {
       return res.status(400).json({ error: 'Stage is required' });
     }
     
-    // Enforce role-based permissions: clients cannot modify restricted stages
-    if (userRole === 'client' && CLIENT_VIEW_ONLY_STAGES.includes(stage)) {
-      console.warn(`[Candidates API] Client attempted to move candidate to restricted stage: ${stage}`);
-      return res.status(403).json({ 
-        error: 'Forbidden', 
-        message: `Clients do not have permission to move candidates to "${stage}" stage. This action requires recruiter access.`
-      });
+    // Get current candidate to check current stage
+    const candidateResult = await query('SELECT current_stage FROM candidates WHERE id = $1', [id]);
+    if (candidateResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Candidate not found' });
+    }
+    
+    const currentStage = candidateResult.rows[0].current_stage;
+    
+    // Enforce role-based permissions: clients cannot modify candidates in OR move to restricted stages
+    if (userRole === 'client') {
+      if (CLIENT_VIEW_ONLY_STAGES.includes(currentStage)) {
+        console.warn(`[Candidates API] Client attempted to move candidate FROM restricted stage: ${currentStage}`);
+        return res.status(403).json({ 
+          error: 'Forbidden', 
+          message: `Clients do not have permission to modify candidates in "${currentStage}" stage. This action requires recruiter access.`
+        });
+      }
+      if (CLIENT_VIEW_ONLY_STAGES.includes(stage)) {
+        console.warn(`[Candidates API] Client attempted to move candidate TO restricted stage: ${stage}`);
+        return res.status(403).json({ 
+          error: 'Forbidden', 
+          message: `Clients do not have permission to move candidates to "${stage}" stage. This action requires recruiter access.`
+        });
+      }
     }
     
     const candidate = await moveCandidateToStage(id, stage, userId, notes);
