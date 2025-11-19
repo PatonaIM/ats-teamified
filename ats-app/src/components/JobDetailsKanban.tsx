@@ -35,7 +35,14 @@ interface Candidate {
   source: string;
   created_at: string;
   current_stage: string;
+  candidate_substage: string | null;
   status: string;
+}
+
+interface Substage {
+  id: string;
+  label: string;
+  order: number;
 }
 
 // Stages that are view-only for clients but editable for recruiters
@@ -61,6 +68,7 @@ export default function JobDetailsKanban() {
   const [loading, setLoading] = useState(true);
   const [expandedStages, setExpandedStages] = useState<Set<string>>(new Set());
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
+  const [stageSubstages, setStageSubstages] = useState<Record<string, Substage[]>>({});
   
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -91,8 +99,61 @@ export default function JobDetailsKanban() {
   useEffect(() => {
     if (selectedCandidate && selectedCandidate.current_stage) {
       setExpandedStages(prev => new Set([...prev, selectedCandidate.current_stage]));
+      fetchSubstagesForStage(selectedCandidate.current_stage);
     }
   }, [selectedCandidate]);
+  
+  const fetchSubstagesForStage = async (stageName: string) => {
+    if (stageSubstages[stageName]) return; // Already fetched
+    
+    try {
+      const response = await apiRequest<{ stageName: string; substages: Substage[] }>(
+        `/api/substages/${encodeURIComponent(stageName)}`
+      );
+      setStageSubstages(prev => ({ ...prev, [stageName]: response.substages }));
+    } catch (error) {
+      console.error('Failed to fetch substages:', error);
+    }
+  };
+  
+  const formatSubstageLabel = (substageId: string): string => {
+    // Convert IDs like "interview_scheduled" to "Interview Scheduled"
+    return substageId.split('_').map(word => 
+      word.charAt(0).toUpperCase() + word.slice(1)
+    ).join(' ');
+  };
+  
+  const handleUpdateSubstage = async (candidateId: string, newSubstage: string) => {
+    if (!user) return;
+    
+    try {
+      await apiRequest(`/api/candidates/${candidateId}/substage`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          substage: newSubstage,
+          userId: user.id,
+          userRole: user.role
+        })
+      });
+      
+      // Update local state
+      setCandidates(prev => 
+        prev.map(c => c.id === candidateId ? { ...c, candidate_substage: newSubstage } : c)
+      );
+      
+      if (selectedCandidate?.id === candidateId) {
+        setSelectedCandidate(prev => prev ? { ...prev, candidate_substage: newSubstage } : null);
+      }
+    } catch (error) {
+      console.error('Failed to update substage:', error);
+      if (error instanceof Error && error.message.includes('Forbidden')) {
+        alert('You do not have permission to update the substage for this candidate.');
+      } else {
+        alert('Failed to update substage. Please try again.');
+      }
+    }
+  };
 
   const fetchJobData = async () => {
     console.log('[JobDetailsKanban] fetchJobData called for jobId:', jobId);
@@ -407,6 +468,11 @@ export default function JobDetailsKanban() {
                                 <div className="text-xs text-gray-600 dark:text-gray-400 truncate">
                                   {candidate.email}
                                 </div>
+                                {candidate.candidate_substage && (
+                                  <div className="text-xs text-purple-600 dark:text-purple-400 mt-1 font-medium">
+                                    {formatSubstageLabel(candidate.candidate_substage)}
+                                  </div>
+                                )}
                                 <div className="text-xs text-gray-500 dark:text-gray-500 mt-1">
                                   Applied {new Date(candidate.created_at).toLocaleDateString()}
                                 </div>
@@ -430,11 +496,11 @@ export default function JobDetailsKanban() {
               {/* Candidate Header */}
               <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
                 <div className="flex items-start justify-between mb-4">
-                  <div>
+                  <div className="flex-1">
                     <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                       {selectedCandidate.first_name} {selectedCandidate.last_name}
                     </h2>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 mb-4">
                       <div className="inline-block px-3 py-1 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 text-white text-sm font-medium">
                         {selectedCandidate.current_stage}
                       </div>
@@ -445,6 +511,59 @@ export default function JobDetailsKanban() {
                         </div>
                       )}
                     </div>
+                    
+                    {/* Substage Progress */}
+                    {stageSubstages[selectedCandidate.current_stage]?.length > 0 && (
+                      <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                        <div className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3 flex items-center justify-between">
+                          <span>Progress</span>
+                          {isViewOnlyForUser(selectedCandidate.current_stage) && (
+                            <span className="text-xs text-gray-400 dark:text-gray-500 font-normal normal-case">(View Only)</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 mb-3">
+                          {stageSubstages[selectedCandidate.current_stage].map((substage, index) => {
+                            const isCompleted = selectedCandidate.candidate_substage 
+                              ? substage.order <= (stageSubstages[selectedCandidate.current_stage].find(s => s.id === selectedCandidate.candidate_substage)?.order || 0)
+                              : false;
+                            const isCurrent = selectedCandidate.candidate_substage === substage.id;
+                            const isViewOnly = isViewOnlyForUser(selectedCandidate.current_stage);
+                            
+                            return (
+                              <div key={substage.id} className="flex items-center gap-2 flex-1">
+                                <button
+                                  onClick={() => !isViewOnly && handleUpdateSubstage(selectedCandidate.id, substage.id)}
+                                  disabled={isViewOnly}
+                                  className={`
+                                    relative flex-1 h-3 rounded-full transition-all
+                                    ${isCompleted 
+                                      ? 'bg-gradient-to-r from-purple-500 to-blue-500 shadow-sm' 
+                                      : 'bg-gray-200 dark:bg-gray-600'
+                                    }
+                                    ${!isViewOnly ? 'cursor-pointer hover:shadow-md hover:scale-105' : 'cursor-not-allowed opacity-75'}
+                                  `}
+                                  title={substage.label}
+                                >
+                                  {isCurrent && (
+                                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-5 h-5 bg-white dark:bg-gray-800 rounded-full border-2 border-purple-500 shadow-lg"></div>
+                                  )}
+                                </button>
+                                {index < stageSubstages[selectedCandidate.current_stage].length - 1 && (
+                                  <div className="w-1.5 h-0.5 bg-gray-300 dark:bg-gray-600"></div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                        {selectedCandidate.candidate_substage && (
+                          <div className="text-xs text-gray-600 dark:text-gray-400 text-center">
+                            Current: <span className="font-medium text-purple-600 dark:text-purple-400">
+                              {formatSubstageLabel(selectedCandidate.candidate_substage)}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                   
                   {!isViewOnlyForUser(selectedCandidate.current_stage) ? (
