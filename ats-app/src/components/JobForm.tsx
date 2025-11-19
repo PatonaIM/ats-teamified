@@ -135,12 +135,17 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitti
       const data = await response.json();
       setTemplates(data.templates || []);
       
-      // Auto-select first non-standard template (exclude "Standard Hiring Pipeline")
-      const availableTemplates = data.templates?.filter((t: Template) => t.name !== 'Standard Hiring Pipeline') || [];
-      const firstTemplate = availableTemplates[0];
-      if (firstTemplate) {
-        setSelectedTemplateId(firstTemplate.id);
-        await loadTemplateStages(firstTemplate.id);
+      // Only auto-select template for new job creation (not when editing existing job)
+      const isNewJob = !initialData || !initialData.pipelineStages || initialData.pipelineStages.length === 0;
+      
+      if (isNewJob) {
+        // Auto-select first non-standard template (exclude "Standard Hiring Pipeline")
+        const availableTemplates = data.templates?.filter((t: Template) => t.name !== 'Standard Hiring Pipeline') || [];
+        const firstTemplate = availableTemplates[0];
+        if (firstTemplate) {
+          setSelectedTemplateId(firstTemplate.id);
+          await loadTemplateStages(firstTemplate.id);
+        }
       }
     } catch (error) {
       console.error('Error fetching templates:', error);
@@ -848,6 +853,34 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitti
                     'Select a pipeline template to use for this job\'s hiring workflow'}
                 </p>
               </div>
+
+              {/* Pipeline Preview */}
+              {formData.pipelineStages.length > 0 && (
+                <div className="mt-4 bg-white p-4 rounded-lg border border-purple-200">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3">Pipeline Preview</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {formData.pipelineStages.map((stage, index) => (
+                      <React.Fragment key={index}>
+                        <div className="inline-flex items-center px-3 py-1.5 bg-gradient-to-r from-purple-100 to-blue-100 border border-purple-300 rounded-lg">
+                          <span className="text-xs font-medium text-purple-900">
+                            {index + 1}. {stage.name}
+                          </span>
+                        </div>
+                        {index < formData.pipelineStages.length - 1 && (
+                          <div className="flex items-center">
+                            <svg className="w-4 h-4 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                          </div>
+                        )}
+                      </React.Fragment>
+                    ))}
+                  </div>
+                  <p className="mt-3 text-xs text-gray-500">
+                    This job will use {formData.pipelineStages.length} stages from the selected template
+                  </p>
+                </div>
+              )}
             </div>
           </div>
 
