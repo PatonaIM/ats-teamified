@@ -3,7 +3,6 @@ import { X, Sparkles } from 'lucide-react';
 import type { EmploymentType } from '../utils/employmentTypes';
 import { employmentTypeConfigs } from '../utils/employmentTypes';
 import { apiRequest } from '../utils/api';
-import PipelineStageEditor from './PipelineStageEditor';
 import { useAuth } from '../contexts/AuthContext';
 import JobDescriptionSelector from './JobDescriptionSelector';
 
@@ -136,11 +135,12 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitti
       const data = await response.json();
       setTemplates(data.templates || []);
       
-      // Auto-select default template
-      const defaultTemplate = data.templates?.find((t: Template) => t.is_default);
-      if (defaultTemplate) {
-        setSelectedTemplateId(defaultTemplate.id);
-        await loadTemplateStages(defaultTemplate.id);
+      // Auto-select first non-standard template (exclude "Standard Hiring Pipeline")
+      const availableTemplates = data.templates?.filter((t: Template) => t.name !== 'Standard Hiring Pipeline') || [];
+      const firstTemplate = availableTemplates[0];
+      if (firstTemplate) {
+        setSelectedTemplateId(firstTemplate.id);
+        await loadTemplateStages(firstTemplate.id);
       }
     } catch (error) {
       console.error('Error fetching templates:', error);
@@ -824,7 +824,7 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitti
               <h3 className="text-lg font-semibold text-purple-900 mb-4">Hiring Pipeline Configuration</h3>
               
               {/* Pipeline Template Selector */}
-              <div className="mb-6 bg-white p-4 rounded-lg border border-purple-200">
+              <div className="bg-white p-4 rounded-lg border border-purple-200">
                 <label htmlFor="template" className="block text-sm font-medium text-gray-700 mb-2">
                   Pipeline Template
                 </label>
@@ -835,23 +835,19 @@ const JobForm: React.FC<JobFormProps> = ({ isOpen, onClose, onSubmit, isSubmitti
                   disabled={loadingTemplates}
                   className="w-full px-4 py-2 border border-gray-300 rounded-lg bg-white text-gray-900 focus:ring-2 focus:ring-purple-500 focus:border-transparent"
                 >
-                  {templates.map((template) => (
-                    <option key={template.id} value={template.id}>
-                      {template.name} {template.is_default ? '(Default)' : ''}
-                    </option>
-                  ))}
+                  {templates
+                    .filter((template) => template.name !== 'Standard Hiring Pipeline')
+                    .map((template) => (
+                      <option key={template.id} value={template.id}>
+                        {template.name}
+                      </option>
+                    ))}
                 </select>
                 <p className="mt-2 text-xs text-gray-600">
                   {selectedTemplateId && templates.find(t => t.id === selectedTemplateId)?.description || 
                     'Select a pipeline template to use for this job\'s hiring workflow'}
                 </p>
               </div>
-
-              <PipelineStageEditor
-                stages={formData.pipelineStages}
-                onChange={(updatedStages) => setFormData(prev => ({ ...prev, pipelineStages: updatedStages }))}
-                minStages={3}
-              />
             </div>
           </div>
 
