@@ -68,6 +68,7 @@ export default function JobDetailsKanban() {
   const [expandedStages, setExpandedStages] = useState<Set<string>>(new Set());
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   const [stageSubstages, setStageSubstages] = useState<Record<string, Substage[]>>({});
+  const [loadingSubstages, setLoadingSubstages] = useState<Set<string>>(new Set());
   
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -105,6 +106,8 @@ export default function JobDetailsKanban() {
   const fetchSubstagesForStage = async (stageName: string) => {
     if (stageSubstages[stageName]) return; // Already fetched
     
+    setLoadingSubstages(prev => new Set([...prev, stageName]));
+    
     try {
       const response = await apiRequest<{ stageName: string; substages: Substage[] }>(
         `/api/substages/${encodeURIComponent(stageName)}`
@@ -112,6 +115,12 @@ export default function JobDetailsKanban() {
       setStageSubstages(prev => ({ ...prev, [stageName]: response.substages }));
     } catch (error) {
       console.error('Failed to fetch substages:', error);
+    } finally {
+      setLoadingSubstages(prev => {
+        const updated = new Set(prev);
+        updated.delete(stageName);
+        return updated;
+      });
     }
   };
   
@@ -513,16 +522,22 @@ export default function JobDetailsKanban() {
                     </div>
                     
                     {/* Substage Progress */}
-                    {stageSubstages[selectedCandidate.current_stage]?.length > 0 && (
-                      <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
-                        <div className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3 flex items-center justify-between">
-                          <span>Progress</span>
-                          {isViewOnlyForUser(selectedCandidate.current_stage) && (
-                            <span className="text-xs text-gray-400 dark:text-gray-500 font-normal normal-case">(View Only)</span>
-                          )}
+                    <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-4">
+                      <div className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-3 flex items-center justify-between">
+                        <span>Progress</span>
+                        {isViewOnlyForUser(selectedCandidate.current_stage) && (
+                          <span className="text-xs text-gray-400 dark:text-gray-500 font-normal normal-case">(View Only)</span>
+                        )}
+                      </div>
+                      
+                      {loadingSubstages.has(selectedCandidate.current_stage) ? (
+                        <div className="flex items-center justify-center py-4">
+                          <div className="animate-spin rounded-full h-6 w-6 border-2 border-purple-500 border-t-transparent"></div>
                         </div>
-                        <div className="flex items-center gap-2 mb-3">
-                          {stageSubstages[selectedCandidate.current_stage].map((substage, index) => {
+                      ) : stageSubstages[selectedCandidate.current_stage]?.length > 0 ? (
+                        <>
+                          <div className="flex items-center gap-2 mb-3">
+                            {stageSubstages[selectedCandidate.current_stage].map((substage, index) => {
                             const isCompleted = selectedCandidate.candidate_substage 
                               ? substage.order <= (stageSubstages[selectedCandidate.current_stage].find(s => s.id === selectedCandidate.candidate_substage)?.order || 0)
                               : false;
@@ -555,15 +570,20 @@ export default function JobDetailsKanban() {
                             );
                           })}
                         </div>
-                        {selectedCandidate.candidate_substage && (
-                          <div className="text-xs text-gray-600 dark:text-gray-400 text-center">
-                            Current: <span className="font-medium text-purple-600 dark:text-purple-400">
-                              {formatSubstageLabel(selectedCandidate.candidate_substage)}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    )}
+                          {selectedCandidate.candidate_substage && (
+                            <div className="text-xs text-gray-600 dark:text-gray-400 text-center">
+                              Current: <span className="font-medium text-purple-600 dark:text-purple-400">
+                                {formatSubstageLabel(selectedCandidate.candidate_substage)}
+                              </span>
+                            </div>
+                          )}
+                        </>
+                      ) : (
+                        <div className="text-xs text-gray-500 dark:text-gray-400 text-center py-2">
+                          No progress tracking available for this stage
+                        </div>
+                      )}
+                    </div>
                   </div>
                   
                   {!isViewOnlyForUser(selectedCandidate.current_stage) ? (
