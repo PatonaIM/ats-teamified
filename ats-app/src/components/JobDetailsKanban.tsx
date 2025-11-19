@@ -1,11 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { DndContext, PointerSensor, useSensor, useSensors, DragOverlay } from '@dnd-kit/core';
-import type { DragEndEvent } from '@dnd-kit/core';
-import { ArrowLeft, Briefcase, MapPin, DollarSign, Users } from 'lucide-react';
+import { ArrowLeft, Briefcase, MapPin, DollarSign, Users, Mail, Phone, FileText, Calendar } from 'lucide-react';
 import { apiRequest } from '../utils/api';
-import StageColumn from './StageColumn';
-import CandidateCard from './CandidateCard';
 import ConfirmationModal from './ConfirmationModal';
 
 interface Job {
@@ -49,7 +45,8 @@ export default function JobDetailsKanban() {
   const [stages, setStages] = useState<PipelineStage[]>([]);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeCandidateId, setActiveCandidateId] = useState<string | null>(null);
+  const [selectedStage, setSelectedStage] = useState<string | null>(null);
+  const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
   
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -65,17 +62,15 @@ export default function JobDetailsKanban() {
     variant: 'primary'
   });
 
-  const sensors = useSensors(
-    useSensor(PointerSensor, {
-      activationConstraint: {
-        distance: 8,
-      },
-    })
-  );
-
   useEffect(() => {
     fetchJobData();
   }, [jobId]);
+
+  useEffect(() => {
+    if (stages.length > 0 && !selectedStage) {
+      setSelectedStage(stages[0].stageName);
+    }
+  }, [stages]);
 
   const fetchJobData = async () => {
     try {
@@ -84,20 +79,44 @@ export default function JobDetailsKanban() {
       
       const [jobData, stagesData, candidatesData] = await Promise.all([
         apiRequest<Job>(`/api/jobs/${jobId}`),
-        apiRequest<{ stages: PipelineStage[] }>(`/api/jobs/${jobId}/pipeline-stages`),
-        apiRequest<{ candidates: Candidate[] }>(`/api/candidates?jobId=${jobId}`)
+        apiRequest<any>(`/api/jobs/${jobId}/pipeline-stages`),
+        apiRequest<any>(`/api/candidates?jobId=${jobId}`)
       ]);
       
-      console.log('[JobDetailsKanban] Data received:', {
+      console.log('[JobDetailsKanban] Raw data received:', {
+        jobData: !!jobData,
+        stagesData: typeof stagesData,
+        candidatesData: typeof candidatesData
+      });
+      
+      const rawStages = Array.isArray(stagesData?.stages) 
+        ? stagesData.stages 
+        : Array.isArray(stagesData) 
+        ? stagesData 
+        : [];
+      
+      const safeStages = rawStages.map((stage: any) => ({
+        id: stage.id,
+        stageName: stage.stageName || stage.stage_name,
+        stageOrder: stage.stageOrder || stage.stage_order
+      }));
+      
+      const safeCandidates = Array.isArray(candidatesData?.candidates)
+        ? candidatesData.candidates
+        : Array.isArray(candidatesData)
+        ? candidatesData
+        : [];
+      
+      console.log('[JobDetailsKanban] Safe data:', {
         hasJob: !!jobData,
         jobTitle: jobData?.title,
-        stagesCount: stagesData.stages?.length || 0,
-        candidatesCount: candidatesData.candidates?.length || 0
+        stagesCount: safeStages.length,
+        candidatesCount: safeCandidates.length
       });
       
       setJob(jobData as Job);
-      setStages(stagesData.stages || []);
-      setCandidates((candidatesData.candidates || []).filter(c => c.status === 'active'));
+      setStages(safeStages);
+      setCandidates(safeCandidates.filter((c: Candidate) => c.status === 'active'));
       
       console.log('[JobDetailsKanban] State updated, loading complete');
     } catch (error) {
@@ -120,48 +139,6 @@ export default function JobDetailsKanban() {
     return null;
   };
 
-  const handleDragEnd = async (event: DragEndEvent) => {
-    const { active, over } = event;
-    
-    if (!over || active.id === over.id) {
-      return;
-    }
-
-    const candidateId = active.id as string;
-    const newStageId = over.id as string;
-    const newStage = stages.find(s => s.id === newStageId);
-    
-    if (!newStage) return;
-
-    const candidate = candidates.find(c => c.id === candidateId);
-    if (!candidate || candidate.current_stage === newStage.stageName) {
-      return;
-    }
-
-    const originalCandidates = [...candidates];
-    
-    setCandidates(candidates.map(c => 
-      c.id === candidateId 
-        ? { ...c, current_stage: newStage.stageName }
-        : c
-    ));
-
-    try {
-      await apiRequest(`/api/candidates/${candidateId}/stage`, {
-        method: 'PUT',
-        body: JSON.stringify({
-          stage: newStage.stageName,
-          userId: null,
-          notes: `Moved via drag-and-drop to ${newStage.stageName}`
-        })
-      });
-    } catch (error) {
-      console.error('Error moving candidate:', error);
-      setCandidates(originalCandidates);
-      alert('Failed to move candidate. Please try again.');
-    }
-  };
-
   const handleMoveToNextStage = async (candidateId: string) => {
     const candidate = candidates.find(c => c.id === candidateId);
     if (!candidate) return;
@@ -177,9 +154,13 @@ export default function JobDetailsKanban() {
         : c
     ));
 
+    if (selectedCandidate?.id === candidateId) {
+      setSelectedCandidate({ ...selectedCandidate, current_stage: nextStage });
+    }
+
     try {
       await apiRequest(`/api/candidates/${candidateId}/stage`, {
-        method: 'PUT',
+        method: 'PATCH',
         body: JSON.stringify({
           stage: nextStage,
           userId: null,
@@ -206,11 +187,15 @@ export default function JobDetailsKanban() {
         const originalCandidates = [...candidates];
         
         setCandidates(candidates.filter(c => c.id !== candidateId));
+        if (selectedCandidate?.id === candidateId) {
+          setSelectedCandidate(null);
+        }
 
         try {
-          await apiRequest(`/api/candidates/${candidateId}/disqualify`, {
+          await apiRequest(`/api/candidates/${candidateId}/status`, {
             method: 'PATCH',
             body: JSON.stringify({
+              status: 'disqualified',
               reason: 'Disqualified by recruiter',
               userId: null
             })
@@ -226,32 +211,12 @@ export default function JobDetailsKanban() {
     });
   };
 
-  const getEmploymentTypeColor = (type: string) => {
-    const colors = {
-      contract: 'text-blue-600 bg-blue-50',
-      partTime: 'text-green-600 bg-green-50',
-      fullTime: 'text-orange-600 bg-orange-50',
-      eor: 'text-purple-600 bg-purple-50'
-    };
-    return colors[type as keyof typeof colors] || 'text-gray-600 bg-gray-50';
-  };
-
-  const getEmploymentTypeLabel = (type: string) => {
-    const labels = {
-      contract: 'Contract',
-      partTime: 'Part-Time',
-      fullTime: 'Full-Time',
-      eor: 'EOR'
-    };
-    return labels[type as keyof typeof labels] || type;
-  };
-
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading job details...</p>
+      <div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full animate-spin"></div>
+          <p className="text-gray-600 dark:text-gray-400">Loading job details...</p>
         </div>
       </div>
     );
@@ -259,12 +224,12 @@ export default function JobDetailsKanban() {
 
   if (!job) {
     return (
-      <div className="flex items-center justify-center h-screen">
+      <div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-gray-900">
         <div className="text-center">
-          <p className="text-gray-600">Job not found</p>
+          <p className="text-gray-600 dark:text-gray-400 mb-4">Job not found</p>
           <button
             onClick={() => navigate('/dashboard/jobs')}
-            className="mt-4 text-purple-600 hover:text-purple-700"
+            className="text-purple-600 hover:text-purple-700 dark:text-purple-400"
           >
             Back to Jobs
           </button>
@@ -273,92 +238,258 @@ export default function JobDetailsKanban() {
     );
   }
 
-  const activeCandidate = activeCandidateId 
-    ? candidates.find(c => c.id === activeCandidateId) 
-    : null;
+  const filteredCandidates = selectedStage 
+    ? getCandidatesForStage(selectedStage)
+    : candidates;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
-        <div className="px-6 py-4">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Header */}
+      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
+        <div className="max-w-full px-8 py-6">
           <button
             onClick={() => navigate('/dashboard/jobs')}
-            className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
+            className="flex items-center gap-2 text-gray-600 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 mb-4 transition-colors"
           >
             <ArrowLeft size={20} />
-            Back to Jobs
+            <span>Back to Jobs</span>
           </button>
           
-          <div className="flex items-start justify-between">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">{job.title}</h1>
-              <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+              {job.title}
+            </h1>
+            
+            <div className="flex items-center gap-6 text-sm text-gray-600 dark:text-gray-400">
+              <div className="flex items-center gap-1">
+                <Briefcase size={16} />
+                <span>{job.employment_type}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <MapPin size={16} />
+                <span>{job.location}</span>
+              </div>
+              {job.salary_from && (
                 <div className="flex items-center gap-1">
-                  <Briefcase size={16} />
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getEmploymentTypeColor(job.employment_type)}`}>
-                    {getEmploymentTypeLabel(job.employment_type)}
-                  </span>
+                  <DollarSign size={16} />
+                  <span>{job.salary_currency} {job.salary_from}{job.salary_to && ` - ${job.salary_to}`}</span>
                 </div>
-                <div className="flex items-center gap-1">
-                  <MapPin size={16} />
-                  <span>{job.location}</span>
-                </div>
-                {job.salary_from && (
-                  <div className="flex items-center gap-1">
-                    <DollarSign size={16} />
-                    <span>{job.salary_currency} {job.salary_from}{job.salary_to && ` - ${job.salary_to}`}</span>
-                  </div>
-                )}
-                <div className="flex items-center gap-1">
-                  <Users size={16} />
-                  <span>{candidates.length} Active Candidates</span>
-                </div>
+              )}
+              <div className="flex items-center gap-1">
+                <Users size={16} />
+                <span>{candidates.length} Active Candidates</span>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="p-6">
-        <DndContext
-          sensors={sensors}
-          onDragEnd={handleDragEnd}
-          onDragStart={(event) => setActiveCandidateId(event.active.id as string)}
-        >
-          <div className="flex gap-4 overflow-x-auto pb-4">
-            {stages.map((stage, index) => (
-              <StageColumn
-                key={stage.id}
-                stage={stage}
-                candidates={getCandidatesForStage(stage.stageName)}
-                onDisqualify={handleDisqualify}
-                onMoveToNextStage={handleMoveToNextStage}
-                isLastStage={index === stages.length - 1}
-                enableDragDrop={true}
-              />
-            ))}
+      {/* Main Content */}
+      <div className="flex h-[calc(100vh-180px)]">
+        {/* Left Side - Horizontal Pipeline & Candidates List */}
+        <div className="flex-1 flex flex-col overflow-hidden">
+          {/* Horizontal Pipeline Stages */}
+          <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 p-6">
+            <div className="flex items-center gap-2 overflow-x-auto">
+              {stages.map((stage, index) => {
+                const stageCount = getCandidatesForStage(stage.stageName).length;
+                const isSelected = selectedStage === stage.stageName;
+                
+                return (
+                  <div key={stage.id} className="flex items-center">
+                    <button
+                      onClick={() => setSelectedStage(stage.stageName)}
+                      className={`
+                        flex flex-col items-center justify-center min-w-[140px] h-20 px-4 rounded-lg
+                        transition-all duration-200 border-2
+                        ${isSelected 
+                          ? 'bg-gradient-to-r from-purple-500 to-blue-500 border-transparent text-white shadow-lg scale-105' 
+                          : 'bg-gray-100 dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:border-purple-400'
+                        }
+                      `}
+                    >
+                      <div className="text-lg font-semibold">{stageCount}</div>
+                      <div className={`text-xs ${isSelected ? 'text-white' : 'text-gray-500 dark:text-gray-400'}`}>
+                        {stage.stageName}
+                      </div>
+                    </button>
+                    
+                    {index < stages.length - 1 && (
+                      <div className="w-8 h-0.5 bg-gray-300 dark:bg-gray-600 mx-2" />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
 
-          <DragOverlay>
-            {activeCandidate && (
-              <CandidateCard
-                candidate={activeCandidate}
-                onDisqualify={() => {}}
-                onMoveToNextStage={() => {}}
-              />
-            )}
-          </DragOverlay>
-        </DndContext>
+          {/* Candidates List */}
+          <div className="flex-1 overflow-y-auto p-6">
+            <div className="space-y-3">
+              {filteredCandidates.length === 0 ? (
+                <div className="text-center py-12 text-gray-400">
+                  No candidates in this stage
+                </div>
+              ) : (
+                filteredCandidates.map((candidate) => (
+                  <div
+                    key={candidate.id}
+                    onClick={() => setSelectedCandidate(candidate)}
+                    className={`
+                      p-4 rounded-lg border cursor-pointer transition-all
+                      ${selectedCandidate?.id === candidate.id
+                        ? 'bg-purple-50 dark:bg-purple-900/20 border-purple-400'
+                        : 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700 hover:border-purple-300'
+                      }
+                    `}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-semibold text-gray-900 dark:text-white">
+                          {candidate.first_name} {candidate.last_name}
+                        </div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400">
+                          {candidate.email}
+                        </div>
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        {new Date(candidate.created_at).toLocaleDateString()}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Right Side - Candidate Information Panel */}
+        <div className="w-[400px] bg-white dark:bg-gray-800 border-l border-gray-200 dark:border-gray-700 overflow-y-auto">
+          {selectedCandidate ? (
+            <div className="p-6">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">
+                Candidate Details
+              </h2>
+              
+              <div className="space-y-6">
+                {/* Name */}
+                <div>
+                  <div className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Full Name</div>
+                  <div className="text-gray-900 dark:text-white font-medium text-lg">
+                    {selectedCandidate.first_name} {selectedCandidate.last_name}
+                  </div>
+                </div>
+
+                {/* Email */}
+                <div>
+                  <div className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Email</div>
+                  <div className="flex items-center gap-2 text-gray-900 dark:text-white">
+                    <Mail size={16} className="text-gray-400" />
+                    <a href={`mailto:${selectedCandidate.email}`} className="hover:text-purple-600 dark:hover:text-purple-400">
+                      {selectedCandidate.email}
+                    </a>
+                  </div>
+                </div>
+
+                {/* Phone */}
+                {selectedCandidate.phone && (
+                  <div>
+                    <div className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Phone</div>
+                    <div className="flex items-center gap-2 text-gray-900 dark:text-white">
+                      <Phone size={16} className="text-gray-400" />
+                      <a href={`tel:${selectedCandidate.phone}`} className="hover:text-purple-600 dark:hover:text-purple-400">
+                        {selectedCandidate.phone}
+                      </a>
+                    </div>
+                  </div>
+                )}
+
+                {/* Current Stage */}
+                <div>
+                  <div className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Current Stage</div>
+                  <div className="inline-block px-3 py-1 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 text-white text-sm font-medium">
+                    {selectedCandidate.current_stage}
+                  </div>
+                </div>
+
+                {/* Source */}
+                <div>
+                  <div className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Source</div>
+                  <div className="text-gray-900 dark:text-white capitalize">
+                    {selectedCandidate.source}
+                  </div>
+                </div>
+
+                {/* Applied Date */}
+                <div>
+                  <div className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Applied Date</div>
+                  <div className="flex items-center gap-2 text-gray-900 dark:text-white">
+                    <Calendar size={16} className="text-gray-400" />
+                    {new Date(selectedCandidate.created_at).toLocaleDateString('en-US', { 
+                      year: 'numeric', 
+                      month: 'long', 
+                      day: 'numeric' 
+                    })}
+                  </div>
+                </div>
+
+                {/* Resume */}
+                {selectedCandidate.resume_url && (
+                  <div>
+                    <div className="text-xs uppercase tracking-wider text-gray-500 dark:text-gray-400 mb-2">Resume</div>
+                    <a
+                      href={selectedCandidate.resume_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-900 dark:text-white rounded-lg transition-colors"
+                    >
+                      <FileText size={16} />
+                      View Resume
+                    </a>
+                  </div>
+                )}
+
+                {/* Actions */}
+                <div className="pt-6 border-t border-gray-200 dark:border-gray-700 space-y-3">
+                  <button
+                    onClick={() => handleMoveToNextStage(selectedCandidate.id)}
+                    disabled={!getNextStage(selectedCandidate.current_stage)}
+                    className="w-full px-4 py-3 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed text-white rounded-lg transition-all font-medium"
+                  >
+                    {getNextStage(selectedCandidate.current_stage) 
+                      ? `Move to ${getNextStage(selectedCandidate.current_stage)}`
+                      : 'Final Stage'
+                    }
+                  </button>
+                  
+                  <button
+                    onClick={() => handleDisqualify(selectedCandidate.id)}
+                    className="w-full px-4 py-3 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors font-medium"
+                  >
+                    Disqualify Candidate
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-center h-full text-gray-400 p-6 text-center">
+              <div>
+                <Users size={48} className="mx-auto mb-3 text-gray-300 dark:text-gray-600" />
+                <p>Select a candidate to view their details</p>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       <ConfirmationModal
         isOpen={confirmModal.isOpen}
+        onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmModal.onConfirm}
         title={confirmModal.title}
         message={confirmModal.message}
         confirmText="Confirm"
         cancelText="Cancel"
-        onConfirm={confirmModal.onConfirm}
-        onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
         confirmVariant={confirmModal.variant}
       />
     </div>
