@@ -9,7 +9,7 @@ import { postJobToLinkedIn, shouldAutoPostToLinkedIn, syncJobToLinkedIn, getLink
 import { getCandidates, getCandidateById, createCandidate, updateCandidate, addCandidateDocument, addCandidateCommunication, moveCandidateToStage, disqualifyCandidate, deleteCandidate } from './services/candidates.js';
 import sanitizeHtml from 'sanitize-html';
 import { randomUUID } from 'crypto';
-import { authenticateRequest, requireRole } from './middleware/auth.js';
+import { authenticateRequest, optionalAuth, requireRole } from './middleware/auth.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -3032,7 +3032,7 @@ app.post('/api/jobs/:jobId/stages/:stageId/slots', authenticateRequest, async (r
 
 // POST /api/interview-slots - Create general availability interview slots (not tied to specific job/stage)
 // Optional authentication: If authenticated, uses req.user.id; otherwise requires createdBy in body
-app.post('/api/interview-slots', authenticateRequest, async (req, res) => {
+app.post('/api/interview-slots', optionalAuth, async (req, res) => {
   const {
     start_time,
     end_time,
@@ -3142,10 +3142,17 @@ app.get('/api/jobs/:jobId/stages/:stageId/slots', async (req, res) => {
 });
 
 // GET /api/interview-slots/my-slots - Get all slots created by current client
-// Protected endpoint: Requires authentication via Bearer token
-app.get('/api/interview-slots/my-slots', authenticateRequest, async (req, res) => {
+// Optional authentication: Uses req.user.id if authenticated, otherwise requires userId in query
+app.get('/api/interview-slots/my-slots', optionalAuth, async (req, res) => {
   try {
-    const userId = req.user.id; // Derived from validated auth token
+    const userId = req.user?.id || req.query.userId; // Derived from validated auth token or query param
+    
+    if (!userId) {
+      return res.status(400).json({
+        error: 'Missing userId',
+        message: 'Either authenticate or provide userId in query parameters'
+      });
+    }
     
     const result = await query(`
       SELECT 

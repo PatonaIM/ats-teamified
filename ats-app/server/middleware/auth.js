@@ -83,6 +83,72 @@ async function authenticateRequest(req, res, next) {
 }
 
 /**
+ * Optional authentication middleware - doesn't fail if no token is present
+ * Sets req.user if valid token exists, otherwise continues without user
+ */
+async function optionalAuth(req, res, next) {
+  try {
+    const authHeader = req.headers['authorization'];
+    
+    // No auth header - continue without user
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      req.user = null;
+      return next();
+    }
+
+    const token = authHeader.substring(7);
+    
+    // Demo mode: allow mock authentication
+    if (USE_DEMO_MODE && token === 'demo-token') {
+      console.log('[Auth Middleware] Demo mode: Accepting demo token');
+      req.user = {
+        id: '00000000-0000-0000-0000-000000000001',
+        email: 'demo@ats-platform.com',
+        name: 'Demo Client',
+        role: 'client',
+        avatar: undefined
+      };
+      return next();
+    }
+
+    const response = await fetch(`${TEAMIFIED_SSO_URL}/validate`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      }
+    });
+
+    if (!response.ok) {
+      // Invalid token - continue without user
+      console.warn('[Optional Auth] Token validation failed:', response.status);
+      req.user = null;
+      return next();
+    }
+
+    const userData = await response.json();
+
+    if (userData && userData.id) {
+      req.user = {
+        id: userData.id,
+        email: userData.email,
+        name: userData.name,
+        role: userData.role,
+        avatar: userData.avatar
+      };
+    } else {
+      req.user = null;
+    }
+
+    next();
+  } catch (error) {
+    console.error('[Optional Auth] Error:', error);
+    req.user = null;
+    next();
+  }
+}
+
+/**
  * Optional middleware for role-based access control
  * Usage: requireRole('client') or requireRole(['client', 'recruiter'])
  */
@@ -110,5 +176,6 @@ function requireRole(allowedRoles) {
 
 export {
   authenticateRequest,
+  optionalAuth,
   requireRole
 };

@@ -26,16 +26,16 @@ export function InterviewAvailability() {
   const [slots, setSlots] = useState<InterviewSlot[]>([]);
   const [createLoading, setCreateLoading] = useState(false);
 
+  // Use demo user ID if not authenticated (for MVP/development)
+  const effectiveUserId = user?.id || '00000000-0000-0000-0000-000000000001';
+
   useEffect(() => {
-    // Only fetch data when user is authenticated
-    if (user?.id) {
-      fetchSlots();
-    }
-  }, [user?.id]);
+    fetchSlots();
+  }, [effectiveUserId]);
 
   const fetchSlots = async () => {
     try {
-      const data = await apiRequest(`/api/interview-slots/my-slots`);
+      const data = await apiRequest(`/api/interview-slots/my-slots?userId=${effectiveUserId}`);
       if (data.success) {
         setSlots(data.slots || []);
       }
@@ -59,7 +59,8 @@ export function InterviewAvailability() {
           video_link: slotData.video_link,
           location: slotData.location,
           timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
-          max_bookings: slotData.max_bookings || 1
+          max_bookings: slotData.max_bookings || 1,
+          createdBy: effectiveUserId
         })
       });
 
