@@ -21,46 +21,17 @@ interface InterviewSlot {
   status: 'available' | 'booked' | 'cancelled';
 }
 
-interface JobWithStages {
-  id: string;
-  title: string;
-  stages: { id: string; name: string }[];
-}
-
 export function InterviewAvailability() {
   const { user } = useAuth();
   const [slots, setSlots] = useState<InterviewSlot[]>([]);
-  const [jobs, setJobs] = useState<JobWithStages[]>([]);
   const [createLoading, setCreateLoading] = useState(false);
 
   useEffect(() => {
     // Only fetch data when user is authenticated
     if (user?.id) {
-      fetchJobs();
       fetchSlots();
     }
   }, [user?.id]);
-
-  const fetchJobs = async () => {
-    try {
-      const data = await apiRequest('/api/jobs');
-      if (data.jobs && Array.isArray(data.jobs)) {
-        const jobsWithStages = await Promise.all(
-          data.jobs.map(async (job: any) => {
-            const stagesData = await apiRequest(`/api/jobs/${job.id}/stages`);
-            return {
-              id: job.id,
-              title: job.title,
-              stages: stagesData.success ? stagesData.stages.map((s: any) => ({ id: s.id, name: s.stageName })) : []
-            };
-          })
-        );
-        setJobs(jobsWithStages);
-      }
-    } catch (error) {
-      console.error('Error fetching jobs:', error);
-    }
-  };
 
   const fetchSlots = async () => {
     try {
@@ -139,7 +110,6 @@ export function InterviewAvailability() {
       </div>
 
       <CalendarSlotCreator
-        jobs={jobs}
         existingSlots={slots}
         onCreateSlot={handleCreateSlot}
         onDeleteSlot={handleDeleteSlot}

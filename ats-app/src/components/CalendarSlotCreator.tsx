@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo } from 'react';
-import { Calendar, dateFnsLocalizer, type SlotInfo, type Event, Views } from 'react-big-calendar';
+import { Calendar, dateFnsLocalizer, type Event, Views } from 'react-big-calendar';
 import { format, parse, startOfWeek, getDay } from 'date-fns';
 import { enUS } from 'date-fns/locale';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
@@ -16,12 +16,6 @@ const localizer = dateFnsLocalizer({
   getDay,
   locales,
 });
-
-interface Job {
-  id: string;
-  title: string;
-  stages: Array<{ id: string; name: string }>;
-}
 
 interface InterviewSlot {
   id: string;
@@ -41,7 +35,6 @@ interface InterviewSlot {
 }
 
 interface CalendarSlotCreatorProps {
-  jobs: Job[];
   existingSlots: InterviewSlot[];
   onCreateSlot: (slotData: any) => Promise<void>;
   onDeleteSlot: (slotId: string) => Promise<void>;
@@ -54,25 +47,17 @@ interface CalendarEvent extends Event {
 }
 
 export default function CalendarSlotCreator({ 
-  jobs, 
   existingSlots, 
   onCreateSlot, 
   onDeleteSlot,
   loading 
 }: CalendarSlotCreatorProps) {
   const [view, setView] = useState<'calendar' | 'list'>('calendar');
-  const [selectedJob, setSelectedJob] = useState<string>('');
-  const [selectedStage, setSelectedStage] = useState<string>('');
   const [interviewType, setInterviewType] = useState<'phone' | 'video' | 'onsite'>('video');
   const [videoLink, setVideoLink] = useState('');
   const [location, setLocation] = useState('');
   const [showSlotModal, setShowSlotModal] = useState(false);
   const [pendingSlot, setPendingSlot] = useState<{ start: Date; end: Date } | null>(null);
-
-  const selectedJobData = useMemo(() => 
-    jobs.find(j => j.id === selectedJob),
-    [jobs, selectedJob]
-  );
 
   const calendarEvents: CalendarEvent[] = useMemo(() => {
     return existingSlots.map(slot => ({
@@ -84,27 +69,17 @@ export default function CalendarSlotCreator({
     }));
   }, [existingSlots]);
 
-  const handleSelectSlot = useCallback((slotInfo: SlotInfo) => {
-    if (!selectedJob || !selectedStage) {
-      alert('Please select a job and stage first');
-      return;
-    }
-
-    setPendingSlot({
-      start: slotInfo.start as Date,
-      end: slotInfo.end as Date
-    });
-    setShowSlotModal(true);
-  }, [selectedJob, selectedStage]);
+  const handleSelectSlot = useCallback(() => {
+    alert('Interview slot creation will be available once you are assigned to specific job requests. Contact your recruiter manager for job assignments.');
+    return;
+  }, []);
 
   const handleCreateSlot = async () => {
-    if (!pendingSlot || !selectedJob || !selectedStage) return;
+    if (!pendingSlot) return;
 
     const durationMinutes = Math.round((pendingSlot.end.getTime() - pendingSlot.start.getTime()) / (1000 * 60));
 
     const slotData = {
-      job_id: selectedJob,
-      stage_id: selectedStage,
       start_time: pendingSlot.start.toISOString(),
       end_time: pendingSlot.end.toISOString(),
       duration_minutes: durationMinutes,
@@ -195,49 +170,11 @@ export default function CalendarSlotCreator({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Select Job
-          </label>
-          <select
-            value={selectedJob}
-            onChange={(e) => {
-              setSelectedJob(e.target.value);
-              setSelectedStage('');
-            }}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-          >
-            <option value="">-- Select a job --</option>
-            {jobs.map(job => (
-              <option key={job.id} value={job.id}>{job.title}</option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Select Stage
-          </label>
-          <select
-            value={selectedStage}
-            onChange={(e) => setSelectedStage(e.target.value)}
-            disabled={!selectedJob}
-            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <option value="">-- Select a stage --</option>
-            {selectedJobData?.stages.map(stage => (
-              <option key={stage.id} value={stage.id}>{stage.name}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
       {view === 'calendar' ? (
         <div className="bg-white dark:bg-gray-800 p-6 rounded-lg border border-gray-200 dark:border-gray-700">
-          <div className="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-            <p className="text-sm text-blue-800 dark:text-blue-200">
-              <strong>Tip:</strong> Select a job and stage above, then click and drag on the calendar to create interview slots
+          <div className="mb-4 p-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg">
+            <p className="text-sm text-purple-800 dark:text-purple-200">
+              <strong>Note:</strong> Interview slot creation is based on your assigned job requests. View your existing slots below, or contact your recruiter manager for job assignments.
             </p>
           </div>
           
