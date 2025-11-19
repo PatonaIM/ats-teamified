@@ -95,7 +95,7 @@ app.get('/api/jobs', async (req, res) => {
         j.id,
         j.title,
         j.employment_type,
-        COALESCE(j.status, 'published') as status,
+        COALESCE(j.job_status, 'published') as status,
         j.department as company_name,
         CONCAT(j.city, ', ', j.country) as location,
         j.remote_flag as remote_ok,
@@ -136,7 +136,7 @@ app.get('/api/jobs', async (req, res) => {
     }
 
     if (status && status !== 'all') {
-      queryText += ` AND COALESCE(j.status, 'published') = $${paramIndex}`;
+      queryText += ` AND COALESCE(j.job_status, 'published') = $${paramIndex}`;
       params.push(status);
       paramIndex++;
     }
