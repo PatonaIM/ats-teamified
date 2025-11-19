@@ -86,27 +86,43 @@ app.get('/api/jobs', async (req, res) => {
     const { employmentType, status, search} = req.query;
     
     let queryText = `
+      WITH latest_approvals AS (
+        SELECT *,
+          ROW_NUMBER() OVER (PARTITION BY job_id ORDER BY created_at DESC) AS approval_rank
+        FROM job_approvals
+      )
       SELECT 
-        id,
-        title,
-        employment_type,
-        COALESCE(status, 'published') as status,
-        department as company_name,
-        CONCAT(city, ', ', country) as location,
-        remote_flag as remote_ok,
-        salary_from as salary_min,
-        salary_to as salary_max,
-        CONCAT(salary_currency, ' ', salary_text) as salary_display,
-        description,
-        requirements,
-        benefits,
-        created_at,
-        updated_at,
+        j.id,
+        j.title,
+        j.employment_type,
+        COALESCE(j.status, 'published') as status,
+        j.department as company_name,
+        CONCAT(j.city, ', ', j.country) as location,
+        j.remote_flag as remote_ok,
+        j.salary_from as salary_min,
+        j.salary_to as salary_max,
+        CONCAT(j.salary_currency, ' ', j.salary_text) as salary_display,
+        j.description,
+        j.requirements,
+        j.benefits,
+        j.created_at,
+        j.updated_at,
+        j.created_by_role,
         0 as candidate_count,
         0 as active_candidates,
         'HR Team' as recruiter_name,
-        false as linkedin_synced
-      FROM jobs
+        false as linkedin_synced,
+        la.id as approval_id,
+        la.status as approval_status,
+        la.sla_deadline,
+        CASE 
+          WHEN la.sla_deadline IS NOT NULL AND la.sla_deadline < NOW() THEN 'overdue'
+          WHEN la.sla_deadline IS NOT NULL AND la.sla_deadline < NOW() + INTERVAL '6 hours' THEN 'urgent'
+          WHEN la.sla_deadline IS NOT NULL THEN 'normal'
+          ELSE NULL
+        END as approval_priority
+      FROM jobs j
+      LEFT JOIN latest_approvals la ON j.id = la.job_id AND la.approval_rank = 1
       WHERE 1=1
     `;
     
@@ -120,18 +136,18 @@ app.get('/api/jobs', async (req, res) => {
     }
 
     if (status && status !== 'all') {
-      queryText += ` AND COALESCE(status, 'published') = $${paramIndex}`;
+      queryText += ` AND COALESCE(j.status, 'published') = $${paramIndex}`;
       params.push(status);
       paramIndex++;
     }
 
     if (search) {
-      queryText += ` AND (title ILIKE $${paramIndex} OR department ILIKE $${paramIndex} OR location ILIKE $${paramIndex})`;
+      queryText += ` AND (j.title ILIKE $${paramIndex} OR j.department ILIKE $${paramIndex} OR (j.city || ', ' || j.country) ILIKE $${paramIndex})`;
       params.push(`%${search}%`);
       paramIndex++;
     }
 
-    queryText += ' ORDER BY created_at DESC';
+    queryText += ' ORDER BY j.created_at DESC';
 
     console.log('[Backend] Executing DB query...');
     const result = await query(queryText, params);
