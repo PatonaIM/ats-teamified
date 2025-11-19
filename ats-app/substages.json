@@ -20,13 +20,6 @@
     { "id": "pending_review", "label": "Pending Assessment Review", "order": 4 },
     { "id": "assessment_completed", "label": "Assessment Completed", "order": 5 }
   ],
-  "Client Endorsement": [
-    { "id": "prepared_for_client", "label": "Prepared for Client Review", "order": 1 },
-    { "id": "sent_to_client", "label": "Sent to Client", "order": 2 },
-    { "id": "client_reviewing", "label": "Client Reviewing", "order": 3 },
-    { "id": "client_interview_scheduled", "label": "Client Interview Scheduled", "order": 4 },
-    { "id": "awaiting_client_decision", "label": "Awaiting Client Decision", "order": 5 }
-  ],
   "Human Interview": [
     { "id": "interviewer_assigned", "label": "Interviewer Assigned", "order": 1 },
     { "id": "interview_scheduled", "label": "Interview Scheduled", "order": 2 },
@@ -54,12 +47,5 @@
     { "id": "offer_sent", "label": "Offer Sent", "order": 3 },
     { "id": "candidate_reviewing", "label": "Candidate Reviewing Offer", "order": 4 },
     { "id": "negotiation", "label": "Negotiation", "order": 5 }
-  ],
-  "Offer Accepted": [
-    { "id": "acceptance_confirmed", "label": "Acceptance Confirmed", "order": 1 },
-    { "id": "background_check", "label": "Background Check", "order": 2 },
-    { "id": "onboarding_prep", "label": "Onboarding Preparation", "order": 3 },
-    { "id": "documents_pending", "label": "Documents Pending", "order": 4 },
-    { "id": "ready_to_start", "label": "Ready to Start", "order": 5 }
   ]
 }

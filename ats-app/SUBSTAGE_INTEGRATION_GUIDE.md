@@ -77,16 +77,7 @@ PATCH /api/candidates/:id/substage
 | 4 | `pending_review` | Pending Assessment Review |
 | 5 | `assessment_completed` | Assessment Completed |
 
-### Stage 4: Client Endorsement
-| Order | Substage ID | Display Label |
-|-------|-------------|---------------|
-| 1 | `prepared_for_client` | Prepared for Client Review |
-| 2 | `sent_to_client` | Sent to Client |
-| 3 | `client_reviewing` | Client Reviewing |
-| 4 | `client_interview_scheduled` | Client Interview Scheduled |
-| 5 | `awaiting_client_decision` | Awaiting Client Decision |
-
-### Stage 5: Human Interview
+### Stage 4: Human Interview
 | Order | Substage ID | Display Label |
 |-------|-------------|---------------|
 | 1 | `interviewer_assigned` | Interviewer Assigned |
@@ -95,7 +86,7 @@ PATCH /api/candidates/:id/substage
 | 4 | `interview_completed` | Interview Completed |
 | 5 | `feedback_submitted` | Feedback Submitted |
 
-### Stage 6: Final Interview
+### Stage 5: Final Interview
 | Order | Substage ID | Display Label |
 |-------|-------------|---------------|
 | 1 | `interview_prep` | Interview Preparation |
@@ -104,7 +95,7 @@ PATCH /api/candidates/:id/substage
 | 4 | `interview_completed` | Interview Completed |
 | 5 | `decision_pending` | Decision Pending |
 
-### Stage 7: AI Interview
+### Stage 6: AI Interview
 | Order | Substage ID | Display Label |
 |-------|-------------|---------------|
 | 1 | `ai_interview_sent` | AI Interview Sent |
@@ -113,7 +104,7 @@ PATCH /api/candidates/:id/substage
 | 4 | `ai_analysis_in_progress` | AI Analysis In Progress |
 | 5 | `ai_results_ready` | AI Results Ready |
 
-### Stage 8: Offer
+### Stage 7: Offer
 | Order | Substage ID | Display Label |
 |-------|-------------|---------------|
 | 1 | `offer_preparation` | Offer Preparation |
@@ -122,14 +113,13 @@ PATCH /api/candidates/:id/substage
 | 4 | `candidate_reviewing` | Candidate Reviewing Offer |
 | 5 | `negotiation` | Negotiation |
 
-### Stage 9: Offer Accepted
-| Order | Substage ID | Display Label |
-|-------|-------------|---------------|
-| 1 | `acceptance_confirmed` | Acceptance Confirmed |
-| 2 | `background_check` | Background Check |
-| 3 | `onboarding_prep` | Onboarding Preparation |
-| 4 | `documents_pending` | Documents Pending |
-| 5 | `ready_to_start` | Ready to Start |
+---
+
+## Stages WITHOUT Substages
+
+The following stages do not have substage tracking:
+- **Client Endorsement** - No substages (standard stage progression only)
+- **Offer Accepted** - Stage removed from pipeline
 
 ---
 
@@ -139,9 +129,7 @@ PATCH /api/candidates/:id/substage
 Clients can **view but not modify** substages in these stages:
 - Screening
 - Shortlist
-- Client Endorsement
 - Offer
-- Offer Accepted
 
 ### Full Access (Recruiters/Managers)
 Recruiters and Recruiter Managers have full read/write access to all substages.
@@ -155,6 +143,11 @@ Recruiters and Recruiter Managers have full read/write access to all substages.
 // Fetch substages when displaying a stage
 const response = await fetch(`/api/substages/${stageName}`);
 const { substages } = await response.json();
+
+// Note: Some stages may return empty array if no substages defined
+if (substages.length === 0) {
+  // Handle stages without substages (e.g., Client Endorsement)
+}
 ```
 
 ### 2. Updating Substages
@@ -198,7 +191,9 @@ const progressPercent = (currentOrder / substages.length) * 100;
 
 ## Notes
 - All substages are **static and predefined** - they cannot be modified or created dynamically
-- Each stage always has exactly **5 substages**
+- Most stages have exactly **5 substages**
+- **Client Endorsement** has NO substages (returns empty array)
+- **Offer Accepted** stage has been removed from the system
 - Substage IDs use **snake_case** format
 - Display labels use **Title Case** format
 - The `order` field indicates progression sequence (1-5)
@@ -206,5 +201,5 @@ const progressPercent = (currentOrder / substages.length) * 100;
 ---
 
 **Last Updated:** November 2025  
-**Version:** 1.1  
+**Version:** 1.2  
 **Contact:** ATS Development Team
