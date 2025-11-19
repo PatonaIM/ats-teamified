@@ -21,7 +21,7 @@ export async function apiRequest<T = any>(
 ): Promise<T> {
   const baseUrl = getApiBaseUrl();
   const url = `${baseUrl}${endpoint}`;
-  const timeout = options?.timeout || 10000;
+  const timeout = options?.timeout || 30000;
   
   console.log('[API Request] Starting fetch to:', url, 'with timeout:', timeout + 'ms');
   
