@@ -34,6 +34,14 @@ export const STAGE_SUBSTAGES = {
     { id: 'awaiting_client_decision', label: 'Awaiting Client Decision', order: 5 }
   ],
   
+  'Human Interview': [
+    { id: 'interviewer_assigned', label: 'Interviewer Assigned', order: 1 },
+    { id: 'interview_scheduled', label: 'Interview Scheduled', order: 2 },
+    { id: 'interview_in_progress', label: 'Interview In Progress', order: 3 },
+    { id: 'interview_completed', label: 'Interview Completed', order: 4 },
+    { id: 'feedback_submitted', label: 'Feedback Submitted', order: 5 }
+  ],
+  
   'Final Interview': [
     { id: 'interview_prep', label: 'Interview Preparation', order: 1 },
     { id: 'interview_scheduled', label: 'Interview Scheduled', order: 2 },
