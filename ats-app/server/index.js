@@ -1458,6 +1458,88 @@ app.put('/api/candidates/:id/stage', async (req, res) => {
   }
 });
 
+// Role-based stage restrictions (view-only for clients)
+const CLIENT_VIEW_ONLY_STAGES = [
+  'Screening',
+  'Shortlist',
+  'Client Endorsement',
+  'Offer',
+  'Offer Accepted'
+];
+
+// PATCH /api/candidates/:id/stage - Move candidate (with role validation)
+app.patch('/api/candidates/:id/stage', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { stage, userId, notes, userRole } = req.body;
+    
+    if (!stage) {
+      return res.status(400).json({ error: 'Stage is required' });
+    }
+    
+    // Enforce role-based permissions: clients cannot modify restricted stages
+    if (userRole === 'client' && CLIENT_VIEW_ONLY_STAGES.includes(stage)) {
+      console.warn(`[Candidates API] Client attempted to move candidate to restricted stage: ${stage}`);
+      return res.status(403).json({ 
+        error: 'Forbidden', 
+        message: `Clients do not have permission to move candidates to "${stage}" stage. This action requires recruiter access.`
+      });
+    }
+    
+    const candidate = await moveCandidateToStage(id, stage, userId, notes);
+    res.json(candidate);
+  } catch (error) {
+    console.error('[Candidates API] Error moving candidate:', error);
+    res.status(500).json({ error: 'Failed to move candidate', details: error.message });
+  }
+});
+
+// PATCH /api/candidates/:id/status - Update candidate status (with role validation)
+app.patch('/api/candidates/:id/status', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { status, reason, userId, userRole } = req.body;
+    
+    if (!status) {
+      return res.status(400).json({ error: 'Status is required' });
+    }
+    
+    // Get current candidate to check stage
+    const candidateResult = await query('SELECT current_stage FROM candidates WHERE id = $1', [id]);
+    if (candidateResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Candidate not found' });
+    }
+    
+    const currentStage = candidateResult.rows[0].current_stage;
+    
+    // Enforce role-based permissions: clients cannot modify candidates in restricted stages
+    if (userRole === 'client' && CLIENT_VIEW_ONLY_STAGES.includes(currentStage)) {
+      console.warn(`[Candidates API] Client attempted to change status of candidate in restricted stage: ${currentStage}`);
+      return res.status(403).json({ 
+        error: 'Forbidden', 
+        message: `Clients do not have permission to modify candidates in "${currentStage}" stage. This action requires recruiter access.`
+      });
+    }
+    
+    // Handle disqualification
+    if (status === 'disqualified') {
+      const candidate = await disqualifyCandidate(id, reason, userId);
+      return res.json(candidate);
+    }
+    
+    // Handle other status updates
+    const result = await query(
+      'UPDATE candidates SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *',
+      [status, id]
+    );
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('[Candidates API] Error updating candidate status:', error);
+    res.status(500).json({ error: 'Failed to update candidate status', details: error.message });
+  }
+});
+
 // PATCH /api/candidates/:id/disqualify - Disqualify candidate
 app.patch('/api/candidates/:id/disqualify', async (req, res) => {
   try {

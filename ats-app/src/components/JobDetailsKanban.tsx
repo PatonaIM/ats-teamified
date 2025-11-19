@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Briefcase, MapPin, DollarSign, Users, Mail, Phone, Calendar, ChevronRight, Download, ChevronDown, FileText } from 'lucide-react';
+import { ArrowLeft, Briefcase, MapPin, DollarSign, Users, Mail, Phone, Calendar, ChevronRight, Download, ChevronDown, FileText, Eye } from 'lucide-react';
 import { apiRequest } from '../utils/api';
 import ConfirmationModal from './ConfirmationModal';
+import { useAuth } from '../contexts/AuthContext';
 
 interface Job {
   id: string;
@@ -37,10 +38,20 @@ interface Candidate {
   status: string;
 }
 
+// Stages that are view-only for clients but editable for recruiters
+const CLIENT_VIEW_ONLY_STAGES = [
+  'Screening',
+  'Shortlist',
+  'Client Endorsement',
+  'Offer',
+  'Offer Accepted'
+];
+
 export default function JobDetailsKanban() {
   const params = useParams<{ jobId: string }>();
   const jobId = params.jobId;
   const navigate = useNavigate();
+  const { user, isLoading: authLoading } = useAuth();
   
   console.log('[JobDetailsKanban] Component loaded with jobId:', jobId);
   
@@ -141,6 +152,17 @@ export default function JobDetailsKanban() {
     return candidates.filter(c => c.current_stage === stageName);
   };
 
+  const isViewOnlyForUser = (stageName: string): boolean => {
+    // During auth loading, default to restricted access for security
+    if (authLoading) {
+      return CLIENT_VIEW_ONLY_STAGES.includes(stageName);
+    }
+    
+    const isClient = user?.role === 'client';
+    const isRestrictedStage = CLIENT_VIEW_ONLY_STAGES.includes(stageName);
+    return isClient && isRestrictedStage;
+  };
+
   const getNextStage = (currentStageName: string): string | null => {
     const currentStageIndex = stages.findIndex(s => s.stageName === currentStageName);
     if (currentStageIndex >= 0 && currentStageIndex < stages.length - 1) {
@@ -174,13 +196,20 @@ export default function JobDetailsKanban() {
         body: JSON.stringify({
           stage: nextStage,
           userId: null,
+          userRole: user?.role || 'client',
           notes: `Moved to ${nextStage}`
         })
       });
     } catch (error) {
       console.error('Error moving candidate:', error);
       setCandidates(originalCandidates);
-      alert('Failed to move candidate. Please try again.');
+      
+      // Handle permission errors specifically
+      if (error instanceof Error && error.message.includes('Forbidden')) {
+        alert('You do not have permission to perform this action.');
+      } else {
+        alert('Failed to move candidate. Please try again.');
+      }
     }
   };
 
@@ -207,13 +236,20 @@ export default function JobDetailsKanban() {
             body: JSON.stringify({
               status: 'disqualified',
               reason: 'Disqualified by recruiter',
-              userId: null
+              userId: null,
+              userRole: user?.role || 'client'
             })
           });
         } catch (error) {
           console.error('Error disqualifying candidate:', error);
           setCandidates(originalCandidates);
-          alert('Failed to disqualify candidate. Please try again.');
+          
+          // Handle permission errors specifically
+          if (error instanceof Error && error.message.includes('Forbidden')) {
+            alert('You do not have permission to perform this action.');
+          } else {
+            alert('Failed to disqualify candidate. Please try again.');
+          }
         }
         
         setConfirmModal(prev => ({ ...prev, isOpen: false }));
@@ -317,15 +353,22 @@ export default function JobDetailsKanban() {
                       aria-controls={`stage-${stage.id}`}
                       className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-3 flex-1">
                         {isExpanded ? (
                           <ChevronDown size={18} className="text-gray-500 dark:text-gray-400" />
                         ) : (
                           <ChevronRight size={18} className="text-gray-500 dark:text-gray-400" />
                         )}
-                        <span className="font-semibold text-sm text-gray-900 dark:text-white">
-                          {stage.stageName}
-                        </span>
+                        <div className="flex items-center gap-2 flex-1">
+                          <span className="font-semibold text-sm text-gray-900 dark:text-white">
+                            {stage.stageName}
+                          </span>
+                          {isViewOnlyForUser(stage.stageName) && (
+                            <span title="View only for clients">
+                              <Eye size={14} className="text-blue-500" />
+                            </span>
+                          )}
+                        </div>
                       </div>
                       <span className="text-xs font-bold px-2 py-1 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 text-white">
                         {stageCandidates.length}
@@ -391,30 +434,45 @@ export default function JobDetailsKanban() {
                     <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
                       {selectedCandidate.first_name} {selectedCandidate.last_name}
                     </h2>
-                    <div className="inline-block px-3 py-1 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 text-white text-sm font-medium">
-                      {selectedCandidate.current_stage}
+                    <div className="flex items-center gap-2">
+                      <div className="inline-block px-3 py-1 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 text-white text-sm font-medium">
+                        {selectedCandidate.current_stage}
+                      </div>
+                      {isViewOnlyForUser(selectedCandidate.current_stage) && (
+                        <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-xs font-medium">
+                          <Eye size={12} />
+                          View Only
+                        </div>
+                      )}
                     </div>
                   </div>
                   
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleDisqualify(selectedCandidate.id)}
-                      className="px-4 py-2 bg-white dark:bg-gray-700 border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-sm font-medium"
-                    >
-                      Disqualify
-                    </button>
-                    
-                    <button
-                      onClick={() => handleMoveToNextStage(selectedCandidate.id)}
-                      disabled={!getNextStage(selectedCandidate.current_stage)}
-                      className="px-4 py-2 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed text-white rounded-lg transition-all text-sm font-medium"
-                    >
-                      {getNextStage(selectedCandidate.current_stage) 
-                        ? `Move to next stage`
-                        : 'Final Stage'
-                      }
-                    </button>
-                  </div>
+                  {!isViewOnlyForUser(selectedCandidate.current_stage) ? (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleDisqualify(selectedCandidate.id)}
+                        className="px-4 py-2 bg-white dark:bg-gray-700 border border-red-300 dark:border-red-700 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-sm font-medium"
+                      >
+                        Disqualify
+                      </button>
+                      
+                      <button
+                        onClick={() => handleMoveToNextStage(selectedCandidate.id)}
+                        disabled={!getNextStage(selectedCandidate.current_stage)}
+                        className="px-4 py-2 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed text-white rounded-lg transition-all text-sm font-medium"
+                      >
+                        {getNextStage(selectedCandidate.current_stage) 
+                          ? `Move to next stage`
+                          : 'Final Stage'
+                        }
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400 text-sm">
+                      <Eye size={16} />
+                      <span>View-only access for this stage</span>
+                    </div>
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-6">
