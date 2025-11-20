@@ -239,12 +239,29 @@ export async function moveCandidateToStage(candidateId, newStage, userId = null,
 
   const previousStage = currentCandidateResult.rows[0].current_stage;
 
+  // Get the first substage for the new stage (default substage)
+  const substageResult = await query(
+    `SELECT substage_id 
+     FROM pipeline_substages 
+     WHERE stage_name = $1 
+     ORDER BY substage_order ASC 
+     LIMIT 1`,
+    [newStage]
+  );
+  
+  const defaultSubstage = substageResult.rows.length > 0 
+    ? substageResult.rows[0].substage_id 
+    : null;
+
+  // Update stage and set default substage
   const result = await query(
     `UPDATE candidates 
-     SET current_stage = $1, updated_at = CURRENT_TIMESTAMP
-     WHERE id = $2
+     SET current_stage = $1, 
+         candidate_substage = $2,
+         updated_at = CURRENT_TIMESTAMP
+     WHERE id = $3
      RETURNING *`,
-    [newStage, candidateId]
+    [newStage, defaultSubstage, candidateId]
   );
 
   await query(
