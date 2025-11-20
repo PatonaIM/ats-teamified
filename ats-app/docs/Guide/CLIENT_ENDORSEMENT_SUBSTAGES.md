@@ -82,32 +82,101 @@ client_viewed_at        TIMESTAMP  -- When client views the profile
 
 ## API Usage
 
-### Manual Submission to Client
-```javascript
-// Set submitted_to_client_at to trigger first substage
-PATCH /api/candidates/{id}/substage
+### Three Ways to Track Client Views
+
+#### **Method 1: Submit to Client (Manual Trigger)**
+When recruiter explicitly submits candidate to client:
+
+```bash
+POST /api/candidates/{id}/submit-to-client
+Content-Type: application/json
+
 {
-  "substage": "client_review_pending",
+  "userId": "recruiter_id"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "candidate": { ... },
+  "message": "Candidate submitted to client successfully"
+}
+```
+
+**Effect:**
+- Sets `submitted_to_client_at = CURRENT_TIMESTAMP`
+- Updates `candidate_substage = 'client_review_pending'`
+
+---
+
+#### **Method 2: Auto-Track Client View (Automatic)**
+When client views candidate profile in client portal:
+
+```bash
+POST /api/candidates/{id}/client-view
+Content-Type: application/json
+
+{
+  "clientId": "client_user_id",
+  "clientEmail": "client@company.com"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Client view tracked successfully",
+  "substage_updated": true,
+  "new_substage": "client_reviewing"
+}
+```
+
+**Effect:**
+- Sets `client_viewed_at = CURRENT_TIMESTAMP`
+- Updates `candidate_substage = 'client_reviewing'`
+- Only triggers once (won't update if already viewed)
+
+**When to use:**
+- In client portal's candidate detail page
+- Add this API call when client opens candidate profile
+- Tracks authentic client engagement
+
+---
+
+#### **Method 3: Manual Mark as Viewed (Recruiter Override)**
+When recruiter manually confirms client has viewed:
+
+```bash
+POST /api/candidates/{id}/mark-viewed
+Content-Type: application/json
+
+{
   "userId": "recruiter_id",
   "userRole": "recruiter"
 }
+```
 
-// Also set the timestamp
-PATCH /api/candidates/{id}
+**Response:**
+```json
 {
-  "submitted_to_client_at": "2025-11-20T08:11:15.636Z"
+  "success": true,
+  "candidate": { ... },
+  "message": "Candidate marked as viewed by client"
 }
 ```
 
-### Auto-Transition When Client Views
-```javascript
-// When client portal accessed, automatically set:
-PATCH /api/candidates/{id}
-{
-  "client_viewed_at": "2025-11-20T08:15:30.123Z",
-  "candidate_substage": "client_reviewing"
-}
-```
+**Effect:**
+- Sets `client_viewed_at = CURRENT_TIMESTAMP`
+- Updates `candidate_substage = 'client_reviewing'`
+- Requires recruiter role (clients cannot use this)
+
+**When to use:**
+- Client confirmed view via phone/email
+- Manual correction/override
+- Testing or troubleshooting
 
 ---
 

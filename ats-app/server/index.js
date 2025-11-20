@@ -1675,6 +1675,164 @@ app.patch('/api/candidates/:id/substage', async (req, res) => {
   }
 });
 
+// ===== CLIENT ENDORSEMENT TRACKING ENDPOINTS =====
+
+// POST /api/candidates/:id/submit-to-client - Mark candidate as submitted to client
+app.post('/api/candidates/:id/submit-to-client', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userId } = req.body;
+    
+    // Check if candidate exists and is in Client Endorsement stage
+    const candidateResult = await query(
+      'SELECT id, current_stage, submitted_to_client_at FROM candidates WHERE id = $1',
+      [id]
+    );
+    
+    if (candidateResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Candidate not found' });
+    }
+    
+    const candidate = candidateResult.rows[0];
+    
+    if (candidate.current_stage !== 'Client Endorsement') {
+      return res.status(400).json({ 
+        error: 'Invalid stage', 
+        message: 'Candidate must be in Client Endorsement stage to submit to client' 
+      });
+    }
+    
+    // Set submitted_to_client_at timestamp and move to first substage
+    const result = await query(
+      `UPDATE candidates 
+       SET submitted_to_client_at = CURRENT_TIMESTAMP,
+           candidate_substage = 'client_review_pending',
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1
+       RETURNING *`,
+      [id]
+    );
+    
+    console.log(`[Client Endorsement] Candidate ${id} submitted to client by ${userId || 'system'}`);
+    
+    res.json({
+      success: true,
+      candidate: result.rows[0],
+      message: 'Candidate submitted to client successfully'
+    });
+  } catch (error) {
+    console.error('[Client Endorsement] Error submitting to client:', error);
+    res.status(500).json({ error: 'Failed to submit to client', details: error.message });
+  }
+});
+
+// POST /api/candidates/:id/client-view - Auto-track when client views candidate profile
+app.post('/api/candidates/:id/client-view', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { clientId, clientEmail } = req.body;
+    
+    // Check if candidate exists and is in Client Endorsement stage
+    const candidateResult = await query(
+      'SELECT id, current_stage, candidate_substage, client_viewed_at FROM candidates WHERE id = $1',
+      [id]
+    );
+    
+    if (candidateResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Candidate not found' });
+    }
+    
+    const candidate = candidateResult.rows[0];
+    
+    // Only track view if in Client Endorsement and not already viewed
+    if (candidate.current_stage === 'Client Endorsement' && !candidate.client_viewed_at) {
+      await query(
+        `UPDATE candidates 
+         SET client_viewed_at = CURRENT_TIMESTAMP,
+             candidate_substage = 'client_reviewing',
+             updated_at = CURRENT_TIMESTAMP
+         WHERE id = $1`,
+        [id]
+      );
+      
+      console.log(`[Client Endorsement] Candidate ${id} viewed by client ${clientEmail || clientId || 'unknown'}`);
+      
+      res.json({
+        success: true,
+        message: 'Client view tracked successfully',
+        substage_updated: true,
+        new_substage: 'client_reviewing'
+      });
+    } else {
+      // Just return success without updating (already viewed or not in right stage)
+      res.json({
+        success: true,
+        message: 'View recorded',
+        substage_updated: false
+      });
+    }
+  } catch (error) {
+    console.error('[Client Endorsement] Error tracking client view:', error);
+    res.status(500).json({ error: 'Failed to track client view', details: error.message });
+  }
+});
+
+// POST /api/candidates/:id/mark-viewed - Manual mark as viewed by recruiter
+app.post('/api/candidates/:id/mark-viewed', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userId, userRole } = req.body;
+    
+    // Check permissions (only recruiters can manually mark)
+    if (userRole === 'client') {
+      return res.status(403).json({ 
+        error: 'Forbidden', 
+        message: 'Only recruiters can manually mark candidates as viewed by client' 
+      });
+    }
+    
+    const candidateResult = await query(
+      'SELECT id, current_stage, candidate_substage FROM candidates WHERE id = $1',
+      [id]
+    );
+    
+    if (candidateResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Candidate not found' });
+    }
+    
+    const candidate = candidateResult.rows[0];
+    
+    if (candidate.current_stage !== 'Client Endorsement') {
+      return res.status(400).json({ 
+        error: 'Invalid stage', 
+        message: 'Candidate must be in Client Endorsement stage' 
+      });
+    }
+    
+    // Manually set client_viewed_at and update substage
+    const result = await query(
+      `UPDATE candidates 
+       SET client_viewed_at = CURRENT_TIMESTAMP,
+           candidate_substage = 'client_reviewing',
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1
+       RETURNING *`,
+      [id]
+    );
+    
+    console.log(`[Client Endorsement] Candidate ${id} manually marked as viewed by recruiter ${userId || 'unknown'}`);
+    
+    res.json({
+      success: true,
+      candidate: result.rows[0],
+      message: 'Candidate marked as viewed by client'
+    });
+  } catch (error) {
+    console.error('[Client Endorsement] Error marking as viewed:', error);
+    res.status(500).json({ error: 'Failed to mark as viewed', details: error.message });
+  }
+});
+
 // ===== EXTERNAL CANDIDATE PORTAL API ENDPOINTS =====
 
 // Middleware for API key validation (optional - can be enabled via env var)
