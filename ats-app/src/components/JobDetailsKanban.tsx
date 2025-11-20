@@ -1,6 +1,6 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Briefcase, MapPin, DollarSign, Users, Mail, Phone, Calendar, ChevronRight, Download, ChevronDown, FileText, Eye } from 'lucide-react';
+import { ArrowLeft, Briefcase, MapPin, DollarSign, Users, Mail, Phone, Calendar, ChevronRight, Download, ChevronDown, FileText, Eye, Search, X } from 'lucide-react';
 import { apiRequest } from '../utils/api';
 import ConfirmationModal from './ConfirmationModal';
 import { useAuth } from '../contexts/AuthContext';
@@ -70,6 +70,15 @@ export default function JobDetailsKanban() {
   const [stageSubstages, setStageSubstages] = useState<Record<string, Substage[]>>({});
   const [loadingSubstages, setLoadingSubstages] = useState<Set<string>>(new Set());
   
+  // Pagination: Track visible candidates per stage (start with 3)
+  const [visibleCandidatesPerStage, setVisibleCandidatesPerStage] = useState<Record<string, number>>({});
+  
+  // Search: Track search query per stage
+  const [searchQueryPerStage, setSearchQueryPerStage] = useState<Record<string, string>>({});
+  
+  // Refs for scroll detection
+  const stageScrollRefs = useRef<Record<string, HTMLDivElement | null>>({});
+  
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
     title: string;
@@ -131,44 +140,129 @@ export default function JobDetailsKanban() {
     ).join(' ');
   };
   
+  // Auto-transition logic for substages - triggers on candidate view/click
   const handleCandidateClick = async (candidate: Candidate) => {
-    // Auto-track client view for Client Endorsement stage
-    if (candidate.current_stage === 'Client Endorsement' && 
-        candidate.candidate_substage === 'client_review_pending') {
+    // Define auto-transition rules: when viewing a candidate, auto-advance substage
+    const autoTransitionRules: Record<string, { from: string; to: string }> = {
+      'Screening': { from: 'application_received', to: 'resume_review' },
+      'Shortlist': { from: 'under_review', to: 'pending_interview' },
+      'Technical Assessment': { from: 'assessment_sent', to: 'assessment_in_progress' },
+      'Human Interview': { from: 'interviewer_assigned', to: 'interview_scheduled' },
+      'Final Interview': { from: 'interview_prep', to: 'interview_scheduled' },
+      'AI Interview': { from: 'ai_interview_sent', to: 'ai_interview_started' },
+      'Offer': { from: 'offer_sent', to: 'candidate_reviewing' },
+      'Client Endorsement': { from: 'client_review_pending', to: 'client_reviewing' }
+    };
+    
+    const rule = autoTransitionRules[candidate.current_stage];
+    
+    // Check if auto-transition should occur
+    if (rule && candidate.candidate_substage === rule.from) {
       try {
-        const response = await apiRequest<{
-          success: boolean;
-          substage_updated?: boolean;
-          new_substage?: string;
-        }>(`/api/candidates/${candidate.id}/client-view`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            clientId: user?.id || 'anonymous',
-            clientEmail: user?.email || 'unknown'
-          })
-        });
+        // Special handling for Client Endorsement (uses dedicated API)
+        if (candidate.current_stage === 'Client Endorsement') {
+          const response = await apiRequest<{
+            success: boolean;
+            substage_updated?: boolean;
+            new_substage?: string;
+          }>(`/api/candidates/${candidate.id}/client-view`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              clientId: user?.id || 'anonymous',
+              clientEmail: user?.email || 'unknown'
+            })
+          });
 
-        // If substage was updated, update local state
-        if (response.substage_updated && response.new_substage) {
+          if (response.substage_updated && response.new_substage) {
+            setCandidates(prev => 
+              prev.map(c => c.id === candidate.id 
+                ? { ...c, candidate_substage: response.new_substage } 
+                : c
+              )
+            );
+            candidate.candidate_substage = response.new_substage;
+          }
+        } else {
+          // Generic auto-transition for other stages
+          await apiRequest(`/api/candidates/${candidate.id}/substage`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              substage: rule.to,
+              userId: user?.id || 'system',
+              userRole: user?.role || 'auto'
+            })
+          });
+          
+          // Update local state
           setCandidates(prev => 
             prev.map(c => c.id === candidate.id 
-              ? { ...c, candidate_substage: response.new_substage } 
+              ? { ...c, candidate_substage: rule.to } 
               : c
             )
           );
-          // Update the candidate object before setting it as selected
-          candidate.candidate_substage = response.new_substage;
+          candidate.candidate_substage = rule.to;
+          
+          console.log(`[Auto-transition] ${candidate.current_stage}: ${rule.from} → ${rule.to}`);
         }
       } catch (error) {
-        console.error('Failed to track client view:', error);
-        // Continue showing the candidate even if tracking fails
+        console.error('Failed to auto-transition substage:', error);
+        // Continue showing the candidate even if auto-transition fails
       }
     }
     
     // Set selected candidate
     setSelectedCandidate(candidate);
   };
+  
+  // Get filtered candidates based on search query
+  const getFilteredCandidates = (stageCandidates: Candidate[], stageName: string): Candidate[] => {
+    const searchQuery = searchQueryPerStage[stageName]?.toLowerCase() || '';
+    if (!searchQuery) return stageCandidates;
+    
+    return stageCandidates.filter(candidate => 
+      candidate.first_name.toLowerCase().includes(searchQuery) ||
+      candidate.last_name.toLowerCase().includes(searchQuery) ||
+      candidate.email.toLowerCase().includes(searchQuery)
+    );
+  };
+  
+  // Get visible candidates with pagination
+  const getVisibleCandidates = (stageCandidates: Candidate[], stageName: string): Candidate[] => {
+    const filtered = getFilteredCandidates(stageCandidates, stageName);
+    const visibleCount = visibleCandidatesPerStage[stageName] || 3;
+    return filtered.slice(0, visibleCount);
+  };
+  
+  // Load more candidates for a stage
+  const loadMoreCandidates = useCallback((stageName: string) => {
+    setVisibleCandidatesPerStage(prev => ({
+      ...prev,
+      [stageName]: (prev[stageName] || 3) + 3
+    }));
+  }, []);
+  
+  // Handle scroll to load more candidates
+  const handleScroll = useCallback((stageName: string, e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.currentTarget;
+    const scrolledToBottom = target.scrollHeight - target.scrollTop <= target.clientHeight + 50;
+    
+    if (scrolledToBottom) {
+      loadMoreCandidates(stageName);
+    }
+  }, [loadMoreCandidates]);
+  
+  // Initialize pagination when stages load
+  useEffect(() => {
+    if (stages.length > 0) {
+      const initial: Record<string, number> = {};
+      stages.forEach(stage => {
+        initial[stage.stageName] = 3; // Start with 3 candidates per stage
+      });
+      setVisibleCandidatesPerStage(initial);
+    }
+  }, [stages]);
   
   const handleUpdateSubstage = async (candidateId: string, newSubstage: string) => {
     if (!user) return;
@@ -492,41 +586,113 @@ export default function JobDetailsKanban() {
                             No candidates in this stage
                           </div>
                         ) : (
-                          <div className="divide-y divide-gray-200 dark:divide-gray-700">
-                            {stageCandidates.map((candidate) => (
-                              <button
-                                key={candidate.id}
-                                onClick={() => handleCandidateClick(candidate)}
-                                className={`
-                                  w-full text-left px-4 py-3 transition-colors
-                                  ${selectedCandidate?.id === candidate.id
-                                    ? 'bg-purple-50 dark:bg-purple-900/20'
-                                    : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
-                                  }
-                                `}
-                              >
-                                <div className="flex items-center justify-between mb-1">
-                                  <div className="font-semibold text-sm text-gray-900 dark:text-white">
-                                    {candidate.first_name} {candidate.last_name}
-                                  </div>
-                                  {selectedCandidate?.id === candidate.id && (
-                                    <ChevronRight size={16} className="text-purple-500" />
-                                  )}
-                                </div>
-                                <div className="text-xs text-gray-600 dark:text-gray-400 truncate">
-                                  {candidate.email}
-                                </div>
-                                {candidate.candidate_substage && (
-                                  <div className="text-xs text-purple-600 dark:text-purple-400 mt-1 font-medium">
-                                    {formatSubstageLabel(candidate.candidate_substage)}
-                                  </div>
+                          <>
+                            {/* Search Input */}
+                            <div className="px-4 pt-3 pb-2 border-b border-gray-200 dark:border-gray-700">
+                              <div className="relative">
+                                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                <input
+                                  type="text"
+                                  placeholder="Search candidates..."
+                                  value={searchQueryPerStage[stage.stageName] || ''}
+                                  onChange={(e) => setSearchQueryPerStage(prev => ({
+                                    ...prev,
+                                    [stage.stageName]: e.target.value
+                                  }))}
+                                  className="w-full pl-9 pr-9 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                                  onClick={(e) => e.stopPropagation()}
+                                />
+                                {searchQueryPerStage[stage.stageName] && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSearchQueryPerStage(prev => ({
+                                        ...prev,
+                                        [stage.stageName]: ''
+                                      }));
+                                    }}
+                                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                                  >
+                                    <X size={16} />
+                                  </button>
                                 )}
-                                <div className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                                  Applied {new Date(candidate.created_at).toLocaleDateString()}
-                                </div>
-                              </button>
-                            ))}
-                          </div>
+                              </div>
+                            </div>
+                            
+                            {/* Candidate List with Infinite Scroll */}
+                            <div 
+                              className="divide-y divide-gray-200 dark:divide-gray-700 max-h-[400px] overflow-y-auto"
+                              onScroll={(e) => handleScroll(stage.stageName, e)}
+                              ref={(el) => { stageScrollRefs.current[stage.stageName] = el; }}
+                            >
+                              {(() => {
+                                const filteredCandidates = getFilteredCandidates(stageCandidates, stage.stageName);
+                                const visibleCandidates = getVisibleCandidates(stageCandidates, stage.stageName);
+                                const hasMore = filteredCandidates.length > visibleCandidates.length;
+                                
+                                return (
+                                  <>
+                                    {visibleCandidates.length === 0 ? (
+                                      <div className="px-4 py-6 text-center text-sm text-gray-400">
+                                        No candidates match your search
+                                      </div>
+                                    ) : (
+                                      <>
+                                        {visibleCandidates.map((candidate) => (
+                                          <button
+                                            key={candidate.id}
+                                            onClick={() => handleCandidateClick(candidate)}
+                                            className={`
+                                              w-full text-left px-4 py-3 transition-colors
+                                              ${selectedCandidate?.id === candidate.id
+                                                ? 'bg-purple-50 dark:bg-purple-900/20'
+                                                : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                                              }
+                                            `}
+                                          >
+                                            <div className="flex items-center justify-between mb-1">
+                                              <div className="font-semibold text-sm text-gray-900 dark:text-white">
+                                                {candidate.first_name} {candidate.last_name}
+                                              </div>
+                                              {selectedCandidate?.id === candidate.id && (
+                                                <ChevronRight size={16} className="text-purple-500" />
+                                              )}
+                                            </div>
+                                            <div className="text-xs text-gray-600 dark:text-gray-400 truncate">
+                                              {candidate.email}
+                                            </div>
+                                            {candidate.candidate_substage && (
+                                              <div className="text-xs text-purple-600 dark:text-purple-400 mt-1 font-medium">
+                                                {formatSubstageLabel(candidate.candidate_substage)}
+                                              </div>
+                                            )}
+                                            <div className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                                              Applied {new Date(candidate.created_at).toLocaleDateString()}
+                                            </div>
+                                          </button>
+                                        ))}
+                                        
+                                        {/* Load More Indicator */}
+                                        {hasMore && (
+                                          <div className="px-4 py-3 text-center">
+                                            <button
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                loadMoreCandidates(stage.stageName);
+                                              }}
+                                              className="text-sm text-purple-600 dark:text-purple-400 hover:underline font-medium"
+                                            >
+                                              Load more ({filteredCandidates.length - visibleCandidates.length} remaining)
+                                            </button>
+                                          </div>
+                                        )}
+                                      </>
+                                    )}
+                                  </>
+                                );
+                              })()}
+                            </div>
+                          </>
                         )}
                       </div>
                     )}
