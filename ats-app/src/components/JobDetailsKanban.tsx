@@ -131,6 +131,45 @@ export default function JobDetailsKanban() {
     ).join(' ');
   };
   
+  const handleCandidateClick = async (candidate: Candidate) => {
+    // Auto-track client view for Client Endorsement stage
+    if (candidate.current_stage === 'Client Endorsement' && 
+        candidate.candidate_substage === 'client_review_pending') {
+      try {
+        const response = await apiRequest<{
+          success: boolean;
+          substage_updated?: boolean;
+          new_substage?: string;
+        }>(`/api/candidates/${candidate.id}/client-view`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            clientId: user?.id || 'anonymous',
+            clientEmail: user?.email || 'unknown'
+          })
+        });
+
+        // If substage was updated, update local state
+        if (response.substage_updated && response.new_substage) {
+          setCandidates(prev => 
+            prev.map(c => c.id === candidate.id 
+              ? { ...c, candidate_substage: response.new_substage } 
+              : c
+            )
+          );
+          // Update the candidate object before setting it as selected
+          candidate.candidate_substage = response.new_substage;
+        }
+      } catch (error) {
+        console.error('Failed to track client view:', error);
+        // Continue showing the candidate even if tracking fails
+      }
+    }
+    
+    // Set selected candidate
+    setSelectedCandidate(candidate);
+  };
+  
   const handleUpdateSubstage = async (candidateId: string, newSubstage: string) => {
     if (!user) return;
     
@@ -457,7 +496,7 @@ export default function JobDetailsKanban() {
                             {stageCandidates.map((candidate) => (
                               <button
                                 key={candidate.id}
-                                onClick={() => setSelectedCandidate(candidate)}
+                                onClick={() => handleCandidateClick(candidate)}
                                 className={`
                                   w-full text-left px-4 py-3 transition-colors
                                   ${selectedCandidate?.id === candidate.id
