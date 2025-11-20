@@ -50,6 +50,14 @@ export const STAGE_SUBSTAGES = {
     { id: 'ai_results_ready', label: 'AI Results Ready', order: 5 }
   ],
   
+  'Ai Interview': [
+    { id: 'ai_interview_sent', label: 'AI Interview Sent', order: 1 },
+    { id: 'ai_interview_started', label: 'AI Interview Started', order: 2 },
+    { id: 'ai_interview_completed', label: 'AI Interview Completed', order: 3 },
+    { id: 'ai_analysis_in_progress', label: 'AI Analysis In Progress', order: 4 },
+    { id: 'ai_results_ready', label: 'AI Results Ready', order: 5 }
+  ],
+  
   'Offer': [
     { id: 'offer_preparation', label: 'Offer Preparation', order: 1 },
     { id: 'offer_approval', label: 'Offer Approval', order: 2 },

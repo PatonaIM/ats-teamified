@@ -966,7 +966,7 @@ export default function JobDetailsKanban() {
               </div>
               
               {/* AI Interview Actions & Results - Team Connect Integration */}
-              {selectedCandidate.current_stage === 'AI Interview' && (
+              {(selectedCandidate.current_stage === 'AI Interview' || selectedCandidate.current_stage === 'Ai Interview') && (
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
                   <div className="flex items-center gap-2 mb-4">
                     <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 flex items-center justify-center">
