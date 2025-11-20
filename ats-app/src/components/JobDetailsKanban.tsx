@@ -46,10 +46,11 @@ interface Substage {
 }
 
 // Stages that are view-only for clients but editable for recruiters
-// Clients can only VIEW these stages, but can interact with Client Endorsement onwards
-const CLIENT_VIEW_ONLY_STAGES = [
-  'Screening',
-  'Shortlist'
+// NOTE: All stages now support full substage movement (including Screening and Shortlist)
+// Restrictions removed to allow complete substage progression tracking
+const CLIENT_VIEW_ONLY_STAGES: string[] = [
+  // 'Screening',    // Now enabled for substage movement
+  // 'Shortlist'     // Now enabled for substage movement
 ];
 
 export default function JobDetailsKanban() {
