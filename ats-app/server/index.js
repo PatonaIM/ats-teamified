@@ -1635,14 +1635,15 @@ app.patch('/api/candidates/:id/substage', async (req, res) => {
     
     const { current_stage: currentStage, candidate_substage: currentSubstage } = candidateResult.rows[0];
     
-    // Enforce role-based permissions: clients cannot modify substages in restricted stages
-    if (userRole === 'client' && CLIENT_VIEW_ONLY_STAGES.includes(currentStage)) {
-      console.warn(`[Substages API] Client attempted to change substage in restricted stage: ${currentStage}`);
-      return res.status(403).json({ 
-        error: 'Forbidden', 
-        message: `Clients do not have permission to modify candidates in "${currentStage}" stage. This action requires recruiter access.`
-      });
-    }
+    // NOTE: Substage movement now enabled for ALL stages (including Screening and Shortlist)
+    // Role-based restrictions removed to allow full substage progression tracking
+    // if (userRole === 'client' && CLIENT_VIEW_ONLY_STAGES.includes(currentStage)) {
+    //   console.warn(`[Substages API] Client attempted to change substage in restricted stage: ${currentStage}`);
+    //   return res.status(403).json({ 
+    //     error: 'Forbidden', 
+    //     message: `Clients do not have permission to modify candidates in "${currentStage}" stage. This action requires recruiter access.`
+    //   });
+    // }
     
     // Validate substage belongs to current stage (check database)
     if (substage) {
