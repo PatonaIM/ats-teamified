@@ -56,6 +56,22 @@ export const STAGE_SUBSTAGES = {
     { id: 'offer_sent', label: 'Offer Sent', order: 3 },
     { id: 'candidate_reviewing', label: 'Candidate Reviewing Offer', order: 4 },
     { id: 'negotiation', label: 'Negotiation', order: 5 }
+  ],
+  
+  'Client Endorsement': [
+    { id: 'client_review_pending', label: 'Pending Client Review', order: 1 },
+    { id: 'client_reviewing', label: 'Client Reviewing', order: 2 },
+    { id: 'client_interview_scheduled', label: 'Client Interview Scheduled', order: 3 },
+    { id: 'client_interview_completed', label: 'Client Interview Completed', order: 4 },
+    { id: 'client_decision_pending', label: 'Client Decision Pending', order: 5 }
+  ],
+  
+  'Offer Accepted': [
+    { id: 'offer_accepted', label: 'Offer Accepted', order: 1 },
+    { id: 'background_check', label: 'Background Check', order: 2 },
+    { id: 'documentation', label: 'Documentation', order: 3 },
+    { id: 'onboarding_prep', label: 'Onboarding Preparation', order: 4 },
+    { id: 'ready_to_start', label: 'Ready to Start', order: 5 }
   ]
 };
 
