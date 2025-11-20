@@ -3423,7 +3423,7 @@ app.get('/api/jobs/:jobId/bookings', async (req, res) => {
         b.*,
         s.start_time, s.end_time, s.duration_minutes,
         s.interview_type, s.video_link, s.location,
-        c.first_name, c.last_name, c.email, c.phone,
+        c.first_name, c.last_name, c.email, c.phone_number,
         ps.stage_name
       FROM interview_bookings b
       JOIN interview_slots s ON s.id = b.slot_id

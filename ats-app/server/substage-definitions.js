@@ -50,28 +50,12 @@ export const STAGE_SUBSTAGES = {
     { id: 'ai_results_ready', label: 'AI Results Ready', order: 5 }
   ],
   
-  'Client Endorsement': [
-    { id: 'client_endorsement_materials_sent', label: 'Materials Sent to Client', order: 1 },
-    { id: 'client_endorsement_scheduled', label: 'Review Scheduled', order: 2 },
-    { id: 'client_endorsement_in_progress', label: 'Review In Progress', order: 3 },
-    { id: 'client_endorsement_feedback_pending', label: 'Feedback Pending', order: 4 },
-    { id: 'client_endorsement_decision_received', label: 'Decision Received', order: 5 }
-  ],
-  
   'Offer': [
     { id: 'offer_preparation', label: 'Offer Preparation', order: 1 },
     { id: 'offer_approval', label: 'Offer Approval', order: 2 },
     { id: 'offer_sent', label: 'Offer Sent', order: 3 },
     { id: 'candidate_reviewing', label: 'Candidate Reviewing Offer', order: 4 },
     { id: 'negotiation', label: 'Negotiation', order: 5 }
-  ],
-  
-  'Offer Accepted': [
-    { id: 'offer_accepted', label: 'Offer Accepted', order: 1 },
-    { id: 'background_check', label: 'Background Check', order: 2 },
-    { id: 'onboarding_prep', label: 'Onboarding Preparation', order: 3 },
-    { id: 'documentation_complete', label: 'Documentation Complete', order: 4 },
-    { id: 'ready_to_start', label: 'Ready to Start', order: 5 }
   ]
 };
 
