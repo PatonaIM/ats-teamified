@@ -1,7 +1,9 @@
+import { useState, useEffect } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import CandidateCard from './CandidateCard';
 import SortableCandidateCard from './SortableCandidateCard';
+import { apiRequest } from '../utils/api';
 
 interface Candidate {
   id: string;
@@ -13,6 +15,13 @@ interface Candidate {
   source: string;
   created_at: string;
   current_stage: string;
+  candidate_substage?: string | null;
+}
+
+interface Substage {
+  id: string;
+  label: string;
+  order: number;
 }
 
 interface StageColumnProps {
@@ -36,9 +45,35 @@ export default function StageColumn({
   isLastStage = false,
   enableDragDrop = true
 }: StageColumnProps) {
+  const [substages, setSubstages] = useState<Substage[]>([]);
+  const [loadingSubstages, setLoadingSubstages] = useState(false);
+
   const { setNodeRef } = useDroppable({
     id: stage.id,
   });
+
+  useEffect(() => {
+    if (stage.stageName) {
+      fetchSubstages();
+    }
+  }, [stage.stageName]);
+
+  const fetchSubstages = async () => {
+    try {
+      setLoadingSubstages(true);
+      const response = await apiRequest(`/api/substages/${encodeURIComponent(stage.stageName)}`);
+      if (response.substages && Array.isArray(response.substages)) {
+        setSubstages(response.substages);
+      } else {
+        setSubstages([]);
+      }
+    } catch (error) {
+      console.error('Error fetching substages for stage:', stage.stageName, error);
+      setSubstages([]);
+    } finally {
+      setLoadingSubstages(false);
+    }
+  };
 
   const candidateIds = candidates.map(c => c.id);
 
@@ -67,6 +102,8 @@ export default function StageColumn({
                 onDisqualify={onDisqualify}
                 onMoveToNextStage={onMoveToNextStage}
                 isLastStage={isLastStage}
+                substages={substages}
+                loadingSubstages={loadingSubstages}
               />
             ))}
           </SortableContext>
@@ -79,6 +116,8 @@ export default function StageColumn({
                 onDisqualify={onDisqualify}
                 onMoveToNextStage={onMoveToNextStage}
                 isLastStage={isLastStage}
+                substages={substages}
+                loadingSubstages={loadingSubstages}
               />
             ))}
           </>

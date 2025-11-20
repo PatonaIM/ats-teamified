@@ -2,6 +2,12 @@ import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import CandidateCard from './CandidateCard';
 
+interface Substage {
+  id: string;
+  label: string;
+  order: number;
+}
+
 interface SortableCandidateCardProps {
   candidate: {
     id: string;
@@ -13,17 +19,22 @@ interface SortableCandidateCardProps {
     source: string;
     created_at: string;
     current_stage: string;
+    candidate_substage?: string | null;
   };
   onDisqualify: (candidateId: string) => void;
   onMoveToNextStage: (candidateId: string) => void;
   isLastStage?: boolean;
+  substages?: Substage[];
+  loadingSubstages?: boolean;
 }
 
 export default function SortableCandidateCard({ 
   candidate, 
   onDisqualify, 
   onMoveToNextStage,
-  isLastStage 
+  isLastStage,
+  substages,
+  loadingSubstages
 }: SortableCandidateCardProps) {
   const {
     attributes,
@@ -53,6 +64,8 @@ export default function SortableCandidateCard({
         onDisqualify={onDisqualify}
         onMoveToNextStage={onMoveToNextStage}
         isLastStage={isLastStage}
+        substages={substages}
+        loadingSubstages={loadingSubstages}
       />
     </div>
   );

@@ -1,6 +1,12 @@
 import { useState } from 'react';
 import { Mail, Phone, FileText, ChevronDown, ChevronUp, ExternalLink } from 'lucide-react';
 
+interface Substage {
+  id: string;
+  label: string;
+  order: number;
+}
+
 interface CandidateCardProps {
   candidate: {
     id: string;
@@ -12,17 +18,22 @@ interface CandidateCardProps {
     source: string;
     created_at: string;
     current_stage: string;
+    candidate_substage?: string | null;
   };
   onDisqualify: (candidateId: string) => void;
   onMoveToNextStage: (candidateId: string) => void;
   isLastStage?: boolean;
+  substages?: Substage[];
+  loadingSubstages?: boolean;
 }
 
 export default function CandidateCard({ 
   candidate, 
   onDisqualify, 
   onMoveToNextStage,
-  isLastStage = false 
+  isLastStage = false,
+  substages = [],
+  loadingSubstages = false
 }: CandidateCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
@@ -101,6 +112,56 @@ export default function CandidateCard({
                 </a>
               </div>
             )}
+
+            {/* Mini Progress Bar - Always Visible */}
+            <div className="mt-3">
+              {loadingSubstages ? (
+                <div className="flex items-center gap-1">
+                  <div className="h-1.5 rounded-full flex-1 bg-gray-200 animate-pulse"></div>
+                </div>
+              ) : substages.length > 0 ? (
+                <>
+                  <div className="flex items-center gap-1">
+                    {(() => {
+                      const currentSubstageOrder = candidate.candidate_substage 
+                        ? substages.find(s => s.id === candidate.candidate_substage)?.order || 0
+                        : 0;
+                      
+                      return substages.map((substage, index) => {
+                        const isCompleted = substage.order <= currentSubstageOrder;
+                        
+                        return (
+                          <div key={substage.id} className="flex items-center gap-1 flex-1">
+                            <div
+                              className={`
+                                h-1.5 rounded-full flex-1 transition-all
+                                ${isCompleted 
+                                  ? 'bg-gradient-to-r from-purple-500 to-blue-500' 
+                                  : 'bg-gray-200'
+                                }
+                              `}
+                              title={substage.label}
+                            />
+                            {index < substages.length - 1 && (
+                              <div className="w-0.5 h-1 bg-gray-200"></div>
+                            )}
+                          </div>
+                        );
+                      });
+                    })()}
+                  </div>
+                  {candidate.candidate_substage && (
+                    <div className="text-[10px] text-gray-500 mt-1">
+                      {substages.find(s => s.id === candidate.candidate_substage)?.label || 'In Progress'}
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="h-1.5 rounded-full bg-gray-100 flex items-center justify-center">
+                  <div className="text-[9px] text-gray-400 px-1">No progress tracking</div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
