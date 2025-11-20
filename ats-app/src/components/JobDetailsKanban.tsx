@@ -143,13 +143,13 @@ export default function JobDetailsKanban() {
   // Auto-transition logic for substages - triggers on candidate view/click
   const handleCandidateClick = async (candidate: Candidate) => {
     // Define auto-transition rules: when viewing a candidate, auto-advance substage
+    // NOTE: AI Interview stage uses dedicated Team Connect endpoints, no auto-transition
     const autoTransitionRules: Record<string, { from: string; to: string }> = {
       'Screening': { from: 'application_received', to: 'resume_review' },
       'Shortlist': { from: 'under_review', to: 'pending_interview' },
       'Technical Assessment': { from: 'assessment_sent', to: 'assessment_in_progress' },
       'Human Interview': { from: 'interviewer_assigned', to: 'interview_scheduled' },
       'Final Interview': { from: 'interview_prep', to: 'interview_scheduled' },
-      'AI Interview': { from: 'ai_interview_sent', to: 'ai_interview_started' },
       'Offer': { from: 'offer_sent', to: 'candidate_reviewing' },
       'Client Endorsement': { from: 'client_review_pending', to: 'client_reviewing' }
     };
@@ -177,11 +177,11 @@ export default function JobDetailsKanban() {
           if (response.substage_updated && response.new_substage) {
             setCandidates(prev => 
               prev.map(c => c.id === candidate.id 
-                ? { ...c, candidate_substage: response.new_substage } 
+                ? { ...c, candidate_substage: response.new_substage || null } 
                 : c
               )
             );
-            candidate.candidate_substage = response.new_substage;
+            candidate.candidate_substage = response.new_substage || null;
           }
         } else {
           // Generic auto-transition for other stages
@@ -458,6 +458,86 @@ export default function JobDetailsKanban() {
         setConfirmModal(prev => ({ ...prev, isOpen: false }));
       }
     });
+  };
+
+  // AI Interview Handlers (Team Connect Mock Integration)
+  const handleAIInterviewSend = async (candidateId: string) => {
+    try {
+      await apiRequest(`/api/candidates/${candidateId}/ai-interview/send`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      // Refetch candidate data
+      const response = await apiRequest<Candidate>(`/api/candidates/${candidateId}`);
+      
+      // Update local state
+      setCandidates(prev => prev.map(c => c.id === candidateId ? response : c));
+      setSelectedCandidate(response);
+      
+      alert('✅ AI Interview link sent! (Mock - Team Connect integration)');
+    } catch (error) {
+      console.error('Error sending AI interview link:', error);
+      alert('Failed to send AI interview link. Please try again.');
+    }
+  };
+
+  const handleAIInterviewStart = async (candidateId: string) => {
+    try {
+      await apiRequest(`/api/candidates/${candidateId}/ai-interview/start`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      
+      // Refetch candidate data
+      const response = await apiRequest<Candidate>(`/api/candidates/${candidateId}`);
+      
+      // Update local state
+      setCandidates(prev => prev.map(c => c.id === candidateId ? response : c));
+      setSelectedCandidate(response);
+      
+      alert('🎬 Candidate started AI interview! (Simulated)');
+    } catch (error) {
+      console.error('Error starting AI interview:', error);
+      alert('Failed to start AI interview. Please try again.');
+    }
+  };
+
+  const handleAIInterviewComplete = async (candidateId: string) => {
+    try {
+      // Mock responses for simulation
+      const mockResponses = [
+        { question: 'Tell me about your experience with React and TypeScript.', answer: 'I have 5 years of experience building modern web applications with React and TypeScript.' },
+        { question: 'Describe a challenging technical problem you solved.', answer: 'I optimized a slow database query that reduced load time from 5s to 200ms.' },
+        { question: 'How do you approach code reviews and collaboration?', answer: 'I focus on constructive feedback, clear communication, and knowledge sharing.' }
+      ];
+      
+      await apiRequest(`/api/candidates/${candidateId}/ai-interview/complete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          responses: mockResponses,
+          duration: 420
+        })
+      });
+      
+      // Wait 2 seconds for mock AI processing, then refetch
+      setTimeout(async () => {
+        try {
+          const response = await apiRequest<any>(`/api/candidates/${candidateId}`);
+          setCandidates(prev => prev.map(c => c.id === candidateId ? response : c));
+          setSelectedCandidate(response);
+          alert('🤖 AI Interview completed and scored! Check results below.');
+        } catch (err) {
+          console.error('Error fetching updated candidate:', err);
+        }
+      }, 2500);
+      
+      alert('⏳ AI Interview completed! Analyzing responses... (2 seconds)');
+    } catch (error) {
+      console.error('Error completing AI interview:', error);
+      alert('Failed to complete AI interview. Please try again.');
+    }
   };
 
   if (loading) {
@@ -884,6 +964,132 @@ export default function JobDetailsKanban() {
                   </div>
                 )}
               </div>
+              
+              {/* AI Interview Actions & Results - Team Connect Integration */}
+              {selectedCandidate.current_stage === 'AI Interview' && (
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 flex items-center justify-center">
+                      <span className="text-white text-sm font-bold">🤖</span>
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                      AI Interview - Team Connect
+                    </h3>
+                  </div>
+                  
+                  {/* Mock Team Connect Actions */}
+                  {!isViewOnlyForUser(selectedCandidate.current_stage) && (
+                    <div className="space-y-3 mb-4">
+                      {selectedCandidate.candidate_substage === null || selectedCandidate.candidate_substage === 'interview_prep' ? (
+                        <button
+                          onClick={() => handleAIInterviewSend(selectedCandidate.id)}
+                          className="w-full px-4 py-3 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white rounded-lg transition-all font-medium flex items-center justify-center gap-2"
+                        >
+                          📧 Send AI Interview Link (Mock)
+                        </button>
+                      ) : selectedCandidate.candidate_substage === 'ai_interview_sent' ? (
+                        <button
+                          onClick={() => handleAIInterviewStart(selectedCandidate.id)}
+                          className="w-full px-4 py-3 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-all font-medium flex items-center justify-center gap-2"
+                        >
+                          ▶️ Simulate Candidate Start
+                        </button>
+                      ) : selectedCandidate.candidate_substage === 'ai_interview_started' ? (
+                        <button
+                          onClick={() => handleAIInterviewComplete(selectedCandidate.id)}
+                          className="w-full px-4 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-all font-medium flex items-center justify-center gap-2"
+                        >
+                          ✓ Simulate Completion & Score
+                        </button>
+                      ) : null}
+                      
+                      {selectedCandidate.candidate_substage === 'ai_analysis_in_progress' && (
+                        <div className="w-full px-4 py-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-700 rounded-lg flex items-center gap-3">
+                          <div className="animate-spin rounded-full h-5 w-5 border-2 border-yellow-600 border-t-transparent"></div>
+                          <span className="text-yellow-800 dark:text-yellow-300 font-medium">
+                            AI analyzing responses... (2-3 seconds)
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* AI Interview Results Display */}
+                  {selectedCandidate.candidate_substage === 'ai_results_ready' && (selectedCandidate as any).ai_interview_score && (
+                    <div className="border-t border-gray-200 dark:border-gray-700 pt-4">
+                      <div className="bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-lg p-4">
+                        <div className="flex items-start justify-between mb-4">
+                          <div>
+                            <div className="text-5xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-blue-600">
+                              {(selectedCandidate as any).ai_interview_score}/100
+                            </div>
+                            <div className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                              Overall AI Score
+                            </div>
+                          </div>
+                          <div className="text-right">
+                            <div className="inline-block px-3 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 text-sm font-medium mb-1">
+                              {((selectedCandidate as any).ai_analysis_report?.recommendation) || 'Evaluated'}
+                            </div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400">
+                              Confidence: {(selectedCandidate as any).ai_confidence_score}%
+                            </div>
+                          </div>
+                        </div>
+                        
+                        <div className="grid grid-cols-3 gap-3 mb-4">
+                          <div className="bg-white dark:bg-gray-800 rounded p-2 text-center">
+                            <div className="text-2xl font-bold text-purple-600">
+                              {((selectedCandidate as any).ai_analysis_report?.category_scores?.technical_skills) || '-'}
+                            </div>
+                            <div className="text-xs text-gray-600 dark:text-gray-400">Technical</div>
+                          </div>
+                          <div className="bg-white dark:bg-gray-800 rounded p-2 text-center">
+                            <div className="text-2xl font-bold text-blue-600">
+                              {((selectedCandidate as any).ai_analysis_report?.category_scores?.communication) || '-'}
+                            </div>
+                            <div className="text-xs text-gray-600 dark:text-gray-400">Communication</div>
+                          </div>
+                          <div className="bg-white dark:bg-gray-800 rounded p-2 text-center">
+                            <div className="text-2xl font-bold text-indigo-600">
+                              {((selectedCandidate as any).ai_analysis_report?.category_scores?.cultural_fit) || '-'}
+                            </div>
+                            <div className="text-xs text-gray-600 dark:text-gray-400">Cultural Fit</div>
+                          </div>
+                        </div>
+                        
+                        {((selectedCandidate as any).ai_analysis_report?.strengths?.length) > 0 && (
+                          <div className="mb-3">
+                            <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">💪 Strengths:</div>
+                            <ul className="space-y-1">
+                              {((selectedCandidate as any).ai_analysis_report.strengths || []).map((strength: string, idx: number) => (
+                                <li key={idx} className="text-sm text-gray-700 dark:text-gray-300 flex items-start gap-2">
+                                  <span className="text-green-500 mt-0.5">✓</span>
+                                  <span>{strength}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                        
+                        {((selectedCandidate as any).ai_analysis_report?.improvements?.length) > 0 && (
+                          <div>
+                            <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2">📈 Areas for Improvement:</div>
+                            <ul className="space-y-1">
+                              {((selectedCandidate as any).ai_analysis_report.improvements || []).map((improvement: string, idx: number) => (
+                                <li key={idx} className="text-sm text-gray-700 dark:text-gray-300 flex items-start gap-2">
+                                  <span className="text-blue-500 mt-0.5">•</span>
+                                  <span>{improvement}</span>
+                                </li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Resume Preview */}
               {selectedCandidate.resume_url && (

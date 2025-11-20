@@ -1833,6 +1833,296 @@ app.post('/api/candidates/:id/mark-viewed', async (req, res) => {
   }
 });
 
+// ===== AI INTERVIEW API ENDPOINTS (Team Connect Integration) =====
+
+// POST /api/candidates/:id/ai-interview/send - Send AI interview link (mock)
+app.post('/api/candidates/:id/ai-interview/send', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const candidateResult = await query(
+      'SELECT * FROM candidates WHERE id = $1',
+      [id]
+    );
+    
+    if (candidateResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Candidate not found' });
+    }
+    
+    const candidate = candidateResult.rows[0];
+    
+    // Mock: Generate unique token and link
+    const mockToken = `mock_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const mockLink = `https://teamconnect.example.com/interview/${mockToken}`;
+    
+    // Update candidate with AI interview link
+    await query(
+      `UPDATE candidates 
+       SET ai_interview_link = $1,
+           ai_interview_token = $2,
+           ai_interview_link_sent_at = CURRENT_TIMESTAMP,
+           candidate_substage = 'ai_interview_sent',
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $3`,
+      [mockLink, mockToken, id]
+    );
+    
+    console.log(`[AI Interview] Link sent to candidate ${candidate.email} (mock)`);
+    
+    res.json({
+      success: true,
+      message: 'AI interview link sent successfully',
+      interview_link: mockLink,
+      substage: 'ai_interview_sent'
+    });
+  } catch (error) {
+    console.error('[AI Interview] Error sending link:', error);
+    res.status(500).json({ error: 'Failed to send AI interview link', details: error.message });
+  }
+});
+
+// POST /api/candidates/:id/ai-interview/start - Start AI interview (mock)
+app.post('/api/candidates/:id/ai-interview/start', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const candidateResult = await query(
+      'SELECT * FROM candidates WHERE id = $1',
+      [id]
+    );
+    
+    if (candidateResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Candidate not found' });
+    }
+    
+    const candidate = candidateResult.rows[0];
+    
+    if (!candidate.ai_interview_link_sent_at) {
+      return res.status(400).json({ 
+        error: 'Invalid state', 
+        message: 'AI interview link must be sent before starting' 
+      });
+    }
+    
+    // Update to started state
+    await query(
+      `UPDATE candidates 
+       SET ai_interview_started_at = CURRENT_TIMESTAMP,
+           candidate_substage = 'ai_interview_started',
+           ai_interview_last_activity_at = CURRENT_TIMESTAMP,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1`,
+      [id]
+    );
+    
+    console.log(`[AI Interview] Candidate ${id} started AI interview (mock)`);
+    
+    res.json({
+      success: true,
+      message: 'AI interview started',
+      substage: 'ai_interview_started',
+      mock_questions: [
+        'Tell me about your experience with React and TypeScript.',
+        'Describe a challenging technical problem you solved.',
+        'How do you approach code reviews and collaboration?',
+        'What interests you about this position?',
+        'Where do you see yourself in 3-5 years?'
+      ]
+    });
+  } catch (error) {
+    console.error('[AI Interview] Error starting interview:', error);
+    res.status(500).json({ error: 'Failed to start AI interview', details: error.message });
+  }
+});
+
+// POST /api/candidates/:id/ai-interview/complete - Complete AI interview with mock scoring
+app.post('/api/candidates/:id/ai-interview/complete', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { responses, duration } = req.body;
+    
+    const candidateResult = await query(
+      'SELECT * FROM candidates WHERE id = $1',
+      [id]
+    );
+    
+    if (candidateResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Candidate not found' });
+    }
+    
+    const candidate = candidateResult.rows[0];
+    
+    if (!candidate.ai_interview_started_at) {
+      return res.status(400).json({ 
+        error: 'Invalid state', 
+        message: 'AI interview must be started before completing' 
+      });
+    }
+    
+    // Mock: Generate realistic AI scores
+    const mockOverallScore = Math.floor(Math.random() * 30) + 65; // 65-95
+    const mockSentimentScore = Math.floor(Math.random() * 20) + 75; // 75-95
+    const mockConfidenceScore = Math.floor(Math.random() * 15) + 80; // 80-95
+    
+    const mockAnalysisReport = {
+      overall_score: mockOverallScore,
+      sentiment_score: mockSentimentScore,
+      confidence_score: mockConfidenceScore,
+      recommendation: mockOverallScore >= 85 ? 'Strong Hire' : mockOverallScore >= 75 ? 'Hire' : 'Maybe',
+      strengths: [
+        'Strong technical communication skills',
+        'Demonstrates problem-solving abilities',
+        'Good cultural fit indicators',
+        'Enthusiasm for the role'
+      ],
+      improvements: [
+        'Could provide more specific examples',
+        'Consider elaborating on team collaboration'
+      ],
+      category_scores: {
+        technical_skills: Math.floor(Math.random() * 20) + 75,
+        communication: Math.floor(Math.random() * 20) + 75,
+        cultural_fit: Math.floor(Math.random() * 20) + 75,
+        problem_solving: Math.floor(Math.random() * 20) + 75
+      },
+      analyzed_at: new Date().toISOString(),
+      analysis_duration_ms: 1500
+    };
+    
+    // Update to completed and processing state
+    await query(
+      `UPDATE candidates 
+       SET ai_interview_completed_at = CURRENT_TIMESTAMP,
+           ai_interview_responses = $1,
+           ai_interview_duration_seconds = $2,
+           ai_interview_questions_total = $3,
+           ai_interview_questions_answered = $4,
+           candidate_substage = 'ai_interview_completed',
+           ai_analysis_status = 'pending',
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $5`,
+      [
+        JSON.stringify(responses || []),
+        duration || 0,
+        responses?.length || 0,
+        responses?.filter(r => r.answer).length || 0,
+        id
+      ]
+    );
+    
+    // Simulate AI analysis processing (in real app, this would be async)
+    setTimeout(async () => {
+      try {
+        await query(
+          `UPDATE candidates 
+           SET ai_analysis_status = 'completed',
+               candidate_substage = 'ai_results_ready',
+               ai_interview_score = $1,
+               ai_sentiment_score = $2,
+               ai_confidence_score = $3,
+               ai_analysis_report = $4,
+               ai_analysis_completed_at = CURRENT_TIMESTAMP,
+               updated_at = CURRENT_TIMESTAMP
+           WHERE id = $5`,
+          [
+            mockOverallScore,
+            mockSentimentScore,
+            mockConfidenceScore,
+            JSON.stringify(mockAnalysisReport),
+            id
+          ]
+        );
+        console.log(`[AI Interview] Analysis completed for candidate ${id} - Score: ${mockOverallScore}/100`);
+      } catch (err) {
+        console.error('[AI Interview] Error updating analysis results:', err);
+      }
+    }, 2000); // Mock 2 second processing delay
+    
+    console.log(`[AI Interview] Candidate ${id} completed AI interview, processing...`);
+    
+    res.json({
+      success: true,
+      message: 'AI interview submitted successfully. Analysis will be ready shortly.',
+      substage: 'ai_analysis_in_progress',
+      estimated_analysis_time: '2-3 seconds'
+    });
+  } catch (error) {
+    console.error('[AI Interview] Error completing interview:', error);
+    res.status(500).json({ error: 'Failed to complete AI interview', details: error.message });
+  }
+});
+
+// GET /api/candidates/:id/ai-interview/results - Get AI interview results
+app.get('/api/candidates/:id/ai-interview/results', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const candidateResult = await query(
+      `SELECT 
+        id,
+        first_name,
+        last_name,
+        email,
+        candidate_substage,
+        ai_interview_score,
+        ai_sentiment_score,
+        ai_confidence_score,
+        ai_analysis_report,
+        ai_analysis_status,
+        ai_interview_completed_at,
+        ai_analysis_completed_at,
+        ai_interview_duration_seconds
+       FROM candidates 
+       WHERE id = $1`,
+      [id]
+    );
+    
+    if (candidateResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Candidate not found' });
+    }
+    
+    const candidate = candidateResult.rows[0];
+    
+    if (!candidate.ai_interview_completed_at) {
+      return res.status(400).json({ 
+        error: 'Results not available', 
+        message: 'Candidate has not completed AI interview yet' 
+      });
+    }
+    
+    if (candidate.ai_analysis_status !== 'completed') {
+      return res.json({
+        status: 'processing',
+        message: 'AI analysis is still in progress',
+        substage: candidate.candidate_substage
+      });
+    }
+    
+    res.json({
+      status: 'completed',
+      candidate: {
+        id: candidate.id,
+        name: `${candidate.first_name} ${candidate.last_name}`,
+        email: candidate.email
+      },
+      scores: {
+        overall: candidate.ai_interview_score,
+        sentiment: candidate.ai_sentiment_score,
+        confidence: candidate.ai_confidence_score
+      },
+      analysis: candidate.ai_analysis_report,
+      metadata: {
+        completed_at: candidate.ai_interview_completed_at,
+        analyzed_at: candidate.ai_analysis_completed_at,
+        duration_seconds: candidate.ai_interview_duration_seconds
+      }
+    });
+  } catch (error) {
+    console.error('[AI Interview] Error fetching results:', error);
+    res.status(500).json({ error: 'Failed to fetch AI interview results', details: error.message });
+  }
+});
+
 // ===== EXTERNAL CANDIDATE PORTAL API ENDPOINTS =====
 
 // Middleware for API key validation (optional - can be enabled via env var)
