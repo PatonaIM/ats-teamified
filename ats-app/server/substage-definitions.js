@@ -59,11 +59,10 @@ export const STAGE_SUBSTAGES = {
   ],
   
   'Client Endorsement': [
+    // Manual submission to client: if (submitted_to_client_at) → client_review_pending
     { id: 'client_review_pending', label: 'Pending Client Review', order: 1 },
-    { id: 'client_reviewing', label: 'Client Reviewing', order: 2 },
-    { id: 'client_interview_scheduled', label: 'Client Interview Scheduled', order: 3 },
-    { id: 'client_interview_completed', label: 'Client Interview Completed', order: 4 },
-    { id: 'client_decision_pending', label: 'Client Decision Pending', order: 5 }
+    // Auto-transition when client views profile: if (client_viewed_at) → client_reviewing
+    { id: 'client_reviewing', label: 'Client Reviewing', order: 2 }
   ],
   
   'Offer Accepted': [
