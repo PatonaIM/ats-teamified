@@ -1168,11 +1168,19 @@ interface StageConfigPanelProps {
   onLibrarySaved?: () => void; // Callback to refresh Stage Library after saving
 }
 
+interface Substage {
+  id: string;
+  label: string;
+  order: number;
+}
+
 export function StageConfigPanel({ stage, onSave, onLibrarySaved }: StageConfigPanelProps) {
   const [config, setConfig] = useState<Record<string, any>>(stage.config || {});
   const [stageName, setStageName] = useState<string>(stage.stageName);
   const [saving, setSaving] = useState<boolean>(false);
   const [saveToLibrary, setSaveToLibrary] = useState<boolean>(false);
+  const [substages, setSubstages] = useState<Substage[]>([]);
+  const [loadingSubstages, setLoadingSubstages] = useState<boolean>(false);
   const stageCategory = determineStageCategory(stage);
   const isNewStage = stage.id === -1;
   const isFixedStage = ['Screening', 'Shortlist', 'Client Endorsement', 'Offer', 'Offer Accepted'].includes(stage.stageName);
@@ -1182,6 +1190,32 @@ export function StageConfigPanel({ stage, onSave, onLibrarySaved }: StageConfigP
     setConfig(stage.config || {});
     setStageName(stage.stageName);
   }, [stage.id, stage.config, stage.stageName]);
+
+  // Fetch substages for the current stage
+  useEffect(() => {
+    const fetchSubstages = async () => {
+      if (!stage.stageName || isNewStage) {
+        setSubstages([]);
+        return;
+      }
+
+      setLoadingSubstages(true);
+      try {
+        const response = await fetch(`/api/substages/${encodeURIComponent(stage.stageName)}`);
+        if (response.ok) {
+          const data = await response.json();
+          setSubstages(data.substages || []);
+        }
+      } catch (error) {
+        console.error('Failed to fetch substages:', error);
+        setSubstages([]);
+      } finally {
+        setLoadingSubstages(false);
+      }
+    };
+
+    fetchSubstages();
+  }, [stage.stageName, isNewStage]);
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -1670,6 +1704,83 @@ export function StageConfigPanel({ stage, onSave, onLibrarySaved }: StageConfigP
           </div>
         </div>
       </div>
+
+      {/* Substage Progress Tracking - View Only */}
+      {!isNewStage && (
+        <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <span>📊</span>
+              Substage Progress Tracking
+            </h4>
+            <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 px-2 py-1 rounded-full">
+              View Only
+            </span>
+          </div>
+
+          {loadingSubstages ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
+            </div>
+          ) : substages.length > 0 ? (
+            <div className="bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-900/10 dark:to-blue-900/10 rounded-lg p-4 border border-purple-200 dark:border-purple-800">
+              <p className="text-xs text-gray-600 dark:text-gray-400 mb-3">
+                This stage has {substages.length} substages that track candidate progress. These are displayed on candidate cards as a mini progress bar.
+              </p>
+              <div className="space-y-2">
+                {substages.map((substage) => (
+                  <div
+                    key={substage.id}
+                    className="flex items-center gap-3 bg-white dark:bg-gray-800 rounded-md p-3 shadow-sm"
+                  >
+                    <div className="flex items-center justify-center w-8 h-8 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 text-white text-xs font-bold shrink-0">
+                      {substage.order}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-gray-900 dark:text-white">
+                        {substage.label}
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400">
+                        {Math.round((substage.order / substages.length) * 100)}% progress when reached
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: substages.length }).map((_, i) => (
+                        <div
+                          key={i}
+                          className={`h-1.5 w-6 rounded-full ${
+                            i < substage.order
+                              ? 'bg-gradient-to-r from-purple-500 to-blue-500'
+                              : 'bg-gray-200 dark:bg-gray-700'
+                          }`}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 pt-3 border-t border-purple-200 dark:border-purple-800">
+                <p className="text-xs text-gray-600 dark:text-gray-400 flex items-start gap-2">
+                  <span>💡</span>
+                  <span>
+                    <strong>How it works:</strong> As candidates move through this stage, their progress is automatically tracked and displayed as a visual progress bar on their candidate card. Transitions can be manual or automatic based on actions like booking interviews or submitting assessments.
+                  </span>
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-6 text-center border border-gray-200 dark:border-gray-700">
+              <div className="text-4xl mb-2">📊</div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                No substages defined for this stage
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                Custom stages don't have predefined substages. Only system stages have automatic progress tracking.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Save to Library & Save Button */}
       <div className="pt-4 border-t border-gray-200 dark:border-gray-700 sticky bottom-0 bg-white dark:bg-gray-800 space-y-3">
