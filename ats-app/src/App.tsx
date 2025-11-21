@@ -14,6 +14,7 @@ import ApprovalsPage from './components/ApprovalsPage';
 import { AuthCallback } from './components/AuthCallback';
 import { CandidateBookingPage } from './components/interview-scheduling';
 import { InterviewAvailability } from './components/InterviewAvailability';
+import { CandidateSlotSelection } from './components/CandidateSlotSelection';
 import './App.css';
 
 function App() {
@@ -27,6 +28,9 @@ function App() {
           
           {/* Interview Booking Route (Public) */}
           <Route path="/book-interview/:candidateId/:jobId" element={<CandidateBookingPage />} />
+          
+          {/* Candidate Slot Selection (Public) */}
+          <Route path="/candidate/select-slot/:token" element={<CandidateSlotSelection />} />
           
           {/* Workflow Builder Route */}
           <Route path="/jobs/:jobId/workflow-builder" element={<WorkflowBuilder />} />

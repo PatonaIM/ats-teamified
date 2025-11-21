@@ -540,6 +540,91 @@ export default function JobDetailsKanban() {
     }
   };
 
+  // Human Interview Handlers
+  const [showAssignInterviewerModal, setShowAssignInterviewerModal] = useState(false);
+  const [showCompleteInterviewModal, setShowCompleteInterviewModal] = useState(false);
+  const [interviewerFormData, setInterviewerFormData] = useState({
+    interviewerName: '',
+    interviewerEmail: '',
+    meetingPlatform: 'google_meet'
+  });
+  const [completeInterviewFormData, setCompleteInterviewFormData] = useState({
+    feedback: '',
+    notes: '',
+    durationMinutes: 60
+  });
+
+  const handleAssignInterviewer = async () => {
+    if (!selectedCandidate) return;
+    
+    if (!interviewerFormData.interviewerName || !interviewerFormData.interviewerEmail) {
+      alert('Please provide both interviewer name and email.');
+      return;
+    }
+
+    try {
+      const response = await apiRequest<any>(`/api/candidates/${selectedCandidate.id}/human-interview/assign-interviewer`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(interviewerFormData)
+      });
+      
+      // Refetch candidate data
+      const updatedCandidate = await apiRequest<Candidate>(`/api/candidates/${selectedCandidate.id}`);
+      
+      // Update local state
+      setCandidates(prev => prev.map(c => c.id === selectedCandidate.id ? updatedCandidate : c));
+      setSelectedCandidate(updatedCandidate);
+      
+      setShowAssignInterviewerModal(false);
+      
+      const message = `✅ Interviewer assigned successfully!\n\nEmail sent to candidate in ${response.emailMode} mode.\n${response.selectionUrl ? `\nSlot selection URL: ${response.selectionUrl}` : ''}`;
+      alert(message);
+      
+      // Reset form
+      setInterviewerFormData({
+        interviewerName: '',
+        interviewerEmail: '',
+        meetingPlatform: 'google_meet'
+      });
+    } catch (error: any) {
+      console.error('Error assigning interviewer:', error);
+      alert(error.message || 'Failed to assign interviewer. Please try again.');
+    }
+  };
+
+  const handleCompleteInterview = async () => {
+    if (!selectedCandidate) return;
+
+    try {
+      await apiRequest(`/api/candidates/${selectedCandidate.id}/human-interview/complete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(completeInterviewFormData)
+      });
+      
+      // Refetch candidate data
+      const updatedCandidate = await apiRequest<Candidate>(`/api/candidates/${selectedCandidate.id}`);
+      
+      // Update local state
+      setCandidates(prev => prev.map(c => c.id === selectedCandidate.id ? updatedCandidate : c));
+      setSelectedCandidate(updatedCandidate);
+      
+      setShowCompleteInterviewModal(false);
+      alert('✅ Interview marked as completed with feedback!');
+      
+      // Reset form
+      setCompleteInterviewFormData({
+        feedback: '',
+        notes: '',
+        durationMinutes: 60
+      });
+    } catch (error: any) {
+      console.error('Error completing interview:', error);
+      alert(error.message || 'Failed to complete interview. Please try again.');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen bg-gray-50 dark:bg-gray-900">
@@ -1091,6 +1176,72 @@ export default function JobDetailsKanban() {
                 </div>
               )}
 
+              {/* Human Interview Actions & Details */}
+              {selectedCandidate.current_stage === 'Human Interview' && (
+                <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-r from-green-500 to-teal-500 flex items-center justify-center">
+                      <span className="text-white text-sm font-bold">👤</span>
+                    </div>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                      Human Interview
+                    </h3>
+                  </div>
+                  
+                  {/* Action Buttons */}
+                  {!isViewOnlyForUser(selectedCandidate.current_stage) && (
+                    <div className="space-y-3 mb-4">
+                      {(!selectedCandidate.candidate_substage || selectedCandidate.candidate_substage === 'interviewer_assigned') && (
+                        <button
+                          onClick={() => setShowAssignInterviewerModal(true)}
+                          className="w-full px-4 py-3 bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 text-white rounded-lg transition-all font-medium flex items-center justify-center gap-2"
+                        >
+                          👤 Assign Interviewer & Send Email
+                        </button>
+                      )}
+                      
+                      {selectedCandidate.candidate_substage === 'interview_scheduled' && (
+                        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-blue-600 dark:text-blue-400 font-medium">✓ Interview Scheduled</span>
+                          </div>
+                          <p className="text-sm text-gray-700 dark:text-gray-300">
+                            Interviewer: {(selectedCandidate as any).interviewer_name || 'Not assigned'}
+                          </p>
+                          {(selectedCandidate as any).meeting_link && (
+                            <a
+                              href={(selectedCandidate as any).meeting_link}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 mt-2 inline-block"
+                            >
+                              🔗 Join Meeting ({(selectedCandidate as any).meeting_platform?.replace('_', ' ') || 'Video call'})
+                            </a>
+                          )}
+                          <button
+                            onClick={() => setShowCompleteInterviewModal(true)}
+                            className="w-full mt-3 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-all font-medium"
+                          >
+                            ✓ Mark as Completed
+                          </button>
+                        </div>
+                      )}
+                      
+                      {selectedCandidate.candidate_substage === 'feedback_submitted' && (
+                        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-700 rounded-lg p-4">
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-green-600 dark:text-green-400 font-medium">✓ Interview Completed</span>
+                          </div>
+                          <p className="text-sm text-gray-700 dark:text-gray-300">
+                            Feedback submitted by interviewer
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Resume Preview */}
               {selectedCandidate.resume_url && (
                 <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm overflow-hidden">
@@ -1165,6 +1316,155 @@ export default function JobDetailsKanban() {
         cancelText="Cancel"
         confirmVariant={confirmModal.variant}
       />
+
+      {/* Assign Interviewer Modal */}
+      {showAssignInterviewerModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full">
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Assign Interviewer</h2>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Interviewer Name
+                </label>
+                <input
+                  type="text"
+                  value={interviewerFormData.interviewerName}
+                  onChange={(e) => setInterviewerFormData(prev => ({ ...prev, interviewerName: e.target.value }))}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  placeholder="John Smith"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Interviewer Email
+                </label>
+                <input
+                  type="email"
+                  value={interviewerFormData.interviewerEmail}
+                  onChange={(e) => setInterviewerFormData(prev => ({ ...prev, interviewerEmail: e.target.value }))}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  placeholder="john@company.com"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Meeting Platform
+                </label>
+                <select
+                  value={interviewerFormData.meetingPlatform}
+                  onChange={(e) => setInterviewerFormData(prev => ({ ...prev, meetingPlatform: e.target.value }))}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                >
+                  <option value="google_meet">Google Meet</option>
+                  <option value="zoom">Zoom</option>
+                  <option value="teams">Microsoft Teams</option>
+                </select>
+              </div>
+              
+              <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700 rounded-lg p-3">
+                <p className="text-sm text-blue-800 dark:text-blue-300">
+                  An email will be sent to the candidate with available time slots from the interviewer's calendar.
+                </p>
+              </div>
+            </div>
+            
+            <div className="px-6 py-4 bg-gray-50 dark:bg-gray-700/50 flex gap-3 justify-end rounded-b-lg">
+              <button
+                onClick={() => {
+                  setShowAssignInterviewerModal(false);
+                  setInterviewerFormData({ interviewerName: '', interviewerEmail: '', meetingPlatform: 'google_meet' });
+                }}
+                className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAssignInterviewer}
+                className="px-4 py-2 bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 text-white rounded-lg transition-all font-medium"
+              >
+                Assign & Send Email
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Complete Interview Modal */}
+      {showCompleteInterviewModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full">
+            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Complete Interview</h2>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Interview Feedback
+                </label>
+                <textarea
+                  value={completeInterviewFormData.feedback}
+                  onChange={(e) => setCompleteInterviewFormData(prev => ({ ...prev, feedback: e.target.value }))}
+                  rows={4}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  placeholder="Candidate showed strong technical skills..."
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Interview Notes
+                </label>
+                <textarea
+                  value={completeInterviewFormData.notes}
+                  onChange={(e) => setCompleteInterviewFormData(prev => ({ ...prev, notes: e.target.value }))}
+                  rows={3}
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  placeholder="Additional notes..."
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Duration (minutes)
+                </label>
+                <input
+                  type="number"
+                  value={completeInterviewFormData.durationMinutes}
+                  onChange={(e) => setCompleteInterviewFormData(prev => ({ ...prev, durationMinutes: parseInt(e.target.value) || 60 }))}
+                  min="15"
+                  max="240"
+                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+            
+            <div className="px-6 py-4 bg-gray-50 dark:bg-gray-700/50 flex gap-3 justify-end rounded-b-lg">
+              <button
+                onClick={() => {
+                  setShowCompleteInterviewModal(false);
+                  setCompleteInterviewFormData({ feedback: '', notes: '', durationMinutes: 60 });
+                }}
+                className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCompleteInterview}
+                className="px-4 py-2 bg-gradient-to-r from-green-500 to-teal-500 hover:from-green-600 hover:to-teal-600 text-white rounded-lg transition-all font-medium"
+              >
+                Submit & Complete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -2123,6 +2123,503 @@ app.get('/api/candidates/:id/ai-interview/results', async (req, res) => {
   }
 });
 
+// ===== HUMAN INTERVIEW ENDPOINTS =====
+
+// POST /api/candidates/:id/human-interview/assign-interviewer - Assign interviewer and send slot selection email
+app.post('/api/candidates/:id/human-interview/assign-interviewer', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { interviewerName, interviewerEmail, meetingPlatform } = req.body;
+    
+    if (!interviewerName || !interviewerEmail || !meetingPlatform) {
+      return res.status(400).json({ 
+        error: 'Missing required fields', 
+        message: 'interviewerName, interviewerEmail, and meetingPlatform are required' 
+      });
+    }
+    
+    // Validate meeting platform
+    const validPlatforms = ['google_meet', 'zoom', 'teams'];
+    if (!validPlatforms.includes(meetingPlatform)) {
+      return res.status(400).json({ 
+        error: 'Invalid meeting platform', 
+        message: `Meeting platform must be one of: ${validPlatforms.join(', ')}` 
+      });
+    }
+    
+    // Get candidate details
+    const candidateResult = await query(
+      'SELECT * FROM candidates WHERE id = $1',
+      [id]
+    );
+    
+    if (candidateResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Candidate not found' });
+    }
+    
+    const candidate = candidateResult.rows[0];
+    
+    // Get job details
+    const jobResult = await query(
+      'SELECT title FROM jobs WHERE id = $1',
+      [candidate.job_id]
+    );
+    
+    const jobTitle = jobResult.rows.length > 0 ? jobResult.rows[0].title : 'Position';
+    
+    // Generate unique token for slot selection
+    const { randomBytes } = await import('crypto');
+    const slotSelectionToken = randomBytes(32).toString('hex');
+    
+    // Update candidate with interviewer assignment (regenerate token to invalidate previous assignments)
+    await query(
+      `UPDATE candidates 
+       SET interviewer_name = $1,
+           interviewer_email = $2,
+           meeting_platform = $3,
+           slot_selection_token = $4,
+           candidate_substage = 'interviewer_assigned',
+           interview_scheduled_at = NULL,
+           selected_slot_id = NULL,
+           meeting_link = NULL,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $5`,
+      [interviewerName, interviewerEmail, meetingPlatform, slotSelectionToken, id]
+    );
+    
+    // Get interviewer's available slots
+    const slotsResult = await query(
+      `SELECT id, start_time, end_time, timezone, duration_minutes
+       FROM interview_slots
+       WHERE created_by = (
+         SELECT id FROM users WHERE email = $1 LIMIT 1
+       )
+       AND status = 'available'
+       AND current_bookings < max_bookings
+       AND start_time > CURRENT_TIMESTAMP
+       ORDER BY start_time ASC
+       LIMIT 10`,
+      [interviewerEmail]
+    );
+    
+    const availableSlots = slotsResult.rows;
+    
+    if (availableSlots.length === 0) {
+      return res.status(400).json({ 
+        error: 'No available slots', 
+        message: `Interviewer ${interviewerEmail} has no available time slots. Please add slots first.` 
+      });
+    }
+    
+    // Generate slot selection URL
+    const baseUrl = process.env.REPLIT_DEV_DOMAIN 
+      ? `https://${process.env.REPLIT_DEV_DOMAIN}` 
+      : `http://localhost:3000`;
+    const selectionUrl = `${baseUrl}/candidate/select-slot/${slotSelectionToken}`;
+    
+    // Import and use email service
+    const { sendSlotSelectionEmail } = await import('./services/email-service.js');
+    
+    // Send email to candidate
+    const emailResult = await sendSlotSelectionEmail({
+      to: candidate.email,
+      candidateName: `${candidate.first_name} ${candidate.last_name}`,
+      interviewerName,
+      jobTitle,
+      selectionUrl,
+      availableSlots
+    });
+    
+    // Record email sent timestamp
+    await query(
+      `UPDATE candidates 
+       SET slot_selection_email_sent_at = CURRENT_TIMESTAMP,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1`,
+      [id]
+    );
+    
+    console.log(`[Human Interview] Interviewer assigned: ${interviewerName} for candidate ${candidate.email}`);
+    console.log(`[Human Interview] Email sent in ${emailResult.mode} mode`);
+    
+    res.json({
+      success: true,
+      message: 'Interviewer assigned and email sent to candidate',
+      interviewer: {
+        name: interviewerName,
+        email: interviewerEmail
+      },
+      meetingPlatform,
+      availableSlotsCount: availableSlots.length,
+      selectionUrl: emailResult.mode === 'mock' ? selectionUrl : undefined,
+      emailMode: emailResult.mode,
+      substage: 'interviewer_assigned'
+    });
+  } catch (error) {
+    console.error('[Human Interview] Error assigning interviewer:', error);
+    res.status(500).json({ error: 'Failed to assign interviewer', details: error.message });
+  }
+});
+
+// GET /api/candidates/:id/human-interview/available-slots - Get interviewer's available slots
+app.get('/api/candidates/:id/human-interview/available-slots', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const candidateResult = await query(
+      'SELECT interviewer_email FROM candidates WHERE id = $1',
+      [id]
+    );
+    
+    if (candidateResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Candidate not found' });
+    }
+    
+    const { interviewer_email } = candidateResult.rows[0];
+    
+    if (!interviewer_email) {
+      return res.status(400).json({ 
+        error: 'No interviewer assigned', 
+        message: 'Interviewer must be assigned first' 
+      });
+    }
+    
+    // Get interviewer's available slots
+    const slotsResult = await query(
+      `SELECT 
+        s.id,
+        s.start_time,
+        s.end_time,
+        s.timezone,
+        s.duration_minutes,
+        s.max_bookings,
+        s.current_bookings,
+        j.title as job_title,
+        ps.stage_name
+       FROM interview_slots s
+       LEFT JOIN jobs j ON s.job_id = j.id
+       LEFT JOIN job_pipeline_stages ps ON s.stage_id = ps.id
+       WHERE s.created_by = (
+         SELECT id FROM users WHERE email = $1 LIMIT 1
+       )
+       AND s.status = 'available'
+       AND s.current_bookings < s.max_bookings
+       AND s.start_time > CURRENT_TIMESTAMP
+       ORDER BY s.start_time ASC`,
+      [interviewer_email]
+    );
+    
+    res.json({
+      success: true,
+      interviewerEmail: interviewer_email,
+      slots: slotsResult.rows,
+      totalSlots: slotsResult.rows.length
+    });
+  } catch (error) {
+    console.error('[Human Interview] Error fetching available slots:', error);
+    res.status(500).json({ error: 'Failed to fetch available slots', details: error.message });
+  }
+});
+
+// GET /api/candidates/human-interview/available-slots-public - Public endpoint to fetch slots by token (scoped to candidate)
+app.get('/api/candidates/human-interview/available-slots-public', async (req, res) => {
+  try {
+    const { token } = req.query;
+    
+    if (!token) {
+      return res.status(400).json({ 
+        error: 'Missing token', 
+        message: 'Token is required' 
+      });
+    }
+    
+    // Find candidate by token and verify token is active
+    const candidateResult = await query(
+      `SELECT c.id, c.interviewer_email, c.interview_scheduled_at, c.slot_selection_email_sent_at
+       FROM candidates c
+       WHERE c.slot_selection_token = $1
+       AND c.slot_selection_token IS NOT NULL`,
+      [token]
+    );
+    
+    if (candidateResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Invalid or expired token' });
+    }
+    
+    const candidate = candidateResult.rows[0];
+    
+    // Check if already scheduled
+    if (candidate.interview_scheduled_at) {
+      return res.status(400).json({ 
+        error: 'Already scheduled', 
+        message: 'You have already selected a time slot.' 
+      });
+    }
+    
+    if (!candidate.interviewer_email) {
+      return res.status(400).json({ 
+        error: 'No interviewer assigned', 
+        message: 'Interviewer has not been assigned yet. Please contact the recruiter.' 
+      });
+    }
+    
+    // SECURITY: Only return slots for THIS candidate's assigned interviewer
+    // This prevents token enumeration attacks where any token reveals all interviewer availability
+    const slotsResult = await query(
+      `SELECT 
+        s.id,
+        s.start_time,
+        s.end_time,
+        s.timezone,
+        s.duration_minutes,
+        s.max_bookings,
+        s.current_bookings
+       FROM interview_slots s
+       WHERE s.created_by = (
+         SELECT id FROM users WHERE email = $1 LIMIT 1
+       )
+       AND s.status = 'available'
+       AND s.current_bookings < s.max_bookings
+       AND s.start_time > CURRENT_TIMESTAMP
+       ORDER BY s.start_time ASC
+       LIMIT 20`,
+      [candidate.interviewer_email]
+    );
+    
+    res.json({
+      success: true,
+      slots: slotsResult.rows,
+      totalSlots: slotsResult.rows.length
+    });
+  } catch (error) {
+    console.error('[Human Interview] Error fetching public slots:', error);
+    res.status(500).json({ error: 'Failed to fetch available slots', details: error.message });
+  }
+});
+
+// POST /api/candidates/human-interview/select-slot - Public endpoint for candidate to select slot
+app.post('/api/candidates/human-interview/select-slot', async (req, res) => {
+  try {
+    const { token, slotId } = req.body;
+    
+    if (!token || !slotId) {
+      return res.status(400).json({ 
+        error: 'Missing required fields', 
+        message: 'token and slotId are required' 
+      });
+    }
+    
+    // Find candidate by token
+    const candidateResult = await query(
+      'SELECT * FROM candidates WHERE slot_selection_token = $1',
+      [token]
+    );
+    
+    if (candidateResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Invalid or expired token' });
+    }
+    
+    const candidate = candidateResult.rows[0];
+    
+    // IDEMPOTENCY: Check if already scheduled to prevent duplicate submissions
+    if (candidate.interview_scheduled_at) {
+      return res.status(400).json({ 
+        error: 'Interview already scheduled', 
+        message: 'You have already selected a time slot. Please contact the recruiter to reschedule.' 
+      });
+    }
+    
+    // Verify token is still active (not cleared by previous submission or reassignment)
+    if (!candidate.slot_selection_token || candidate.slot_selection_token !== token) {
+      return res.status(400).json({ 
+        error: 'Token expired or invalid', 
+        message: 'This selection link has expired. Please contact the recruiter for a new link.' 
+      });
+    }
+    
+    // Get slot details
+    const slotResult = await query(
+      'SELECT * FROM interview_slots WHERE id = $1',
+      [slotId]
+    );
+    
+    if (slotResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Slot not found' });
+    }
+    
+    const slot = slotResult.rows[0];
+    
+    // Verify slot is still available
+    if (slot.status !== 'available' || slot.current_bookings >= slot.max_bookings) {
+      return res.status(400).json({ 
+        error: 'Slot no longer available', 
+        message: 'This time slot has been filled. Please select another slot.' 
+      });
+    }
+    
+    // Verify slot is in the future
+    if (new Date(slot.start_time) <= new Date()) {
+      return res.status(400).json({ 
+        error: 'Slot expired', 
+        message: 'This time slot is in the past. Please select a future slot.' 
+      });
+    }
+    
+    // Get job details for meeting title
+    const jobResult = await query(
+      'SELECT title FROM jobs WHERE id = $1',
+      [candidate.job_id]
+    );
+    
+    const jobTitle = jobResult.rows.length > 0 ? jobResult.rows[0].title : 'Interview';
+    
+    // Generate meeting link
+    const { createMeetingLink } = await import('./services/meeting-service.js');
+    
+    const meetingData = {
+      title: `Interview: ${candidate.first_name} ${candidate.last_name} - ${jobTitle}`,
+      startTime: slot.start_time,
+      endTime: slot.end_time,
+      duration: slot.duration_minutes,
+      timezone: slot.timezone,
+      attendees: [candidate.email, candidate.interviewer_email]
+    };
+    
+    const meetingInfo = await createMeetingLink(candidate.meeting_platform, meetingData);
+    
+    // Update candidate with selected slot, meeting link, and clear token
+    await query(
+      `UPDATE candidates 
+       SET selected_slot_id = $1,
+           meeting_link = $2,
+           interview_scheduled_at = CURRENT_TIMESTAMP,
+           candidate_substage = 'interview_scheduled',
+           slot_selection_token = NULL,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $3`,
+      [slotId, meetingInfo.meetingLink, candidate.id]
+    );
+    
+    // Increment slot booking count
+    await query(
+      `UPDATE interview_slots 
+       SET current_bookings = current_bookings + 1,
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $1`,
+      [slotId]
+    );
+    
+    // Get client details for notification
+    const clientResult = await query(
+      `SELECT u.email, u.first_name 
+       FROM users u
+       JOIN jobs j ON j.created_by = u.id
+       WHERE j.id = $1`,
+      [candidate.job_id]
+    );
+    
+    // Send notification to client
+    if (clientResult.rows.length > 0) {
+      const client = clientResult.rows[0];
+      const { sendInterviewScheduledNotification } = await import('./services/email-service.js');
+      
+      const slotTime = new Date(slot.start_time).toLocaleString('en-US', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        timeZone: slot.timezone
+      });
+      
+      await sendInterviewScheduledNotification({
+        to: client.email,
+        clientName: client.first_name,
+        candidateName: `${candidate.first_name} ${candidate.last_name}`,
+        jobTitle,
+        slotTime,
+        interviewerName: candidate.interviewer_name,
+        meetingLink: meetingInfo.meetingLink
+      });
+    }
+    
+    console.log(`[Human Interview] Candidate ${candidate.email} selected slot ${slotId}`);
+    console.log(`[Human Interview] Meeting link generated: ${meetingInfo.meetingLink}`);
+    
+    res.json({
+      success: true,
+      message: 'Interview scheduled successfully',
+      meeting: {
+        platform: meetingInfo.platform,
+        link: meetingInfo.meetingLink,
+        startTime: slot.start_time,
+        endTime: slot.end_time,
+        timezone: slot.timezone,
+        instructions: meetingInfo.instructions
+      },
+      interviewer: {
+        name: candidate.interviewer_name,
+        email: candidate.interviewer_email
+      }
+    });
+  } catch (error) {
+    console.error('[Human Interview] Error selecting slot:', error);
+    res.status(500).json({ error: 'Failed to select slot', details: error.message });
+  }
+});
+
+// POST /api/candidates/:id/human-interview/complete - Mark interview as completed with feedback
+app.post('/api/candidates/:id/human-interview/complete', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { feedback, notes, durationMinutes } = req.body;
+    
+    const candidateResult = await query(
+      'SELECT * FROM candidates WHERE id = $1',
+      [id]
+    );
+    
+    if (candidateResult.rows.length === 0) {
+      return res.status(404).json({ error: 'Candidate not found' });
+    }
+    
+    const candidate = candidateResult.rows[0];
+    
+    if (!candidate.interview_scheduled_at) {
+      return res.status(400).json({ 
+        error: 'Interview not scheduled', 
+        message: 'Interview must be scheduled before marking as completed' 
+      });
+    }
+    
+    // Update candidate with completion details
+    await query(
+      `UPDATE candidates 
+       SET interview_completed_at = CURRENT_TIMESTAMP,
+           interview_feedback = $1,
+           interview_notes = $2,
+           interview_duration_minutes = $3,
+           candidate_substage = 'feedback_submitted',
+           updated_at = CURRENT_TIMESTAMP
+       WHERE id = $4`,
+      [feedback, notes, durationMinutes, id]
+    );
+    
+    console.log(`[Human Interview] Interview completed for candidate ${candidate.email}`);
+    
+    res.json({
+      success: true,
+      message: 'Interview marked as completed',
+      substage: 'feedback_submitted',
+      completedAt: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[Human Interview] Error completing interview:', error);
+    res.status(500).json({ error: 'Failed to complete interview', details: error.message });
+  }
+});
+
 // ===== EXTERNAL CANDIDATE PORTAL API ENDPOINTS =====
 
 // Middleware for API key validation (optional - can be enabled via env var)
