@@ -6,7 +6,7 @@ import { fileURLToPath } from 'url';
 import { query } from './db.js';
 import OpenAI from 'openai';
 import { postJobToLinkedIn, shouldAutoPostToLinkedIn, syncJobToLinkedIn, getLinkedInSyncStatus, retryLinkedInSync } from './services/linkedin.js';
-import { getCandidates, getCandidateById, createCandidate, updateCandidate, addCandidateDocument, addCandidateCommunication, moveCandidateToStage, disqualifyCandidate, deleteCandidate } from './services/candidates.js';
+import { getCandidates, getCandidateById, createCandidate, updateCandidate, addCandidateDocument, addCandidateCommunication, moveCandidateToStage, disqualifyCandidate, restoreCandidate, deleteCandidate } from './services/candidates.js';
 import { autoTransitionService } from './services/auto-transition.js';
 import sanitizeHtml from 'sanitize-html';
 import { randomUUID } from 'crypto';
@@ -1594,6 +1594,20 @@ app.patch('/api/candidates/:id/disqualify', async (req, res) => {
   } catch (error) {
     console.error('[Candidates API] Error disqualifying candidate:', error);
     res.status(500).json({ error: 'Failed to disqualify candidate', details: error.message });
+  }
+});
+
+// PATCH /api/candidates/:id/restore - Restore disqualified candidate
+app.patch('/api/candidates/:id/restore', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { userId, notes } = req.body;
+    
+    const candidate = await restoreCandidate(id, userId, notes);
+    res.json(candidate);
+  } catch (error) {
+    console.error('[Candidates API] Error restoring candidate:', error);
+    res.status(500).json({ error: 'Failed to restore candidate', details: error.message });
   }
 });
 

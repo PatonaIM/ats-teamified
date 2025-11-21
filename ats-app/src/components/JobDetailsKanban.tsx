@@ -64,6 +64,8 @@ export default function JobDetailsKanban() {
   const [job, setJob] = useState<Job | null>(null);
   const [stages, setStages] = useState<PipelineStage[]>([]);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [disqualifiedCandidates, setDisqualifiedCandidates] = useState<Candidate[]>([]);
+  const [showDisqualified, setShowDisqualified] = useState(false);
   const [loading, setLoading] = useState(true);
   const [expandedStages, setExpandedStages] = useState<Set<string>>(new Set());
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
@@ -327,8 +329,10 @@ export default function JobDetailsKanban() {
       
       const safeCandidates = Array.isArray(candidatesData?.candidates) ? candidatesData.candidates : [];
       const activeCandidates = safeCandidates.filter((c: any) => c.status === 'active');
-      console.log('[JobDetailsKanban] Setting', activeCandidates.length, 'candidates');
+      const disqualifiedCands = safeCandidates.filter((c: any) => c.status === 'disqualified');
+      console.log('[JobDetailsKanban] Setting', activeCandidates.length, 'active candidates and', disqualifiedCands.length, 'disqualified candidates');
       setCandidates(activeCandidates);
+      setDisqualifiedCandidates(disqualifiedCands);
       
     } catch (error) {
       console.error('[JobDetailsKanban] Critical error:', error);
@@ -427,8 +431,15 @@ export default function JobDetailsKanban() {
       variant: 'danger',
       onConfirm: async () => {
         const originalCandidates = [...candidates];
+        const originalDisqualified = [...disqualifiedCandidates];
         
-        setCandidates(candidates.filter(c => c.id !== candidateId));
+        // Move to disqualified list
+        const disqualifiedCandidate = candidates.find(c => c.id === candidateId);
+        if (disqualifiedCandidate) {
+          setCandidates(candidates.filter(c => c.id !== candidateId));
+          setDisqualifiedCandidates([...disqualifiedCandidates, { ...disqualifiedCandidate, status: 'disqualified' }]);
+        }
+        
         if (selectedCandidate?.id === candidateId) {
           setSelectedCandidate(null);
         }
@@ -446,6 +457,7 @@ export default function JobDetailsKanban() {
         } catch (error) {
           console.error('Error disqualifying candidate:', error);
           setCandidates(originalCandidates);
+          setDisqualifiedCandidates(originalDisqualified);
           
           // Handle permission errors specifically
           if (error instanceof Error && error.message.includes('Forbidden')) {
@@ -453,6 +465,38 @@ export default function JobDetailsKanban() {
           } else {
             alert('Failed to disqualify candidate. Please try again.');
           }
+        }
+        
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+      }
+    });
+  };
+
+  const handleRestore = (candidateId: string) => {
+    const candidate = disqualifiedCandidates.find(c => c.id === candidateId);
+    if (!candidate) return;
+
+    setConfirmModal({
+      isOpen: true,
+      title: 'Restore Candidate',
+      message: `Are you sure you want to restore ${candidate.first_name} ${candidate.last_name}? They will be returned to their previous stage in the pipeline.`,
+      variant: 'success',
+      onConfirm: async () => {
+        try {
+          await apiRequest<Candidate>(`/api/candidates/${candidateId}/restore`, {
+            method: 'PATCH',
+            body: JSON.stringify({
+              userId: null,
+              notes: 'Candidate restored by recruiter'
+            })
+          });
+          
+          // Refetch job data to ensure counts and state are consistent
+          await fetchJobData();
+          
+        } catch (error) {
+          console.error('Error restoring candidate:', error);
+          alert('Failed to restore candidate. Please try again.');
         }
         
         setConfirmModal(prev => ({ ...prev, isOpen: false }));
@@ -652,7 +696,7 @@ export default function JobDetailsKanban() {
     );
   }
 
-  const totalCandidates = candidates.length;
+  const totalCandidates = candidates.length + disqualifiedCandidates.length;
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex flex-col">
@@ -693,7 +737,20 @@ export default function JobDetailsKanban() {
           <div className="text-right">
             <div className="text-sm text-gray-500 dark:text-gray-400">Total Applicants</div>
             <div className="text-3xl font-bold text-purple-600">{totalCandidates}</div>
-            <div className="text-xs text-gray-400">0 Disqualified</div>
+            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              {candidates.length} Active
+              {disqualifiedCandidates.length > 0 && (
+                <>
+                  <span className="mx-1">•</span>
+                  <button
+                    onClick={() => setShowDisqualified(!showDisqualified)}
+                    className="text-red-600 dark:text-red-400 hover:underline"
+                  >
+                    {disqualifiedCandidates.length} Disqualified {showDisqualified ? '(Hide)' : '(Show)'}
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>
@@ -865,6 +922,44 @@ export default function JobDetailsKanban() {
                 );
               })}
             </div>
+            
+            {/* Disqualified Candidates Section */}
+            {showDisqualified && disqualifiedCandidates.length > 0 && (
+              <div className="mt-6 border-t border-gray-200 dark:border-gray-700 pt-4">
+                <h3 className="text-xs uppercase font-semibold text-red-600 dark:text-red-400 mb-3 px-4">
+                  Disqualified Candidates ({disqualifiedCandidates.length})
+                </h3>
+                
+                <div className="space-y-2">
+                  {disqualifiedCandidates.map((candidate) => (
+                    <div
+                      key={candidate.id}
+                      className="mx-4 p-4 bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800 rounded-lg"
+                    >
+                      <div className="flex items-start justify-between mb-2">
+                        <div>
+                          <div className="font-semibold text-sm text-gray-900 dark:text-white">
+                            {candidate.first_name} {candidate.last_name}
+                          </div>
+                          <div className="text-xs text-gray-600 dark:text-gray-400 truncate mt-1">
+                            {candidate.email}
+                          </div>
+                          <div className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                            Applied {new Date(candidate.created_at).toLocaleDateString()}
+                          </div>
+                        </div>
+                        <button
+                          onClick={() => handleRestore(candidate.id)}
+                          className="px-3 py-1.5 text-xs font-medium text-white bg-gradient-to-r from-green-500 to-blue-500 hover:from-green-600 hover:to-blue-600 rounded-lg transition-all shadow-sm"
+                        >
+                          Restore
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

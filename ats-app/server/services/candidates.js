@@ -279,7 +279,7 @@ export async function moveCandidateToStage(candidateId, newStage, userId = null,
  */
 export async function disqualifyCandidate(candidateId, reason = null, userId = null) {
   const currentCandidateResult = await query(
-    'SELECT status, current_stage FROM candidates WHERE id = $1',
+    'SELECT status, current_stage, candidate_substage FROM candidates WHERE id = $1',
     [candidateId]
   );
 
@@ -289,6 +289,7 @@ export async function disqualifyCandidate(candidateId, reason = null, userId = n
 
   const previousStatus = currentCandidateResult.rows[0].status;
   const currentStage = currentCandidateResult.rows[0].current_stage;
+  const currentSubstage = currentCandidateResult.rows[0].candidate_substage;
 
   const result = await query(
     `UPDATE candidates 
@@ -298,10 +299,97 @@ export async function disqualifyCandidate(candidateId, reason = null, userId = n
     [candidateId]
   );
 
+  // Store substage in notes as JSON for later restoration
+  const historyNotes = JSON.stringify({
+    reason: reason || 'Candidate disqualified',
+    previousSubstage: currentSubstage
+  });
+
   await query(
     `INSERT INTO candidate_stage_history (candidate_id, previous_stage, new_stage, changed_by_user_id, notes)
      VALUES ($1, $2, $3, $4, $5)`,
-    [candidateId, currentStage, 'Disqualified', userId, reason || 'Candidate disqualified']
+    [candidateId, currentStage, 'Disqualified', userId, historyNotes]
+  );
+
+  return result.rows[0];
+}
+
+/**
+ * Restore disqualified candidate
+ */
+export async function restoreCandidate(candidateId, userId = null, notes = null) {
+  const currentCandidateResult = await query(
+    'SELECT status, current_stage, candidate_substage FROM candidates WHERE id = $1',
+    [candidateId]
+  );
+
+  if (currentCandidateResult.rows.length === 0) {
+    throw new Error('Candidate not found');
+  }
+
+  if (currentCandidateResult.rows[0].status !== 'disqualified') {
+    throw new Error('Candidate is not disqualified');
+  }
+
+  // Get the stage and substage before disqualification from history
+  const stageHistoryResult = await query(
+    `SELECT previous_stage, notes 
+     FROM candidate_stage_history 
+     WHERE candidate_id = $1 AND new_stage = 'Disqualified' 
+     ORDER BY changed_at DESC 
+     LIMIT 1`,
+    [candidateId]
+  );
+
+  const restoreToStage = stageHistoryResult.rows.length > 0 
+    ? stageHistoryResult.rows[0].previous_stage 
+    : 'Screening'; // Default to Screening if no history found
+
+  // Parse the previousSubstage from notes (stored as JSON during disqualification)
+  let restoreToSubstage = null;
+  if (stageHistoryResult.rows.length > 0 && stageHistoryResult.rows[0].notes) {
+    try {
+      const historyData = JSON.parse(stageHistoryResult.rows[0].notes);
+      restoreToSubstage = historyData.previousSubstage || null;
+    } catch (e) {
+      // If notes is not JSON, ignore and use fallback
+      console.error('[Restore] Failed to parse substage from history notes:', e);
+    }
+  }
+  
+  // If no substage found in history, get the first substage for the restored stage
+  if (!restoreToSubstage) {
+    const substageResult = await query(
+      `SELECT substage_id 
+       FROM pipeline_substages 
+       WHERE stage_name = $1 
+       ORDER BY substage_order ASC 
+       LIMIT 1`,
+      [restoreToStage]
+    );
+    
+    restoreToSubstage = substageResult.rows.length > 0 
+      ? substageResult.rows[0].substage_id 
+      : null;
+  }
+
+  // Restore candidate to active status and previous stage with preserved substage
+  const result = await query(
+    `UPDATE candidates 
+     SET status = 'active', 
+         current_stage = $1,
+         candidate_substage = $2,
+         updated_at = CURRENT_TIMESTAMP
+     WHERE id = $3
+     RETURNING *`,
+    [restoreToStage, restoreToSubstage, candidateId]
+  );
+
+  // Log the restoration in history
+  await query(
+    `INSERT INTO candidate_stage_history (candidate_id, previous_stage, new_stage, changed_by_user_id, notes)
+     VALUES ($1, $2, $3, $4, $5)`,
+    [candidateId, 'Disqualified', restoreToStage, userId, notes || `Candidate restored to ${restoreToStage} with substage ${restoreToSubstage}`]
   );
 
   return result.rows[0];
