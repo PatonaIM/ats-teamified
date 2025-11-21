@@ -140,6 +140,68 @@ WHERE id = '<candidate_id>';
 
 ---
 
+## Substage Movement Logic
+
+### How the System Knows When to Progress
+
+Each substage transition is triggered by specific database changes or API calls. Here's how the system determines when to move to the next substage:
+
+**Substage 1 → 2:** `interviewer_assigned` to `interview_scheduled`
+- **Trigger:** Candidate calls POST `/api/candidates/human-interview/select-slot` with valid token
+- **Database Indicator:** `selected_slot_id` IS NOT NULL AND `meeting_link` IS NOT NULL
+- **Auto-Set Fields:** 
+  - `interview_scheduled_at = CURRENT_TIMESTAMP`
+  - `candidate_substage = 'interview_scheduled'`
+  - `slot_selection_token = NULL` (prevents reuse)
+- **Detection Query:**
+  ```sql
+  SELECT * FROM candidates 
+  WHERE candidate_substage = 'interviewer_assigned'
+  AND selected_slot_id IS NOT NULL;
+  ```
+
+**Substage 2 → 3:** `interview_scheduled` to `interview_in_progress`
+- **Trigger:** Manual - Recruiter updates substage OR Time-based automation (future)
+- **Database Indicator:** Recruiter explicitly sets `candidate_substage = 'interview_in_progress'`
+- **Future Auto-Trigger:** When `interview_slots.start_time <= NOW()`
+- **Detection Query:**
+  ```sql
+  -- Manual check for interviews that should be in progress
+  SELECT c.* FROM candidates c
+  JOIN interview_slots s ON c.selected_slot_id = s.id
+  WHERE c.candidate_substage = 'interview_scheduled'
+  AND s.start_time <= NOW()
+  AND s.end_time > NOW();
+  ```
+
+**Substage 3 → 4:** `interview_in_progress` to `interview_completed`
+- **Trigger:** Recruiter calls POST `/api/candidates/:id/human-interview/complete`
+- **Database Indicator:** `interview_completed_at` IS NOT NULL
+- **Auto-Set Fields:** 
+  - `interview_completed_at = CURRENT_TIMESTAMP`
+  - `candidate_substage = 'interview_completed'`
+- **Detection Query:**
+  ```sql
+  SELECT * FROM candidates 
+  WHERE candidate_substage = 'interview_in_progress'
+  AND interview_completed_at IS NOT NULL;
+  ```
+
+**Substage 4 → 5:** `interview_completed` to `feedback_submitted`
+- **Trigger:** Same API call as above, but with feedback data
+- **Database Indicator:** `interview_feedback` IS NOT NULL OR `interview_notes` IS NOT NULL
+- **Auto-Set Fields:** 
+  - `candidate_substage = 'feedback_submitted'`
+  - `interview_feedback` and `interview_notes` stored
+- **Detection Query:**
+  ```sql
+  SELECT * FROM candidates 
+  WHERE candidate_substage = 'interview_completed'
+  AND (interview_feedback IS NOT NULL OR interview_notes IS NOT NULL);
+  ```
+
+---
+
 ## Transition Flow
 
 ```
@@ -151,7 +213,7 @@ slot_selection_token generated
 Email sent to candidate
            ↓
 Substage 1: interviewer_assigned (20%)
-           ↓
+    ↓ DETECTION: selected_slot_id IS NOT NULL
 [Candidate selects slot via email link]
 selected_slot_id set
 meeting_link generated
@@ -159,16 +221,16 @@ Token invalidated
 Client notified
            ↓
 Substage 2: interview_scheduled (40%)
-           ↓
+    ↓ DETECTION: Manual update OR start_time passed
 [Interview time arrives / manual update]
            ↓
 Substage 3: interview_in_progress (60%)
-           ↓
+    ↓ DETECTION: interview_completed_at IS NOT NULL
 [Recruiter marks interview complete]
 interview_completed_at = timestamp
            ↓
 Substage 4: interview_completed (80%)
-           ↓
+    ↓ DETECTION: interview_feedback IS NOT NULL
 [Recruiter submits feedback and notes]
 interview_feedback, interview_notes set
            ↓

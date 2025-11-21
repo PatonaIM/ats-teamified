@@ -24,29 +24,110 @@ The **AI Interview** stage represents the automated interview process where cand
 
 ---
 
-## Transition Logic
+## Substage Movement Logic
 
-### Auto-Transition Rules
+### How the System Knows When to Progress
+
+Each substage transition is triggered by explicit action buttons (NOT by candidate views/clicks). Here's how the system determines when to move to the next substage:
+
+**Substage 1 → 2:** `ai_interview_sent` to `ai_interview_started`
+- **Trigger:** Recruiter clicks "Simulate Start" button (MVP) OR Candidate accesses Team Connect link (Production)
+- **API Call:** POST `/api/candidates/:id/ai-interview/start`
+- **Database Indicator:** `ai_interview_started_at` IS NOT NULL
+- **Auto-Set Fields:** 
+  - `ai_interview_started_at = CURRENT_TIMESTAMP`
+  - `candidate_substage = 'ai_interview_started'`
+- **Detection Query:**
+  ```sql
+  SELECT * FROM candidates 
+  WHERE candidate_substage = 'ai_interview_sent'
+  AND ai_interview_started_at IS NOT NULL;
+  ```
+- **⚠️ Important:** Substage does NOT auto-advance when candidate views link - requires explicit start action
+
+**Substage 2 → 3:** `ai_interview_started` to `ai_interview_completed`
+- **Trigger:** Recruiter clicks "Complete Interview" button (MVP) OR Candidate submits final response (Production)
+- **API Call:** POST `/api/candidates/:id/ai-interview/complete`
+- **Database Indicator:** `ai_interview_completed_at` IS NOT NULL
+- **Auto-Set Fields:** 
+  - `ai_interview_completed_at = CURRENT_TIMESTAMP`
+  - `candidate_substage = 'ai_interview_completed'`
+  - `ai_analysis_status = 'processing'` (immediately set)
+- **Detection Query:**
+  ```sql
+  SELECT * FROM candidates 
+  WHERE candidate_substage = 'ai_interview_started'
+  AND ai_interview_completed_at IS NOT NULL;
+  ```
+
+**Substage 3 → 4:** `ai_interview_completed` to `ai_analysis_in_progress`
+- **Trigger:** AUTOMATIC - Immediately after completion API call
+- **Database Indicator:** `ai_analysis_status = 'processing'`
+- **Auto-Set Fields:** 
+  - `candidate_substage = 'ai_analysis_in_progress'`
+- **Detection Query:**
+  ```sql
+  SELECT * FROM candidates 
+  WHERE candidate_substage = 'ai_interview_completed'
+  AND ai_analysis_status = 'processing';
+  ```
+- **Duration:** 2 seconds (mock delay in MVP)
+
+**Substage 4 → 5:** `ai_analysis_in_progress` to `ai_results_ready`
+- **Trigger:** AUTOMATIC - After mock processing delay completes
+- **Database Indicator:** `ai_analysis_status = 'completed'` AND scores populated
+- **Auto-Set Fields:** 
+  - `ai_analysis_status = 'completed'`
+  - `candidate_substage = 'ai_results_ready'`
+  - `ai_technical_score`, `ai_communication_score`, `ai_culture_fit_score` (generated)
+  - `ai_overall_score`, `ai_strengths`, `ai_improvements`
+- **Detection Query:**
+  ```sql
+  SELECT * FROM candidates 
+  WHERE candidate_substage = 'ai_analysis_in_progress'
+  AND ai_analysis_status = 'completed';
+  ```
+
+### Auto-Transition Rules (Backend)
 ```javascript
 // Substage 1: AI Interview Sent
-// Triggered when system sends AI interview invitation email
-if (ai_interview_link_sent_at) → ai_interview_sent
+// Manual button click only - NO auto-transition
+if (recruiter_clicks_send_button) {
+  ai_interview_link_sent_at = NOW();
+  candidate_substage = 'ai_interview_sent';
+}
 
 // Substage 2: AI Interview Started
-// Triggered when candidate clicks the unique interview link and begins
-if (ai_interview_started_at) → ai_interview_started
+// Explicit action required - NOT triggered by viewing link
+if (recruiter_clicks_simulate_start) {  // MVP
+  ai_interview_started_at = NOW();
+  candidate_substage = 'ai_interview_started';
+}
 
 // Substage 3: AI Interview Completed
-// Triggered when candidate submits final answer
-if (ai_interview_completed_at) → ai_interview_completed
+// Explicit completion action
+if (recruiter_clicks_complete) {  // MVP
+  ai_interview_completed_at = NOW();
+  ai_analysis_status = 'processing';
+  candidate_substage = 'ai_interview_completed';
+  // Immediately trigger auto-progression to substage 4
+}
 
 // Substage 4: AI Analysis In Progress
-// Triggered immediately after completion, while AI processes responses
-if (ai_analysis_status === 'processing') → ai_analysis_in_progress
+// Automatic progression after completion
+setTimeout(() => {
+  candidate_substage = 'ai_analysis_in_progress';
+}, 0);  // Immediate
 
 // Substage 5: AI Results Ready
-// Triggered when AI analysis completes successfully
-if (ai_analysis_status === 'completed') → ai_results_ready
+// Automatic after 2-second mock processing
+setTimeout(() => {
+  ai_analysis_status = 'completed';
+  ai_technical_score = generateMockScore();
+  ai_communication_score = generateMockScore();
+  ai_culture_fit_score = generateMockScore();
+  candidate_substage = 'ai_results_ready';
+}, 2000);  // 2 seconds in MVP
 ```
 
 ---

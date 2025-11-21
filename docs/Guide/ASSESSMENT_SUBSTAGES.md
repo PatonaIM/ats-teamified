@@ -123,6 +123,126 @@ WHERE id = '<candidate_id>';
 
 ---
 
+## Substage Movement Logic (Planned)
+
+### How the System Will Know When to Progress
+
+**⚠️ This is the planned implementation logic for future development.**
+
+**Substage 1 → 2:** `assessment_sent` to `assessment_in_progress`
+- **Trigger:** Candidate clicks assessment link and starts
+- **API Call:** POST `/api/assessment/:token/start` (NOT IMPLEMENTED)
+- **Database Indicator:** `assessment_started_at` IS NOT NULL
+- **Auto-Set Fields:** 
+  - `assessment_started_at = CURRENT_TIMESTAMP`
+  - `candidate_substage = 'assessment_in_progress'`
+- **Detection Query:**
+  ```sql
+  SELECT * FROM candidates 
+  WHERE candidate_substage = 'assessment_sent'
+  AND assessment_started_at IS NOT NULL;
+  ```
+
+**Substage 2 → 3:** `assessment_in_progress` to `assessment_submitted`
+- **Trigger:** Candidate clicks "Submit Assessment" button
+- **API Call:** POST `/api/assessment/:token/submit` (NOT IMPLEMENTED)
+- **Database Indicator:** `assessment_submitted_at` IS NOT NULL
+- **Auto-Set Fields:** 
+  - `assessment_submitted_at = CURRENT_TIMESTAMP`
+  - `assessment_responses` (JSONB with all answers)
+  - `assessment_time_spent` (calculated)
+  - `candidate_substage = 'assessment_submitted'`
+- **Detection Query:**
+  ```sql
+  SELECT * FROM candidates 
+  WHERE candidate_substage = 'assessment_in_progress'
+  AND assessment_submitted_at IS NOT NULL;
+  ```
+
+**Substage 3 → 4:** `assessment_submitted` to `pending_review`
+- **Trigger:** AUTOMATIC - Immediately after submission if no auto-grading
+- **Database Indicator:** `assessment_submitted_at` IS NOT NULL AND `assessment_score` IS NULL
+- **Auto-Set Fields:** 
+  - `candidate_substage = 'pending_review'`
+- **Detection Query:**
+  ```sql
+  SELECT * FROM candidates 
+  WHERE candidate_substage = 'assessment_submitted'
+  AND assessment_score IS NULL;
+  ```
+- **⚠️ Note:** This is an automatic transition - no manual action required
+
+**Substage 4 → 5:** `pending_review` to `assessment_completed`
+- **Trigger:** Reviewer/Recruiter grades the assessment
+- **API Call:** POST `/api/candidates/:id/assessment/grade` (NOT IMPLEMENTED)
+- **Database Indicator:** `assessment_score` IS NOT NULL
+- **Auto-Set Fields:** 
+  - `assessment_score` (0-100)
+  - `assessment_feedback` (optional)
+  - `candidate_substage = 'assessment_completed'`
+- **Detection Query:**
+  ```sql
+  SELECT * FROM candidates 
+  WHERE candidate_substage = 'pending_review'
+  AND assessment_score IS NOT NULL;
+  ```
+
+### Planned Auto-Transition Rules
+```javascript
+// Substage 1: Assessment Sent
+if (recruiter_sends_assessment) {
+  assessment_sent_at = NOW();
+  assessment_link = generateUniqueLink();
+  candidate_substage = 'assessment_sent';
+}
+
+// Substage 2: Assessment In Progress
+if (candidate_clicks_start) {
+  assessment_started_at = NOW();
+  candidate_substage = 'assessment_in_progress';
+}
+
+// Substage 3: Assessment Submitted
+if (candidate_submits) {
+  assessment_submitted_at = NOW();
+  assessment_responses = candidateAnswers;
+  candidate_substage = 'assessment_submitted';
+  
+  // Immediate auto-transition to pending_review
+  if (!assessment_score) {
+    candidate_substage = 'pending_review';
+  }
+}
+
+// Substage 4: Pending Review
+// Automatic - no action needed
+// Just waiting for reviewer
+
+// Substage 5: Assessment Completed
+if (reviewer_assigns_score) {
+  assessment_score = score;
+  assessment_feedback = feedback;
+  candidate_substage = 'assessment_completed';
+}
+```
+
+### Time-Based Checks (Optional Future Enhancement)
+```javascript
+// Detect abandoned assessments (started but not submitted within time limit)
+SELECT * FROM candidates
+WHERE candidate_substage = 'assessment_in_progress'
+AND assessment_started_at < NOW() - INTERVAL '2 hours'
+AND assessment_submitted_at IS NULL;
+
+// Mark as abandoned
+UPDATE candidates 
+SET candidate_substage = 'assessment_abandoned',
+    assessment_abandoned = true
+WHERE <conditions_above>;
+```
+
+---
+
 ## Transition Flow
 
 ```
@@ -132,22 +252,23 @@ Candidate enters Technical Assessment stage
 assessment_sent_at = timestamp
            ↓
 Substage 1: assessment_sent (20%)
-           ↓
+    ↓ DETECTION: assessment_started_at IS NOT NULL
 [Candidate opens assessment link]
 assessment_started_at = timestamp
            ↓
 Substage 2: assessment_in_progress (40%)
-           ↓
+    ↓ DETECTION: assessment_submitted_at IS NOT NULL
 [Candidate submits completed assessment]
 assessment_submitted_at = timestamp
+assessment_responses = JSONB
            ↓
 Substage 3: assessment_submitted (60%)
-           ↓
+    ↓ DETECTION: AUTOMATIC if assessment_score IS NULL
 [Auto-transition - awaiting review]
 assessment_score = NULL
            ↓
 Substage 4: pending_review (80%)
-           ↓
+    ↓ DETECTION: assessment_score IS NOT NULL
 [Reviewer grades assessment]
 assessment_score assigned
            ↓
