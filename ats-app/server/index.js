@@ -1675,11 +1675,26 @@ app.patch('/api/candidates/:id/substage', async (req, res) => {
       }
     }
     
+    // Automatically set relevant timestamps based on substage
+    let updateQuery = 'UPDATE candidates SET candidate_substage = $1, updated_at = CURRENT_TIMESTAMP';
+    let queryParams = [substage, id];
+    
+    // Set interview_scheduled_at when moving to interview_scheduled substage
+    if (substage === 'interview_scheduled' && currentSubstage !== 'interview_scheduled') {
+      updateQuery += ', interview_scheduled_at = CURRENT_TIMESTAMP';
+      console.log(`[Substages API] Auto-setting interview_scheduled_at for candidate ${id}`);
+    }
+    
+    // Set interview_completed_at when moving to interview_completed substage
+    if (substage === 'interview_completed' && currentSubstage !== 'interview_completed') {
+      updateQuery += ', interview_completed_at = CURRENT_TIMESTAMP';
+      console.log(`[Substages API] Auto-setting interview_completed_at for candidate ${id}`);
+    }
+    
+    updateQuery += ' WHERE id = $2 RETURNING *';
+    
     // Update substage
-    const result = await query(
-      'UPDATE candidates SET candidate_substage = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *',
-      [substage, id]
-    );
+    const result = await query(updateQuery, queryParams);
     
     console.log(`[Substages API] Updated candidate ${id} substage: ${currentSubstage} → ${substage} by ${userId || 'system'}`);
     
