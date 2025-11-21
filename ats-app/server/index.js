@@ -7,6 +7,7 @@ import { query } from './db.js';
 import OpenAI from 'openai';
 import { postJobToLinkedIn, shouldAutoPostToLinkedIn, syncJobToLinkedIn, getLinkedInSyncStatus, retryLinkedInSync } from './services/linkedin.js';
 import { getCandidates, getCandidateById, createCandidate, updateCandidate, addCandidateDocument, addCandidateCommunication, moveCandidateToStage, disqualifyCandidate, deleteCandidate } from './services/candidates.js';
+import { autoTransitionService } from './services/auto-transition.js';
 import sanitizeHtml from 'sanitize-html';
 import { randomUUID } from 'crypto';
 import { authenticateRequest, optionalAuth, requireRole } from './middleware/auth.js';
@@ -4708,6 +4709,72 @@ app.delete('/api/stage-library/:id', async (req, res) => {
   } catch (error) {
     console.error('Error deleting stage template:', error);
     res.status(500).json({ error: 'Failed to delete stage template' });
+  }
+});
+
+// ===== AUTO-TRANSITION ENDPOINTS =====
+
+// POST /api/auto-transition/run - Trigger auto-transition check for all stages
+app.post('/api/auto-transition/run', async (req, res) => {
+  try {
+    console.log('[Auto-Transition] Manual trigger initiated');
+    
+    const results = await autoTransitionService.checkAndTransitionAll();
+    
+    const totalTransitions = Object.values(results).reduce((sum, count) => sum + count, 0);
+    
+    res.json({
+      success: true,
+      message: `Auto-transition check completed. ${totalTransitions} candidates transitioned.`,
+      results,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[Auto-Transition] Error running auto-transitions:', error);
+    res.status(500).json({ 
+      error: 'Failed to run auto-transitions', 
+      details: error.message 
+    });
+  }
+});
+
+// POST /api/auto-transition/time-based - Check time-based transitions (interviews starting, etc.)
+app.post('/api/auto-transition/time-based', async (req, res) => {
+  try {
+    console.log('[Auto-Transition] Time-based check initiated');
+    
+    await autoTransitionService.checkTimeBasedTransitions();
+    
+    res.json({
+      success: true,
+      message: 'Time-based transition check completed',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[Auto-Transition] Error running time-based transitions:', error);
+    res.status(500).json({ 
+      error: 'Failed to run time-based transitions', 
+      details: error.message 
+    });
+  }
+});
+
+// GET /api/auto-transition/stale - Get candidates with stale substages
+app.get('/api/auto-transition/stale', async (req, res) => {
+  try {
+    const staleCandidates = await autoTransitionService.checkStaleSubstageTransitions();
+    
+    res.json({
+      success: true,
+      count: staleCandidates.length,
+      candidates: staleCandidates
+    });
+  } catch (error) {
+    console.error('[Auto-Transition] Error fetching stale candidates:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch stale candidates', 
+      details: error.message 
+    });
   }
 });
 

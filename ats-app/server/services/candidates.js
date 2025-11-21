@@ -4,6 +4,7 @@
  */
 
 import { query } from '../db.js';
+import { getSubstagesForStage } from '../substage-definitions.js';
 
 /**
  * Get all candidates with optional filtering
