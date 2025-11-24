@@ -3,9 +3,11 @@ import { Sidebar } from './Sidebar';
 import { DarkModeToggle } from './DarkModeToggle';
 import { Bell, Search, User } from 'lucide-react';
 import { useState } from 'react';
+import { useAuth } from '../contexts/AuthContext';
 
 export function DashboardLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const { user } = useAuth();
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -44,8 +46,8 @@ export function DashboardLayout() {
                     <User className="w-5 h-5" />
                   </div>
                   <div className="text-left hidden md:block">
-                    <div className="text-sm font-semibold text-gray-900 dark:text-white">Admin User</div>
-                    <div className="text-xs text-gray-500 dark:text-gray-400">admin@company.com</div>
+                    <div className="text-sm font-semibold text-gray-900 dark:text-white">{user?.name || 'Guest User'}</div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">{user?.email || 'guest@company.com'}</div>
                   </div>
                 </button>
               </div>

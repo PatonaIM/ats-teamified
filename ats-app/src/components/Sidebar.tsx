@@ -91,8 +91,8 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
               );
             })}
             
-            {/* Interview Availability Menu Item (Client Role Only) */}
-            {user?.role === 'client' && (
+            {/* Interview Availability Menu Item (Client & Admin Access) */}
+            {(user?.role === 'client' || user?.role === 'admin') && (
               <li>
                 <Link
                   to="/dashboard/interview-availability"

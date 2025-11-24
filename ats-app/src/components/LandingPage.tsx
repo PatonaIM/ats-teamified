@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 
 export function LandingPage() {
   const navigate = useNavigate();
-  const { isAuthenticated, isLoading, login, loginDemo } = useAuth();
+  const { isAuthenticated, isLoading, login, loginDemo, loginAdmin } = useAuth();
 
   const handleLogin = async () => {
     if (isAuthenticated) {
@@ -20,6 +20,11 @@ export function LandingPage() {
 
   const handleDemoLogin = () => {
     loginDemo();
+    navigate('/dashboard');
+  };
+
+  const handleAdminLogin = () => {
+    loginAdmin();
     navigate('/dashboard');
   };
 
@@ -91,7 +96,14 @@ export function LandingPage() {
                 onClick={handleDemoLogin}
                 className="group px-8 py-4 bg-white dark:bg-gray-800 text-gray-900 dark:text-white rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-300 border-2 border-gray-200 dark:border-gray-700 hover:border-brand-purple/50 dark:hover:border-brand-purple/50 hover:scale-105"
               >
-                Try Demo
+                Try Demo (Client)
+                <span className="inline-block ml-2 group-hover:translate-x-1 transition-transform">→</span>
+              </button>
+              <button 
+                onClick={handleAdminLogin}
+                className="group px-8 py-4 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-xl font-semibold text-lg shadow-lg hover:shadow-xl transition-all duration-300 border-2 border-purple-400 hover:border-purple-300 hover:scale-105"
+              >
+                Login as Admin
                 <span className="inline-block ml-2 group-hover:translate-x-1 transition-transform">→</span>
               </button>
             </div>

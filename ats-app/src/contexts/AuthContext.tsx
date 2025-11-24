@@ -20,6 +20,7 @@ interface AuthContextType {
   isLoading: boolean;
   login: () => Promise<void>;
   loginDemo: () => void;
+  loginAdmin: () => void;
   logout: () => void;
   refreshUser: () => Promise<void>;
 }
@@ -102,6 +103,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   /**
+   * Login as admin (no SSO required)
+   */
+  const loginAdmin = () => {
+    const adminUser: UserProfile = {
+      id: '00000000-0000-0000-0000-000000000002',
+      email: 'admin@company.com',
+      name: 'Admin User',
+      role: 'admin',
+      avatar: undefined,
+    };
+    
+    setUser(adminUser);
+    storeUserProfile(adminUser);
+    sessionStorage.setItem('demo_mode', 'true');
+    sessionStorage.setItem('auth_access_token', 'admin-token'); // For backend auth middleware
+    console.log('[AuthContext] Admin mode activated');
+  };
+
+  /**
    * Logout user and clear session
    */
   const logout = () => {
@@ -137,6 +157,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoading,
     login,
     loginDemo,
+    loginAdmin,
     logout,
     refreshUser,
   };
