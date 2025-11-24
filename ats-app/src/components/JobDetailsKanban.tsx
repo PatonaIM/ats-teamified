@@ -775,13 +775,13 @@ export default function JobDetailsKanban() {
                 return (
                   <div key={stage.id} className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
                     {/* Stage Header */}
-                    <button
-                      onClick={() => toggleStage(stage.stageName)}
-                      aria-expanded={isExpanded}
-                      aria-controls={`stage-${stage.id}`}
-                      className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-700/50 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                    >
-                      <div className="flex items-center gap-3 flex-1">
+                    <div className="w-full flex items-center justify-between px-4 py-3 bg-gray-50 dark:bg-gray-700/50">
+                      <button
+                        onClick={() => toggleStage(stage.stageName)}
+                        aria-expanded={isExpanded}
+                        aria-controls={`stage-${stage.id}`}
+                        className="flex items-center gap-3 flex-1 hover:opacity-80 transition-opacity"
+                      >
                         {isExpanded ? (
                           <ChevronDown size={18} className="text-gray-500 dark:text-gray-400" />
                         ) : (
@@ -797,11 +797,30 @@ export default function JobDetailsKanban() {
                             </span>
                           )}
                         </div>
+                      </button>
+                      
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold px-2 py-1 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 text-white">
+                          {stageCandidates.length}
+                        </span>
+                        
+                        {stageCandidates.length > 0 && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSearchExpandedPerStage(prev => ({
+                                ...prev,
+                                [stage.stageName]: !prev[stage.stageName]
+                              }));
+                            }}
+                            className="p-1.5 text-gray-400 hover:text-purple-500 dark:hover:text-purple-400 hover:bg-gray-100 dark:hover:bg-gray-600 rounded-lg transition-all"
+                            title="Search candidates"
+                          >
+                            <Search size={16} />
+                          </button>
+                        )}
                       </div>
-                      <span className="text-xs font-bold px-2 py-1 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 text-white">
-                        {stageCandidates.length}
-                      </span>
-                    </button>
+                    </div>
 
                     {/* Collapsible Candidate List */}
                     {isExpanded && (
@@ -812,23 +831,9 @@ export default function JobDetailsKanban() {
                           </div>
                         ) : (
                           <>
-                            {/* Search - Collapsible */}
-                            <div className="px-4 pt-3 pb-2 border-b border-gray-200 dark:border-gray-700">
-                              {!searchExpandedPerStage[stage.stageName] ? (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setSearchExpandedPerStage(prev => ({
-                                      ...prev,
-                                      [stage.stageName]: true
-                                    }));
-                                  }}
-                                  className="p-2 text-gray-400 hover:text-purple-500 dark:hover:text-purple-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-all"
-                                  title="Search candidates"
-                                >
-                                  <Search size={18} />
-                                </button>
-                              ) : (
+                            {/* Search Input - Shows when expanded */}
+                            {searchExpandedPerStage[stage.stageName] && (
+                              <div className="px-4 pt-3 pb-2 border-b border-gray-200 dark:border-gray-700">
                                 <div className="relative">
                                   <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
                                   <input
@@ -861,8 +866,8 @@ export default function JobDetailsKanban() {
                                     <X size={16} />
                                   </button>
                                 </div>
-                              )}
-                            </div>
+                              </div>
+                            )}
                             
                             {/* Candidate List with Infinite Scroll */}
                             <div 
