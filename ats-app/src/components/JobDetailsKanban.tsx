@@ -78,6 +78,9 @@ export default function JobDetailsKanban() {
   // Search: Track search query per stage
   const [searchQueryPerStage, setSearchQueryPerStage] = useState<Record<string, string>>({});
   
+  // Search: Track if search is expanded per stage
+  const [searchExpandedPerStage, setSearchExpandedPerStage] = useState<Record<string, boolean>>({});
+  
   // Refs for scroll detection
   const stageScrollRefs = useRef<Record<string, HTMLDivElement | null>>({});
   
@@ -809,22 +812,37 @@ export default function JobDetailsKanban() {
                           </div>
                         ) : (
                           <>
-                            {/* Search Input */}
+                            {/* Search - Collapsible */}
                             <div className="px-4 pt-3 pb-2 border-b border-gray-200 dark:border-gray-700">
-                              <div className="relative">
-                                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                                <input
-                                  type="text"
-                                  placeholder="Search candidates..."
-                                  value={searchQueryPerStage[stage.stageName] || ''}
-                                  onChange={(e) => setSearchQueryPerStage(prev => ({
-                                    ...prev,
-                                    [stage.stageName]: e.target.value
-                                  }))}
-                                  className="w-full pl-9 pr-9 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                                  onClick={(e) => e.stopPropagation()}
-                                />
-                                {searchQueryPerStage[stage.stageName] && (
+                              {!searchExpandedPerStage[stage.stageName] ? (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSearchExpandedPerStage(prev => ({
+                                      ...prev,
+                                      [stage.stageName]: true
+                                    }));
+                                  }}
+                                  className="p-2 text-gray-400 hover:text-purple-500 dark:hover:text-purple-400 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-all"
+                                  title="Search candidates"
+                                >
+                                  <Search size={18} />
+                                </button>
+                              ) : (
+                                <div className="relative">
+                                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                                  <input
+                                    type="text"
+                                    placeholder="Search candidates..."
+                                    value={searchQueryPerStage[stage.stageName] || ''}
+                                    onChange={(e) => setSearchQueryPerStage(prev => ({
+                                      ...prev,
+                                      [stage.stageName]: e.target.value
+                                    }))}
+                                    className="w-full pl-9 pr-9 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-all"
+                                    onClick={(e) => e.stopPropagation()}
+                                    autoFocus
+                                  />
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
@@ -832,13 +850,18 @@ export default function JobDetailsKanban() {
                                         ...prev,
                                         [stage.stageName]: ''
                                       }));
+                                      setSearchExpandedPerStage(prev => ({
+                                        ...prev,
+                                        [stage.stageName]: false
+                                      }));
                                     }}
                                     className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                                    title="Close search"
                                   >
                                     <X size={16} />
                                   </button>
-                                )}
-                              </div>
+                                </div>
+                              )}
                             </div>
                             
                             {/* Candidate List with Infinite Scroll */}
