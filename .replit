@@ -58,5 +58,6 @@ localPort = 43453
 externalPort = 3000
 
 [deployment]
-deploymentTarget = "gce"
-run = ["python3", "server.py"]
+deploymentTarget = "autoscale"
+run = ["bash", "-c", "cd ats-app && NODE_ENV=production node server/index.js"]
+build = ["bash", "-c", "cd ats-app && npm run build"]

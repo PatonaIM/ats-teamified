@@ -60,9 +60,7 @@ app.use(cors({
 }));
 app.use(express.json());
 
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../dist')));
-}
+// NOTE: Static files and SPA catch-all are served AFTER all API routes (at end of file)
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
