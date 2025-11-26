@@ -4815,7 +4815,8 @@ app.get('/api/feature-flags', (req, res) => {
 
 if (process.env.NODE_ENV === 'production') {
   app.use(express.static(path.join(__dirname, '../dist')));
-  app.get('*', (req, res) => {
+  // Express 5.x requires named parameter for catch-all routes
+  app.get('/{*path}', (req, res) => {
     res.sendFile(path.join(__dirname, '../dist/index.html'));
   });
 }

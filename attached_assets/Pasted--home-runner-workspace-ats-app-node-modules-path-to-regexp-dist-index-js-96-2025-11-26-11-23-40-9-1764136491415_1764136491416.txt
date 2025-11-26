@@ -1,0 +1,77 @@
+
+/home/runner/workspace/ats-app/node_modules/path-to-regexp/dist/index.js:96
+2025-11-26 11:23:40.99
+3f592d47
+User
+at pathToRegexp (/home/runner/workspace/ats-app/node_modules/path-to-regexp/dist/index.js:267:58)
+2025-11-26 11:23:40.99
+3f592d47
+User
+at new Layer (/home/runner/workspace/ats-app/node_modules/router/lib/layer.js:93:62)
+2025-11-26 11:23:40.99
+3f592d47
+User
+Node.js v20.19.3
+2025-11-26 11:23:40.99
+3f592d47
+User
+at file:///home/runner/workspace/ats-app/server/index.js:4818:7 {
+2025-11-26 11:23:40.99
+3f592d47
+User
+at matcher (/home/runner/workspace/ats-app/node_modules/router/lib/layer.js:86:23)
+2025-11-26 11:23:40.99
+3f592d47
+User
+at name (/home/runner/workspace/ats-app/node_modules/path-to-regexp/dist/index.js:96:19)
+2025-11-26 11:23:40.99
+3f592d47
+User
+originalPath: '*'
+2025-11-26 11:23:40.99
+3f592d47
+User
+^
+2025-11-26 11:23:40.99
+3f592d47
+User
+at Function.route (/home/runner/workspace/ats-app/node_modules/router/index.js:428:17)
+2025-11-26 11:23:40.99
+3f592d47
+User
+at parse (/home/runner/workspace/ats-app/node_modules/path-to-regexp/dist/index.js:113:68)
+2025-11-26 11:23:40.99
+3f592d47
+User
+}
+2025-11-26 11:23:40.99
+3f592d47
+User
+at Object.match (/home/runner/workspace/ats-app/node_modules/path-to-regexp/dist/index.js:237:30)
+2025-11-26 11:23:40.99
+3f592d47
+User
+at app. [as get] (/home/runner/workspace/ats-app/node_modules/express/lib/application.js:478:22)
+2025-11-26 11:23:40.99
+3f592d47
+User
+at Function.route (/home/runner/workspace/ats-app/node_modules/express/lib/application.js:257:22)
+2025-11-26 11:23:40.99
+3f592d47
+User
+throw new PathError(`Missing parameter name at index ${index}`, str);
+2025-11-26 11:23:40.99
+3f592d47
+User
+PathError [TypeError]: Missing parameter name at index 1: *; visit https://git.new/pathToRegexpError for info
+2025-11-26 11:23:41.00
+3f592d47
+System
+command finished with error [bash -c cd ats-app && NODE_ENV=production node server/index.js]: exit status 1
+
+Collapse
+
+Wrap
+
+Colors
+
