@@ -20,13 +20,14 @@ args = "ats-landing-page"
 [[workflows.workflow]]
 name = "ats-landing-page"
 author = "agent"
+mode = "parallel"
 
 [workflows.workflow.metadata]
 outputType = "webview"
 
 [[workflows.workflow.tasks]]
 task = "shell.exec"
-args = "cd ats-app && (PORT=3001 node server/index.js &) && sleep 3 && npx vite --port 5000 --host 0.0.0.0"
+args = "cd ats-app && (PORT=3001 node server/index.js &) && sleep 5 && npx vite --port 5000 --host 0.0.0.0"
 waitForPort = 5000
 
 [[ports]]
@@ -36,10 +37,6 @@ externalPort = 3001
 [[ports]]
 localPort = 5000
 externalPort = 80
-
-[[ports]]
-localPort = 34457
-externalPort = 8008
 
 [[ports]]
 localPort = 38429

@@ -78,16 +78,32 @@ const TEAMIFIED_ACCOUNTS_URL = 'https://teamified-accounts.replit.app/api';
 // GET /api/organizations - Fetch all client organizations (internal users only)
 app.get('/api/organizations', optionalAuth, async (req, res) => {
   try {
-    // Check if user is internal by category, org type, or role code
-    const internalRoleCodes = ['super_admin', 'admin', 'internal_hr', 'internal_recruiter', 
-                               'internal_hiring_manager', 'internal_finance', 'platform_admin'];
-    const roleCode = req.user?.role?.code?.toLowerCase() || '';
+    // Check if user is internal by category, org type, role code, or role name
+    const internalRoleCodes = [
+      'super_admin', 'superadmin', 'admin', 
+      'internal_hr', 'internalhr',
+      'internal_recruiter', 'internalrecruiter',
+      'internal_account_manager', 'internalaccountmanager',
+      'internal_finance', 'internalfinance',
+      'internal_marketing', 'internalmarketing',
+      'internal_hiring_manager', 'internalhiringmanager',
+      'platform_admin', 'platformadmin'
+    ];
+    
+    const roleCode = req.user?.role?.code || '';
+    const roleName = req.user?.role?.name || '';
+    const normalizedCode = roleCode.toLowerCase().replace(/[\s-]/g, '_');
+    const normalizedCodeNoSep = roleCode.toLowerCase().replace(/[\s_-]/g, '');
+    
     const isInternalUser = req.user?.role?.category === 'internal' || 
                            req.user?.organization?.type === 'internal' ||
-                           internalRoleCodes.includes(roleCode);
+                           internalRoleCodes.includes(normalizedCode) ||
+                           internalRoleCodes.includes(normalizedCodeNoSep) ||
+                           roleName.toLowerCase().includes('internal');
     
     console.log('[Organizations] User check:', {
       roleCode: req.user?.role?.code,
+      roleName: req.user?.role?.name,
       roleCategory: req.user?.role?.category,
       orgType: req.user?.organization?.type,
       isInternal: isInternalUser

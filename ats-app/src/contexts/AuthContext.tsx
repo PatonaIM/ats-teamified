@@ -344,12 +344,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Check role category
     if (role?.category === 'internal') return true;
     
-    // Check known internal role codes
+    // Check known internal role codes (case-insensitive, handle spaces/underscores)
     const internalRoleCodes = [
-      'super_admin', 'admin', 'internal_hr', 'internal_recruiter', 
-      'internal_hiring_manager', 'internal_finance', 'platform_admin'
+      'super_admin', 'superadmin', 'admin', 
+      'internal_hr', 'internalhr',
+      'internal_recruiter', 'internalrecruiter',
+      'internal_account_manager', 'internalaccountmanager',
+      'internal_finance', 'internalfinance',
+      'internal_marketing', 'internalmarketing',
+      'internal_hiring_manager', 'internalhiringmanager',
+      'platform_admin', 'platformadmin'
     ];
-    if (role?.code && internalRoleCodes.includes(role.code.toLowerCase())) return true;
+    
+    if (role?.code) {
+      const normalizedCode = role.code.toLowerCase().replace(/[\s-]/g, '_');
+      const normalizedCodeNoSeparator = role.code.toLowerCase().replace(/[\s_-]/g, '');
+      if (internalRoleCodes.includes(normalizedCode) || internalRoleCodes.includes(normalizedCodeNoSeparator)) {
+        return true;
+      }
+    }
+    
+    // Check if role name contains "internal"
+    if (role?.name?.toLowerCase().includes('internal')) return true;
     
     return false;
   }, [organization, role]);
