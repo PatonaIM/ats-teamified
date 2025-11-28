@@ -58,7 +58,7 @@ export default function JobDetailsKanban() {
   const params = useParams<{ jobId: string }>();
   const jobId = params.jobId;
   const navigate = useNavigate();
-  const { user, isLoading: authLoading } = useAuth();
+  const { user, isLoading: authLoading, isClientUser } = useAuth();
   
   console.log('[JobDetailsKanban] Component loaded with jobId:', jobId);
   
@@ -364,12 +364,11 @@ export default function JobDetailsKanban() {
   };
 
   const isViewOnlyForUser = (stageName: string): boolean => {
-    // During auth loading, default to restricted access for security
     if (authLoading) {
       return CLIENT_VIEW_ONLY_STAGES.includes(stageName);
     }
     
-    const isClient = user?.role === 'client';
+    const isClient = isClientUser();
     const isRestrictedStage = CLIENT_VIEW_ONLY_STAGES.includes(stageName);
     return isClient && isRestrictedStage;
   };
