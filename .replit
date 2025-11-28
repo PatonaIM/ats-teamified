@@ -57,10 +57,6 @@ externalPort = 3002
 localPort = 43453
 externalPort = 3000
 
-[[ports]]
-localPort = 44047
-externalPort = 5000
-
 [deployment]
 deploymentTarget = "autoscale"
 run = ["bash", "-c", "cd ats-app && NODE_ENV=production node server/index.js"]
