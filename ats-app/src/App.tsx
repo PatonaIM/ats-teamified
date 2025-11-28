@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { OrganizationProvider } from './contexts/OrganizationContext';
 import { Navigation } from './components/Navigation';
 import { LandingPage } from './components/LandingPage';
 import { JobsPage } from './components/JobsPage';
@@ -20,6 +21,7 @@ import './App.css';
 function App() {
   return (
     <AuthProvider>
+      <OrganizationProvider>
       <BrowserRouter>
         <Routes>
           {/* Public Routes */}
@@ -54,6 +56,7 @@ function App() {
           </Route>
         </Routes>
       </BrowserRouter>
+      </OrganizationProvider>
     </AuthProvider>
   );
 }

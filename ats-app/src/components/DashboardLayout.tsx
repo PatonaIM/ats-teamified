@@ -1,13 +1,14 @@
 import { Outlet, Navigate } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { DarkModeToggle } from './DarkModeToggle';
+import { OrganizationSelector } from './OrganizationSelector';
 import { Bell, Search, User } from 'lucide-react';
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 
 export function DashboardLayout() {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const { user, isAuthenticated, isLoading } = useAuth();
+  const { user, role, isAuthenticated, isLoading, isInternalUser } = useAuth();
 
   if (isLoading) {
     return (
@@ -30,6 +31,18 @@ export function DashboardLayout() {
         <header className="sticky top-0 z-30 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
           <div className="px-6 py-4">
             <div className="flex items-center justify-between">
+              {/* Organization Selector (Internal Users Only) */}
+              {isInternalUser() && (
+                <div className="flex items-center gap-3">
+                  <OrganizationSelector />
+                  {role && (
+                    <span className="hidden lg:inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300">
+                      {role.name}
+                    </span>
+                  )}
+                </div>
+              )}
+              
               {/* Search */}
               <div className="flex-1 max-w-xl">
                 <div className="relative">

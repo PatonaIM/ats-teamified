@@ -72,6 +72,57 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
 });
 
+// Teamified Accounts API URL
+const TEAMIFIED_ACCOUNTS_URL = 'https://teamified-accounts.replit.app/api';
+
+// GET /api/organizations - Fetch all client organizations (internal users only)
+app.get('/api/organizations', optionalAuth, async (req, res) => {
+  try {
+    const isInternalUser = req.user?.role?.category === 'internal' || 
+                           req.user?.organization?.type === 'internal';
+    
+    if (!isInternalUser) {
+      return res.json({ organizations: [] });
+    }
+
+    const authHeader = req.headers['authorization'];
+    
+    try {
+      const response = await fetch(`${TEAMIFIED_ACCOUNTS_URL}/v1/organizations`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(authHeader ? { 'Authorization': authHeader } : {})
+        }
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const clientOrgs = (data.organizations || data || []).filter(
+          org => org.type === 'client' || !org.type
+        );
+        console.log('[Organizations] Fetched', clientOrgs.length, 'client organizations from Teamified Accounts');
+        return res.json({ organizations: clientOrgs });
+      }
+    } catch (fetchError) {
+      console.warn('[Organizations] Failed to fetch from Teamified Accounts:', fetchError.message);
+    }
+
+    const result = await query(`
+      SELECT id, name, slug, type, status, created_at
+      FROM organizations
+      WHERE type = 'client' AND status = 'active'
+      ORDER BY name ASC
+    `);
+    
+    console.log('[Organizations] Returning', result.rows.length, 'organizations from local DB');
+    res.json({ organizations: result.rows });
+  } catch (error) {
+    console.error('[Organizations] Error:', error);
+    res.status(500).json({ error: 'Failed to fetch organizations' });
+  }
+});
+
 // Helper function to normalize employment type
 const normalizeEmploymentType = (type) => {
   if (!type) return 'fullTime'; // default
