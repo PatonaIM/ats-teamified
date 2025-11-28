@@ -4,7 +4,7 @@
  */
 
 const TEAMIFIED_SSO_URL = 'https://teamified-accounts.replit.app/api';
-const USE_DEMO_MODE = false; // Disabled for SSO testing with actual users
+const USE_DEMO_MODE = true; // Demo mode enabled
 
 /**
  * Middleware to authenticate requests using Teamified SSO bearer tokens
