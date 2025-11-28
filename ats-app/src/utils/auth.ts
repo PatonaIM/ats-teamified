@@ -18,7 +18,6 @@ const SSO_CONFIG = {
   tokenUrl: 'https://teamified-accounts.replit.app/api/v1/sso/token',
   userInfoUrl: 'https://teamified-accounts.replit.app/api/v1/sso/me',
   clientId: 'client_5fe07c29f5d8f5e5455a0c31370d8ab4',
-  scope: 'openid profile email',
 };
 
 export interface UserProfile {
@@ -61,10 +60,8 @@ export async function initiateLogin(): Promise<void> {
 
     // Build authorization URL
     const authUrl = new URL(SSO_CONFIG.authorizationUrl);
-    authUrl.searchParams.set('response_type', 'code');
     authUrl.searchParams.set('client_id', SSO_CONFIG.clientId);
     authUrl.searchParams.set('redirect_uri', redirectUri);
-    authUrl.searchParams.set('scope', SSO_CONFIG.scope);
     authUrl.searchParams.set('state', state);
     authUrl.searchParams.set('code_challenge', codeChallenge);
     authUrl.searchParams.set('code_challenge_method', 'S256');
