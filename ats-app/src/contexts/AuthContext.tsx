@@ -11,10 +11,7 @@ import {
   validateToken,
   getStoredToken,
   storeUserProfile,
-  logout as logoutUser,
   type UserProfile,
-  type UserRole,
-  type UserOrganization,
 } from '../utils/auth';
 
 interface Role {
@@ -291,8 +288,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRole(null);
     setPermissions([]);
     setOrganization(null);
-    logoutUser();
+    
     sessionStorage.removeItem('demo_mode');
+    sessionStorage.removeItem('selectedOrganizationId');
+    sessionStorage.removeItem('auth_access_token');
+    sessionStorage.removeItem('auth_refresh_token');
+    sessionStorage.removeItem('auth_expires_at');
+    sessionStorage.removeItem('auth_user_profile');
+    sessionStorage.clear();
+    
+    console.log('[AuthContext] User logged out, all session data cleared');
+    
+    window.location.href = '/';
   };
 
   const refreshUser = async () => {
