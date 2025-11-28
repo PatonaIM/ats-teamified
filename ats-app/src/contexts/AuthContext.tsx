@@ -175,11 +175,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setPermissions(mappedPermissions);
     setOrganization(mappedOrg);
     
-    console.log('[AuthContext] RBAC loaded from SSO:', 
-      mappedRole?.code, 
-      mappedPermissions.length, 'permissions',
-      mappedOrg?.name || 'no org'
-    );
+    console.log('[AuthContext] RBAC loaded from SSO:', {
+      roleCode: mappedRole?.code,
+      roleCategory: mappedRole?.category,
+      orgType: mappedOrg?.type,
+      orgName: mappedOrg?.name,
+      permissions: mappedPermissions.length
+    });
   }, []);
 
   useEffect(() => {
@@ -336,7 +338,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [role]);
 
   const isInternalUser = useCallback((): boolean => {
-    return organization?.type === 'internal' || role?.category === 'internal';
+    // Check organization type
+    if (organization?.type === 'internal') return true;
+    
+    // Check role category
+    if (role?.category === 'internal') return true;
+    
+    // Check known internal role codes
+    const internalRoleCodes = [
+      'super_admin', 'admin', 'internal_hr', 'internal_recruiter', 
+      'internal_hiring_manager', 'internal_finance', 'platform_admin'
+    ];
+    if (role?.code && internalRoleCodes.includes(role.code.toLowerCase())) return true;
+    
+    return false;
   }, [organization, role]);
 
   const isClientUser = useCallback((): boolean => {
