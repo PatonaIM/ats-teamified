@@ -18,15 +18,18 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
-});
+let openai = null;
 
 // Validate OpenAI API key on startup
 if (!process.env.OPENAI_API_KEY) {
-  console.error('❌ ERROR: OPENAI_API_KEY environment variable is not set.');
-  console.error('   AI job description generation will not work.');
-  console.error('   Please add OPENAI_API_KEY to your environment secrets.');
+  console.warn('⚠️  WARNING: OPENAI_API_KEY environment variable is not set.');
+  console.warn('   AI job description generation will not work.');
+  console.warn('   Please add OPENAI_API_KEY to your environment secrets.');
+} else {
+  openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY
+  });
+  console.log('✅ OpenAI API key configured');
 }
 
 // LinkedIn Integration Feature Flag
@@ -925,6 +928,13 @@ app.post('/api/approvals/bulk-approve', async (req, res) => {
 app.post('/api/generate-interview-questions', async (req, res) => {
   console.log('[Backend] Received AI interview question generation request');
   try {
+    if (!openai) {
+      return res.status(503).json({ 
+        error: 'AI features unavailable',
+        message: 'OpenAI API key not configured. Please add OPENAI_API_KEY to your environment secrets.'
+      });
+    }
+    
     const { jobTitle, employmentType, experienceLevel, keySkills, department } = req.body;
     
     if (!jobTitle) {
@@ -1095,6 +1105,13 @@ app.post('/api/generate-job-description', async (req, res) => {
   console.log('[Backend] Received AI job description generation request');
   
   try {
+    if (!openai) {
+      return res.status(503).json({ 
+        error: 'AI features unavailable',
+        message: 'OpenAI API key not configured. Please add OPENAI_API_KEY to your environment secrets.'
+      });
+    }
+    
     const { title, city, remoteOk, keySkills, experienceLevel, userId = 'anonymous' } = req.body;
     
     // Validate required fields

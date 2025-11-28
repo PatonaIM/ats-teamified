@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Users, Mail, Phone, Calendar, ExternalLink, ChevronRight } from 'lucide-react';
+import { Search, Users, Mail, Phone, Calendar, ExternalLink, ChevronRight, Eye } from 'lucide-react';
 import { apiRequest } from '../utils/api';
+import CandidateDetailPanel from './CandidateDetailPanel';
 
 interface Candidate {
   id: string;
@@ -54,6 +55,7 @@ export default function CandidatesPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedJob, setSelectedJob] = useState<string>('all');
   const [selectedStage, setSelectedStage] = useState<string>('all');
+  const [selectedCandidateId, setSelectedCandidateId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -217,7 +219,11 @@ export default function CandidatesPage() {
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredCandidates.map((candidate) => (
-                  <tr key={candidate.id} className="hover:bg-gray-50 transition-colors">
+                  <tr 
+                    key={candidate.id} 
+                    className="hover:bg-purple-50 transition-colors cursor-pointer"
+                    onClick={() => setSelectedCandidateId(candidate.id)}
+                  >
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center">
                         <div className="w-10 h-10 bg-gradient-to-br from-purple-400 to-blue-500 rounded-full flex items-center justify-center text-white font-semibold">
@@ -279,14 +285,21 @@ export default function CandidatesPage() {
                         {formatDate(candidate.created_at)}
                       </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm" onClick={(e) => e.stopPropagation()}>
                       <div className="flex gap-2">
+                        <button
+                          onClick={() => setSelectedCandidateId(candidate.id)}
+                          className="p-1.5 text-purple-600 hover:text-purple-800 hover:bg-purple-100 rounded-lg transition-colors"
+                          title="View Details"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
                         {candidate.resume_url && (
                           <a
                             href={candidate.resume_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-purple-600 hover:text-purple-800"
+                            className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-100 rounded-lg transition-colors"
                             title="View Resume"
                           >
                             <ExternalLink className="w-4 h-4" />
@@ -294,7 +307,7 @@ export default function CandidatesPage() {
                         )}
                         <button
                           onClick={() => navigate(`/dashboard/jobs/${candidate.job_id}`)}
-                          className="text-blue-600 hover:text-blue-800"
+                          className="p-1.5 text-gray-600 hover:text-gray-800 hover:bg-gray-200 rounded-lg transition-colors"
                           title="View Job"
                         >
                           <ChevronRight className="w-4 h-4" />
@@ -332,6 +345,14 @@ export default function CandidatesPage() {
           <div className="text-sm opacity-90">Pipeline Stages</div>
         </div>
       </div>
+
+      {/* Candidate Detail Panel */}
+      {selectedCandidateId && (
+        <CandidateDetailPanel
+          candidateId={selectedCandidateId}
+          onClose={() => setSelectedCandidateId(null)}
+        />
+      )}
     </div>
   );
 }
