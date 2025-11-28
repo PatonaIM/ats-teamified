@@ -130,6 +130,8 @@ function mapSSODataToRBAC(userProfile: UserProfile): {
   permissions: string[];
   organization: Organization | null;
 } {
+  console.log('[AuthContext] Raw SSO user profile:', JSON.stringify(userProfile, null, 2));
+  
   const ssoRole = userProfile.role;
   const ssoOrg = userProfile.organization;
   
@@ -146,6 +148,9 @@ function mapSSODataToRBAC(userProfile: UserProfile): {
     };
     
     permissions = userProfile.permissions || ROLE_PERMISSIONS[ssoRole.code] || [];
+    console.log('[AuthContext] Mapped role:', role);
+  } else {
+    console.log('[AuthContext] No role in SSO profile');
   }
   
   if (ssoOrg) {
@@ -155,6 +160,9 @@ function mapSSODataToRBAC(userProfile: UserProfile): {
       slug: ssoOrg.slug,
       type: ssoOrg.type || 'client'
     };
+    console.log('[AuthContext] Mapped organization:', organization);
+  } else {
+    console.log('[AuthContext] No organization in SSO profile');
   }
   
   return { role, permissions, organization };
@@ -338,11 +346,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [role]);
 
   const isInternalUser = useCallback((): boolean => {
+    console.log('[AuthContext] isInternalUser check:', {
+      roleCode: role?.code,
+      roleName: role?.name,
+      roleCategory: role?.category,
+      orgType: organization?.type
+    });
+    
     // Check organization type
-    if (organization?.type === 'internal') return true;
+    if (organization?.type === 'internal') {
+      console.log('[AuthContext] isInternalUser: TRUE (org type is internal)');
+      return true;
+    }
     
     // Check role category
-    if (role?.category === 'internal') return true;
+    if (role?.category === 'internal') {
+      console.log('[AuthContext] isInternalUser: TRUE (role category is internal)');
+      return true;
+    }
     
     // Check known internal role codes (case-insensitive, handle spaces/underscores)
     const internalRoleCodes = [
@@ -359,14 +380,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (role?.code) {
       const normalizedCode = role.code.toLowerCase().replace(/[\s-]/g, '_');
       const normalizedCodeNoSeparator = role.code.toLowerCase().replace(/[\s_-]/g, '');
+      console.log('[AuthContext] Checking role code:', { original: role.code, normalized: normalizedCode, noSep: normalizedCodeNoSeparator });
       if (internalRoleCodes.includes(normalizedCode) || internalRoleCodes.includes(normalizedCodeNoSeparator)) {
+        console.log('[AuthContext] isInternalUser: TRUE (role code matches)');
         return true;
       }
     }
     
-    // Check if role name contains "internal"
-    if (role?.name?.toLowerCase().includes('internal')) return true;
+    // Check if role name contains "internal" or "super" or "admin"
+    if (role?.name) {
+      const lowerName = role.name.toLowerCase();
+      if (lowerName.includes('internal') || lowerName.includes('super admin') || lowerName === 'admin') {
+        console.log('[AuthContext] isInternalUser: TRUE (role name matches)');
+        return true;
+      }
+    }
     
+    console.log('[AuthContext] isInternalUser: FALSE');
     return false;
   }, [organization, role]);
 
