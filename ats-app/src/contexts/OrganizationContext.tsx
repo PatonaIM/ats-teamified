@@ -4,7 +4,7 @@
  * Internal users can view data across all organizations
  */
 
-import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { apiRequest } from '../utils/api';
 import { useAuth } from './AuthContext';
@@ -29,14 +29,24 @@ interface OrganizationContextType {
 const OrganizationContext = createContext<OrganizationContextType | undefined>(undefined);
 
 export function OrganizationProvider({ children }: { children: ReactNode }) {
-  const { isInternalUser, isAuthenticated } = useAuth();
+  const { isInternalUser, isAuthenticated, role } = useAuth();
   const [organizations, setOrganizations] = useState<ClientOrganization[]>([]);
   const [selectedOrganization, setSelectedOrganization] = useState<ClientOrganization | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const hasFetchedRef = useRef(false);
 
   const fetchOrganizations = useCallback(async () => {
-    if (!isAuthenticated || !isInternalUser()) {
+    const isInternal = isInternalUser();
+    console.log('[OrganizationContext] Checking user:', {
+      isAuthenticated,
+      isInternal,
+      roleCode: role?.code,
+      roleCategory: role?.category
+    });
+    
+    if (!isAuthenticated || !isInternal) {
+      console.log('[OrganizationContext] Skipping fetch - not internal user');
       setOrganizations([]);
       return;
     }
@@ -45,6 +55,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
     setError(null);
 
     try {
+      console.log('[OrganizationContext] Fetching organizations...');
       const response = await apiRequest<{ organizations: ClientOrganization[] }>('/api/organizations');
       const orgs = response.organizations || [];
       setOrganizations(orgs);
@@ -64,13 +75,21 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
     } finally {
       setIsLoading(false);
     }
-  }, [isAuthenticated, isInternalUser]);
+  }, [isAuthenticated, isInternalUser, role]);
 
   useEffect(() => {
-    if (isAuthenticated && isInternalUser()) {
+    const isInternal = isInternalUser();
+    console.log('[OrganizationContext] Effect triggered:', { isAuthenticated, isInternal, roleCode: role?.code });
+    
+    if (isAuthenticated && isInternal && !hasFetchedRef.current) {
+      hasFetchedRef.current = true;
       fetchOrganizations();
     }
-  }, [isAuthenticated, isInternalUser, fetchOrganizations]);
+    
+    if (!isAuthenticated) {
+      hasFetchedRef.current = false;
+    }
+  }, [isAuthenticated, role, isInternalUser, fetchOrganizations]);
 
   const handleSetSelectedOrganization = useCallback((org: ClientOrganization | null) => {
     setSelectedOrganization(org);
