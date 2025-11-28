@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 
+// Define the TimeSlot interface
 interface TimeSlot {
   id: string;
   start_time: string;
@@ -22,12 +23,14 @@ export const CandidateBookingPage: React.FC = () => {
   const [booking, setBooking] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
-  
+
   const [availableSlots, setAvailableSlots] = useState<TimeSlot[]>([]);
   const [selectedSlot, setSelectedSlot] = useState<string | null>(null);
   const [email, setEmail] = useState('');
   const [notes, setNotes] = useState('');
-  const [userTimezone] = useState(Intl.DateTimeFormat().resolvedOptions().timeZone);
+  const [userTimezone] = useState(
+    Intl.DateTimeFormat().resolvedOptions().timeZone
+  );
 
   useEffect(() => {
     loadAvailableSlots();
@@ -74,8 +77,8 @@ export const CandidateBookingPage: React.FC = () => {
           candidateId,
           confirmedEmail: email,
           candidateTimezone: userTimezone,
-          notes: notes || null
-        })
+          notes: notes || null,
+        }),
       });
 
       if (!response.ok) {
@@ -99,7 +102,7 @@ export const CandidateBookingPage: React.FC = () => {
         weekday: 'long',
         year: 'numeric',
         month: 'long',
-        day: 'numeric'
+        day: 'numeric',
       });
 
       if (!grouped[date]) {
@@ -116,7 +119,7 @@ export const CandidateBookingPage: React.FC = () => {
     return new Date(dateString).toLocaleTimeString('en-US', {
       hour: '2-digit',
       minute: '2-digit',
-      hour12: true
+      hour12: true,
     });
   };
 
@@ -138,13 +141,26 @@ export const CandidateBookingPage: React.FC = () => {
       <div className="min-h-screen bg-gradient-to-br from-[#0f0f1e] to-[#1a1a2e] flex items-center justify-center p-4">
         <div className="bg-[#1a1a2e] rounded-lg shadow-xl p-8 max-w-md w-full text-center">
           <div className="w-16 h-16 bg-green-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            <svg
+              className="w-8 h-8 text-green-500"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M5 13l4 4L19 7"
+              />
             </svg>
           </div>
-          <h2 className="text-2xl font-bold text-white mb-2">Interview Booked Successfully!</h2>
+          <h2 className="text-2xl font-bold text-white mb-2">
+            Interview Booked Successfully!
+          </h2>
           <p className="text-gray-400 mb-6">
-            You will receive a confirmation email with interview details and a calendar invitation.
+            You will receive a confirmation email with interview details and a
+            calendar invitation.
           </p>
           <div className="bg-[#0f0f1e] border border-gray-700 rounded-lg p-4 text-left">
             <p className="text-sm text-gray-400">Check your email for:</p>
@@ -168,8 +184,12 @@ export const CandidateBookingPage: React.FC = () => {
       <div className="max-w-4xl mx-auto">
         <div className="bg-[#1a1a2e] rounded-lg shadow-xl overflow-hidden">
           <div className="p-6 bg-gradient-to-r from-purple-600 to-blue-600">
-            <h1 className="text-3xl font-bold text-white">Schedule Your Interview</h1>
-            <p className="text-purple-100 mt-2">Select a time that works best for you</p>
+            <h1 className="text-3xl font-bold text-white">
+              Schedule Your Interview
+            </h1>
+            <p className="text-purple-100 mt-2">
+              Select a time that works best for you
+            </p>
           </div>
 
           <div className="p-6">
@@ -187,16 +207,21 @@ export const CandidateBookingPage: React.FC = () => {
             ) : availableSlots.length === 0 ? (
               <div className="text-center py-12">
                 <div className="text-6xl mb-4">📅</div>
-                <h3 className="text-xl font-semibold text-white mb-2">No Available Slots</h3>
+                <h3 className="text-xl font-semibold text-white mb-2">
+                  No Available Slots
+                </h3>
                 <p className="text-gray-400">
-                  There are currently no available interview times. Please check back later or contact the recruiter.
+                  There are currently no available interview times. Please check
+                  back later or contact the recruiter.
                 </p>
               </div>
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="lg:col-span-2 space-y-6">
                   <div className="flex items-center justify-between">
-                    <h2 className="text-xl font-semibold text-white">Available Times</h2>
+                    <h2 className="text-xl font-semibold text-white">
+                      Available Times
+                    </h2>
                     <div className="text-sm text-gray-400">
                       Timezone: {userTimezone}
                     </div>
@@ -220,8 +245,12 @@ export const CandidateBookingPage: React.FC = () => {
                               }`}
                             >
                               <div className="flex items-center gap-2 mb-1">
-                                <span className="text-lg">{getInterviewTypeIcon(slot.interview_type)}</span>
-                                <span className="font-semibold">{formatTime(slot.start_time)}</span>
+                                <span className="text-lg">
+                                  {getInterviewTypeIcon(slot.interview_type)}
+                                </span>
+                                <span className="font-semibold">
+                                  {formatTime(slot.start_time)}
+                                </span>
                               </div>
                               <div className="text-xs opacity-80">
                                 {slot.duration_minutes} minutes
@@ -241,30 +270,46 @@ export const CandidateBookingPage: React.FC = () => {
 
                 <div className="lg:col-span-1">
                   <div className="bg-[#0f0f1e] border border-gray-700 rounded-lg p-6 sticky top-4">
-                    <h3 className="text-lg font-semibold text-white mb-4">Booking Details</h3>
+                    <h3 className="text-lg font-semibold text-white mb-4">
+                      Booking Details
+                    </h3>
 
                     {selectedSlotData ? (
                       <div className="space-y-4">
                         <div>
-                          <label className="block text-sm text-gray-400 mb-1">Selected Time</label>
+                          <label className="block text-sm text-gray-400 mb-1">
+                            Selected Time
+                          </label>
                           <div className="text-white">
-                            {new Date(selectedSlotData.start_time).toLocaleDateString('en-US', {
+                            {new Date(
+                              selectedSlotData.start_time
+                            ).toLocaleDateString('en-US', {
                               weekday: 'short',
                               month: 'short',
-                              day: 'numeric'
-                            })} at {formatTime(selectedSlotData.start_time)}
+                              day: 'numeric',
+                            })}{' '}
+                            at {formatTime(selectedSlotData.start_time)}
                           </div>
                         </div>
 
                         <div>
-                          <label className="block text-sm text-gray-400 mb-1">Duration</label>
-                          <div className="text-white">{selectedSlotData.duration_minutes} minutes</div>
+                          <label className="block text-sm text-gray-400 mb-1">
+                            Duration
+                          </label>
+                          <div className="text-white">
+                            {selectedSlotData.duration_minutes} minutes
+                          </div>
                         </div>
 
                         <div>
-                          <label className="block text-sm text-gray-400 mb-1">Type</label>
+                          <label className="block text-sm text-gray-400 mb-1">
+                            Type
+                          </label>
                           <div className="text-white capitalize">
-                            {getInterviewTypeIcon(selectedSlotData.interview_type)} {selectedSlotData.interview_type}
+                            {getInterviewTypeIcon(
+                              selectedSlotData.interview_type
+                            )}{' '}
+                            {selectedSlotData.interview_type}
                           </div>
                         </div>
 
@@ -275,7 +320,7 @@ export const CandidateBookingPage: React.FC = () => {
                           <input
                             type="email"
                             value={email}
-                            onChange={(e) => setEmail(e.target.value)}
+                            onChange={e => setEmail(e.target.value)}
                             placeholder="your.email@example.com"
                             className="w-full px-3 py-2 bg-[#1a1a2e] border border-gray-700 rounded-lg text-white focus:outline-none focus:border-purple-500"
                           />
@@ -287,7 +332,7 @@ export const CandidateBookingPage: React.FC = () => {
                           </label>
                           <textarea
                             value={notes}
-                            onChange={(e) => setNotes(e.target.value)}
+                            onChange={e => setNotes(e.target.value)}
                             placeholder="Any questions or comments..."
                             rows={3}
                             className="w-full px-3 py-2 bg-[#1a1a2e] border border-gray-700 rounded-lg text-white focus:outline-none focus:border-purple-500 resize-none"
