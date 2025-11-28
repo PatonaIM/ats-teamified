@@ -34,7 +34,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { enabled: workflowBuilderEnabled } = useWorkflowBuilder();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
 
   const isActive = (path: string) => {
     if (path === '/dashboard') {
@@ -148,7 +148,7 @@ export function Sidebar({ collapsed, onToggle }: SidebarProps) {
           </button>
 
           <button
-            onClick={() => navigate('/')}
+            onClick={logout}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all duration-200"
           >
             <LogOut className="w-5 h-5 flex-shrink-0" />
