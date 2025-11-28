@@ -16,9 +16,9 @@ import {
 const SSO_CONFIG = {
   authorizationUrl: 'https://teamified-accounts.replit.app/api/v1/sso/authorize',
   tokenUrl: 'https://teamified-accounts.replit.app/api/v1/sso/token',
-  validationUrl: 'https://teamified-accounts.replit.app/api/v1/sso/validate',
-  clientId: 'test-client',
-  clientType: 'public',
+  userInfoUrl: 'https://teamified-accounts.replit.app/api/v1/sso/me',
+  clientId: 'client_5fe07c29f5d8f5e5455a0c31370d8ab4',
+  scope: 'openid profile email',
 };
 
 export interface UserProfile {
@@ -61,8 +61,10 @@ export async function initiateLogin(): Promise<void> {
 
     // Build authorization URL
     const authUrl = new URL(SSO_CONFIG.authorizationUrl);
+    authUrl.searchParams.set('response_type', 'code');
     authUrl.searchParams.set('client_id', SSO_CONFIG.clientId);
     authUrl.searchParams.set('redirect_uri', redirectUri);
+    authUrl.searchParams.set('scope', SSO_CONFIG.scope);
     authUrl.searchParams.set('state', state);
     authUrl.searchParams.set('code_challenge', codeChallenge);
     authUrl.searchParams.set('code_challenge_method', 'S256');
@@ -141,13 +143,13 @@ export async function handleCallback(
 }
 
 /**
- * Validate access token with SSO provider
+ * Fetch user information from SSO provider using access token
  */
-export async function validateToken(accessToken: string): Promise<UserProfile | null> {
+export async function fetchUserInfo(accessToken: string): Promise<UserProfile | null> {
   try {
-    console.log('[Auth] Validating access token...');
+    console.log('[Auth] Fetching user information...');
 
-    const response = await fetch(SSO_CONFIG.validationUrl, {
+    const response = await fetch(SSO_CONFIG.userInfoUrl, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${accessToken}`,
@@ -155,17 +157,24 @@ export async function validateToken(accessToken: string): Promise<UserProfile | 
     });
 
     if (!response.ok) {
-      console.warn('[Auth] Token validation failed:', response.status);
+      console.warn('[Auth] Failed to fetch user info:', response.status);
       return null;
     }
 
     const userProfile: UserProfile = await response.json();
-    console.log('[Auth] Token valid, user profile retrieved:', userProfile.email);
+    console.log('[Auth] User profile retrieved:', userProfile.email);
     return userProfile;
   } catch (error) {
-    console.error('[Auth] Token validation error:', error);
+    console.error('[Auth] User info fetch error:', error);
     return null;
   }
+}
+
+/**
+ * Validate access token with SSO provider (alias for fetchUserInfo)
+ */
+export async function validateToken(accessToken: string): Promise<UserProfile | null> {
+  return fetchUserInfo(accessToken);
 }
 
 /**
