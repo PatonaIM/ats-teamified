@@ -78,8 +78,20 @@ const TEAMIFIED_ACCOUNTS_URL = 'https://teamified-accounts.replit.app/api';
 // GET /api/organizations - Fetch all client organizations (internal users only)
 app.get('/api/organizations', optionalAuth, async (req, res) => {
   try {
+    // Check if user is internal by category, org type, or role code
+    const internalRoleCodes = ['super_admin', 'admin', 'internal_hr', 'internal_recruiter', 
+                               'internal_hiring_manager', 'internal_finance', 'platform_admin'];
+    const roleCode = req.user?.role?.code?.toLowerCase() || '';
     const isInternalUser = req.user?.role?.category === 'internal' || 
-                           req.user?.organization?.type === 'internal';
+                           req.user?.organization?.type === 'internal' ||
+                           internalRoleCodes.includes(roleCode);
+    
+    console.log('[Organizations] User check:', {
+      roleCode: req.user?.role?.code,
+      roleCategory: req.user?.role?.category,
+      orgType: req.user?.organization?.type,
+      isInternal: isInternalUser
+    });
     
     if (!isInternalUser) {
       return res.json({ organizations: [] });
