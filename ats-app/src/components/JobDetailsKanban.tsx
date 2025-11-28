@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Briefcase, MapPin, DollarSign, Users, Mail, Phone, Calendar, ChevronRight, Download, ChevronDown, FileText, Eye, Search, X } from 'lucide-react';
+import { ArrowLeft, Briefcase, MapPin, DollarSign, Users, Mail, Phone, Calendar, ChevronRight, Download, ChevronDown, FileText, Eye, Search, X, User } from 'lucide-react';
 import { apiRequest } from '../utils/api';
 import ConfirmationModal from './ConfirmationModal';
 import { useAuth } from '../contexts/AuthContext';
+import CandidateDetailPanel from './CandidateDetailPanel';
 
 interface Job {
   id: string;
@@ -69,6 +70,7 @@ export default function JobDetailsKanban() {
   const [loading, setLoading] = useState(true);
   const [expandedStages, setExpandedStages] = useState<Set<string>>(new Set());
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
+  const [showDetailPanel, setShowDetailPanel] = useState<string | null>(null);
   const [stageSubstages, setStageSubstages] = useState<Record<string, Substage[]>>({});
   const [loadingSubstages, setLoadingSubstages] = useState<Set<string>>(new Set());
   
@@ -1171,6 +1173,17 @@ export default function JobDetailsKanban() {
                     </a>
                   </div>
                 )}
+
+                {/* View Full Details Button */}
+                <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+                  <button
+                    onClick={() => setShowDetailPanel(selectedCandidate.id)}
+                    className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white rounded-lg transition-all font-medium"
+                  >
+                    <User size={18} />
+                    View Full Profile & History
+                  </button>
+                </div>
               </div>
               
               {/* AI Interview Actions & Results - Team Connect Integration */}
@@ -1587,6 +1600,14 @@ export default function JobDetailsKanban() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Candidate Detail Panel */}
+      {showDetailPanel && (
+        <CandidateDetailPanel
+          candidateId={showDetailPanel}
+          onClose={() => setShowDetailPanel(null)}
+        />
       )}
     </div>
   );
