@@ -1,0 +1,43 @@
+auth.ts:105 
+ POST https://teamified-accounts.replit.app/api/v1/sso/token 401 (Unauthorized)
+handleCallback	@	auth.ts:105
+processCallback	@	AuthCallback.tsx:49
+(anonymous)	@	AuthCallback.tsx:80
+
+installHook.js:1 [Auth] Token exchange failed: 
+{message: 'Invalid or expired authorization code', error: 'Unauthorized', statusCode: 401}
+installHook.js:1 [Auth] Callback handling failed: Error: Failed to exchange authorization code
+    at handleCallback (auth.ts:122:13)
+    at async processCallback (AuthCallback.tsx:49:9)
+installHook.js:1 [AuthCallback] Callback processing failed: Error: Failed to exchange authorization code
+    at handleCallback (auth.ts:122:13)
+    at async processCallback (AuthCallback.tsx:49:9)
+auth.ts:207 [Auth] Session cleared
+auth.ts:105 
+ POST https://teamified-accounts.replit.app/api/v1/sso/token 401 (Unauthorized)
+installHook.js:1 [Auth] Token exchange failed: 
+{message: 'Invalid or expired authorization code', error: 'Unauthorized', statusCode: 401}
+installHook.js:1 [Auth] Callback handling failed: Error: Failed to exchange authorization code
+    at handleCallback (auth.ts:122:13)
+    at async processCallback (AuthCallback.tsx:49:9)
+installHook.js:1 [AuthCallback] Callback processing failed: Error: Failed to exchange authorization code
+    at handleCallback (auth.ts:122:13)
+    at async processCallback (AuthCallback.tsx:49:9)
+auth.ts:207 [Auth] Session cleared
+auth.ts:133 [Auth] Successfully obtained access token
+auth.ts:147 [Auth] Fetching user information...
+auth.ts:162 [Auth] User profile retrieved: david.kim@teamified.com
+AuthCallback.tsx:62 [AuthCallback] Authentication successful, redirecting to dashboard...
+AuthCallback.tsx:46 [AuthCallback] Processing OAuth callback...
+installHook.js:1 [Auth] Callback handling failed: Error: PKCE parameters not found. Please restart login.
+    at handleCallback (auth.ts:94:13)
+    at processCallback (AuthCallback.tsx:49:15)
+    at AuthCallback.tsx:80:5
+ Error Component Stack
+    at AuthCallback (AuthCallback.tsx:13:26)
+    at AuthProvider (AuthContext.tsx:30:32)
+    at App (<anonymous>)
+installHook.js:1 [AuthCallback] Callback processing failed: Error: PKCE parameters not found. Please restart login.
+    at handleCallback (auth.ts:94:13)
+    at processCallback (AuthCallback.tsx:49:15)
+    at AuthCallback.tsx:80:5

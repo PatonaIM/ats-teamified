@@ -4,7 +4,7 @@
  * and redirects user to dashboard on success
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { handleCallback } from '../utils/auth';
 import { useAuth } from '../contexts/AuthContext';
@@ -15,17 +15,22 @@ export function AuthCallback() {
   const { refreshUser } = useAuth();
   const [error, setError] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(true);
+  const processedRef = useRef(false);
 
   useEffect(() => {
     const processCallback = async () => {
+      if (processedRef.current) {
+        console.log('[AuthCallback] Already processed, skipping...');
+        return;
+      }
+      processedRef.current = true;
+
       try {
-        // Extract authorization code and state from URL
         const code = searchParams.get('code');
         const state = searchParams.get('state');
         const errorParam = searchParams.get('error');
         const errorDescription = searchParams.get('error_description');
 
-        // Check for OAuth errors
         if (errorParam) {
           const message = errorDescription || `OAuth error: ${errorParam}`;
           console.error('[AuthCallback] OAuth error:', message);
@@ -35,7 +40,6 @@ export function AuthCallback() {
           return;
         }
 
-        // Validate required parameters
         if (!code || !state) {
           setError('Invalid callback parameters. Missing code or state.');
           setIsProcessing(false);
@@ -45,28 +49,21 @@ export function AuthCallback() {
 
         console.log('[AuthCallback] Processing OAuth callback...');
 
-        // Exchange authorization code for access token
         await handleCallback(code, state);
 
-        // Refresh user profile in auth context
         try {
           await refreshUser();
         } catch (err) {
-          // Token validation failed after successful code exchange
-          // This likely means SSO provider issue or network problem
-          // Clear tokens and PKCE params since flow is broken
           console.error('[AuthCallback] Token validation failed:', err);
           throw new Error('Authentication succeeded but profile retrieval failed. Please try again.');
         }
 
         console.log('[AuthCallback] Authentication successful, redirecting to dashboard...');
 
-        // Redirect to dashboard
         navigate('/dashboard', { replace: true });
       } catch (error) {
         console.error('[AuthCallback] Callback processing failed:', error);
         
-        // Clear all auth data since the OAuth flow failed
         const { clearAuth } = await import('../utils/auth');
         clearAuth();
         
