@@ -8,6 +8,9 @@ import OpenAI from 'openai';
 import { postJobToLinkedIn, shouldAutoPostToLinkedIn, syncJobToLinkedIn, getLinkedInSyncStatus, retryLinkedInSync } from './services/linkedin.js';
 import { getCandidates, getCandidateById, createCandidate, updateCandidate, addCandidateDocument, addCandidateCommunication, moveCandidateToStage, disqualifyCandidate, restoreCandidate, deleteCandidate } from './services/candidates.js';
 import { autoTransitionService } from './services/auto-transition.js';
+import { getUserRoleAndPermissions, getAllRoles, getAllPermissions } from './services/rbac.js';
+import { requirePermissions, requireRole as requireRbacRole, attachPrincipal } from './middleware/rbac.js';
+import { runRBACMigration } from './migrations/013_rbac_system.js';
 import sanitizeHtml from 'sanitize-html';
 import { randomUUID } from 'crypto';
 import { authenticateRequest, optionalAuth, requireRole } from './middleware/auth.js';
@@ -4822,6 +4825,74 @@ app.get('/api/auto-transition/stale', async (req, res) => {
   }
 });
 
+// ===== RBAC API Endpoints =====
+
+// GET /api/auth/me - Get current user's role and permissions
+app.get('/api/auth/me', optionalAuth, async (req, res) => {
+  try {
+    const userEmail = req.user?.email;
+    
+    if (!userEmail) {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: 'No authentication provided'
+      });
+    }
+
+    const userInfo = await getUserRoleAndPermissions(userEmail);
+    
+    if (!userInfo) {
+      return res.json({
+        user: {
+          email: userEmail,
+          name: req.user?.name || userEmail.split('@')[0]
+        },
+        role: null,
+        permissions: [],
+        organization: null,
+        isRegistered: false
+      });
+    }
+
+    res.json({
+      user: {
+        id: userInfo.userId,
+        email: userInfo.email,
+        name: userInfo.name
+      },
+      role: userInfo.role,
+      permissions: userInfo.permissions,
+      organization: userInfo.organization,
+      isRegistered: true
+    });
+  } catch (error) {
+    console.error('[RBAC] Error getting user info:', error);
+    res.status(500).json({ error: 'Failed to get user info' });
+  }
+});
+
+// GET /api/rbac/roles - Get all available roles
+app.get('/api/rbac/roles', optionalAuth, async (req, res) => {
+  try {
+    const roles = await getAllRoles();
+    res.json({ roles });
+  } catch (error) {
+    console.error('[RBAC] Error getting roles:', error);
+    res.status(500).json({ error: 'Failed to get roles' });
+  }
+});
+
+// GET /api/rbac/permissions - Get all available permissions
+app.get('/api/rbac/permissions', optionalAuth, async (req, res) => {
+  try {
+    const permissions = await getAllPermissions();
+    res.json({ permissions });
+  } catch (error) {
+    console.error('[RBAC] Error getting permissions:', error);
+    res.status(500).json({ error: 'Failed to get permissions' });
+  }
+});
+
 // GET /api/feature-flags - Public endpoint to check enabled features (no auth required)
 app.get('/api/feature-flags', (req, res) => {
   res.json({
@@ -4840,9 +4911,21 @@ if (process.env.NODE_ENV === 'production') {
 
 export { app };
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+async function initializeServer() {
+  try {
+    console.log('🔧 Running RBAC migration...');
+    await runRBACMigration();
+    console.log('✅ RBAC system initialized');
+  } catch (error) {
+    console.error('⚠️ RBAC migration warning:', error.message);
+  }
+
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`📊 API available at http://localhost:${PORT}/api/jobs`);
   });
+}
+
+if (import.meta.url === `file://${process.argv[1]}`) {
+  initializeServer();
 }

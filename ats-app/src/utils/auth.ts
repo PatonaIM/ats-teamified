@@ -20,11 +20,28 @@ const SSO_CONFIG = {
   clientId: 'client_5fe07c29f5d8f5e5455a0c31370d8ab4',
 };
 
+export interface UserRole {
+  id: string;
+  code: string;
+  name: string;
+  category: 'internal' | 'client' | 'candidate';
+}
+
+export interface UserOrganization {
+  id: string;
+  name: string;
+  slug: string;
+  type: 'internal' | 'client';
+}
+
 export interface UserProfile {
   id: string;
   email: string;
   name: string;
   avatar?: string;
+  role?: UserRole;
+  organization?: UserOrganization;
+  permissions?: string[];
   [key: string]: any;
 }
 
