@@ -132,33 +132,65 @@ function mapSSODataToRBAC(userProfile: UserProfile): {
 } {
   console.log('[AuthContext] Raw SSO user profile:', JSON.stringify(userProfile, null, 2));
   
-  const ssoRole = userProfile.role;
-  const ssoOrg = userProfile.organization;
-  
   let role: Role | null = null;
   let organization: Organization | null = null;
   let permissions: string[] = [];
   
-  if (ssoRole) {
+  // Handle role - SSO might return it in different formats
+  const ssoRole = userProfile.role;
+  const roleCode = userProfile.role_code || userProfile.roleCode || (typeof ssoRole === 'string' ? ssoRole : ssoRole?.code);
+  const roleName = userProfile.role_name || userProfile.roleName || (typeof ssoRole === 'object' ? ssoRole?.name : undefined);
+  const roleCategory = userProfile.role_category || userProfile.roleCategory || (typeof ssoRole === 'object' ? ssoRole?.category : undefined);
+  
+  console.log('[AuthContext] Extracted role data:', { roleCode, roleName, roleCategory, ssoRole });
+  
+  if (roleCode || ssoRole) {
+    // Determine category based on role code if not provided
+    let category: 'internal' | 'client' | 'candidate' = 'client';
+    const codeToCheck = (roleCode || '').toLowerCase();
+    
+    if (codeToCheck.includes('super') || codeToCheck.includes('admin') || 
+        codeToCheck.includes('internal') || codeToCheck === 'platform_admin') {
+      category = 'internal';
+    } else if (codeToCheck.includes('candidate')) {
+      category = 'candidate';
+    }
+    
     role = {
-      id: ssoRole.id || ssoRole.code,
-      code: ssoRole.code,
-      name: ssoRole.name,
-      category: ssoRole.category || 'client'
+      id: (typeof ssoRole === 'object' ? ssoRole?.id : roleCode) || roleCode || 'unknown',
+      code: roleCode || (typeof ssoRole === 'string' ? ssoRole : 'unknown'),
+      name: roleName || roleCode || 'Unknown Role',
+      category: (roleCategory as 'internal' | 'client' | 'candidate') || category
     };
     
-    permissions = userProfile.permissions || ROLE_PERMISSIONS[ssoRole.code] || [];
+    permissions = userProfile.permissions || ROLE_PERMISSIONS[role.code] || [];
     console.log('[AuthContext] Mapped role:', role);
   } else {
     console.log('[AuthContext] No role in SSO profile');
   }
   
-  if (ssoOrg) {
+  // Handle organization - SSO might return it in different formats
+  const ssoOrg = userProfile.organization;
+  const orgId = userProfile.organization_id || userProfile.organizationId || userProfile.org_id || (typeof ssoOrg === 'object' ? ssoOrg?.id : undefined);
+  const orgName = userProfile.organization_name || userProfile.organizationName || userProfile.org_name || (typeof ssoOrg === 'object' ? ssoOrg?.name : undefined);
+  const orgSlug = userProfile.organization_slug || userProfile.organizationSlug || userProfile.org_slug || (typeof ssoOrg === 'object' ? ssoOrg?.slug : undefined);
+  const orgType = userProfile.organization_type || userProfile.organizationType || userProfile.org_type || (typeof ssoOrg === 'object' ? ssoOrg?.type : undefined);
+  
+  console.log('[AuthContext] Extracted org data:', { orgId, orgName, orgSlug, orgType, ssoOrg });
+  
+  if (orgId || ssoOrg) {
+    // Determine org type based on org name/slug if not provided
+    let type: 'internal' | 'client' = 'client';
+    const nameToCheck = (orgName || orgSlug || '').toLowerCase();
+    if (nameToCheck.includes('teamified') || nameToCheck.includes('internal')) {
+      type = 'internal';
+    }
+    
     organization = {
-      id: ssoOrg.id,
-      name: ssoOrg.name,
-      slug: ssoOrg.slug,
-      type: ssoOrg.type || 'client'
+      id: orgId || (typeof ssoOrg === 'string' ? ssoOrg : 'unknown'),
+      name: orgName || 'Unknown Organization',
+      slug: orgSlug || orgName?.toLowerCase().replace(/\s+/g, '-') || 'unknown',
+      type: (orgType as 'internal' | 'client') || type
     };
     console.log('[AuthContext] Mapped organization:', organization);
   } else {
